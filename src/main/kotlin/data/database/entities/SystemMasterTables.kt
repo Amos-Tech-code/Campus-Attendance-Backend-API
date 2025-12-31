@@ -5,7 +5,7 @@ import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.datetime
 import java.time.LocalDateTime.now
 
-// Universities managed by system
+// Universities
 object UniversitiesTable : Table("universities") {
     val id = uuid("id").autoGenerate()
     val name = varchar("name", 255).uniqueIndex()
@@ -38,7 +38,10 @@ object ProgrammesTable : Table("programmes") {
     val updatedAt = datetime("updated_at").clientDefault { now() }
 
     override val primaryKey = PrimaryKey(id)
-    init { uniqueIndex("unique_programme_university", universityId, name) }
+
+    init {
+        uniqueIndex("unique_programme_university", universityId, name)
+    }
 }
 
 // Units offered in a programme (or university)
@@ -53,6 +56,7 @@ object UnitsTable : Table("units") {
     val updatedAt = datetime("updated_at").clientDefault { now() }
 
     override val primaryKey = PrimaryKey(id)
+
     init {
         uniqueIndex("unique_unit_code_university", universityId, code)
         index(false, departmentId)
@@ -67,7 +71,7 @@ object ProgrammeUnitsTable : Table("programme_units") {
     val unitId = uuid("unit_id")
         .references(UnitsTable.id, onDelete = ReferenceOption.CASCADE)
     val yearOfStudy = integer("year_of_study")
-    val semester = integer("semester").nullable()
+    val semester = integer("semester")
     val createdAt = datetime("created_at").clientDefault { now() }
 
     override val primaryKey = PrimaryKey(id)

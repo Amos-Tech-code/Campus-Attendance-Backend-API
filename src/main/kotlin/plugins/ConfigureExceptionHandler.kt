@@ -66,6 +66,7 @@ fun Application.configureExceptionHandler() {
                         )
                     )
                 }
+
                 is InternalServerException -> {
                     // Log the actual error for debugging
                     println("Internal server error: ${cause.message}")

@@ -3,6 +3,7 @@ package com.amos_tech_code.data.repository
 import com.amos_tech_code.data.database.entities.DevicesTable
 import com.amos_tech_code.data.database.entities.StudentsTable
 import com.amos_tech_code.data.database.entities.SuspiciousLoginsTable
+import com.amos_tech_code.data.database.utils.exposedTransaction
 import com.amos_tech_code.domain.dtos.requests.DeviceInfo
 import com.amos_tech_code.domain.models.Device
 import com.amos_tech_code.domain.models.Student
@@ -16,22 +17,22 @@ import java.util.UUID
 
 class StudentRepository() {
 
-    fun findByRegistrationNumber(regNo: String): Student? = transaction {
+    suspend fun findByRegistrationNumber(regNo: String): Student? = exposedTransaction {
         StudentsTable
             .selectAll().where { StudentsTable.registrationNumber eq regNo }
             .map { it.toStudent() }
             .singleOrNull()
     }
 
-    fun findById(id: UUID): Student? = transaction {
+    suspend fun findById(id: UUID): Student? = exposedTransaction {
         StudentsTable
             .selectAll().where { StudentsTable.id eq id }
             .map { it.toStudent() }
             .singleOrNull()
     }
 
-    fun findByDeviceId(deviceId: String): Student? {
-        return transaction {
+    suspend fun findByDeviceId(deviceId: String): Student? {
+        return exposedTransaction {
             (StudentsTable innerJoin DevicesTable)
                 .selectAll().where { DevicesTable.deviceId eq deviceId }
                 .map { it.toStudentWithDevice() }
@@ -39,7 +40,7 @@ class StudentRepository() {
         }
     }
 
-    fun findDeviceByStudentId(studentId: UUID): Device? = transaction {
+    suspend fun findDeviceByStudentId(studentId: UUID): Device? = exposedTransaction {
         DevicesTable
             .selectAll()
             .where { DevicesTable.studentId eq studentId }
@@ -58,9 +59,9 @@ class StudentRepository() {
     }
 
 
-    fun createStudentWithDevice(
+    suspend fun createStudentWithDevice(
         student: Student,
-    ): Student = transaction {
+    ): Student = exposedTransaction {
         // Insert student
         StudentsTable.insert {
             it[id] = student.id
@@ -89,7 +90,7 @@ class StudentRepository() {
     }
 
 
-    fun updateDevice(studentId: UUID, device: Device): Boolean = transaction {
+    suspend fun updateDevice(studentId: UUID, device: Device): Boolean = exposedTransaction {
         DevicesTable.insert {
             it[id] = device.id
             it[DevicesTable.studentId] = studentId
@@ -103,23 +104,23 @@ class StudentRepository() {
         true
     }
 
-    fun updateLastLogin(studentId: UUID, timestamp: LocalDateTime): Boolean = transaction {
+    suspend fun updateLastLogin(studentId: UUID, timestamp: LocalDateTime): Boolean = exposedTransaction {
         StudentsTable.update({ StudentsTable.id eq studentId }) {
             it[lastLoginAt] = timestamp
             it[updatedAt] = timestamp
         } > 0
     }
 
-    fun updateDeviceLastSeen(
+    suspend fun updateDeviceLastSeen(
         deviceId: String,
         timestamp: LocalDateTime
-    ): Boolean = transaction {
+    ): Boolean = exposedTransaction {
         DevicesTable.update({ DevicesTable.deviceId eq deviceId }) {
             it[lastSeen] = timestamp
         } > 0
     }
 
-    fun flagSuspiciousLogin(studentId: UUID, device: DeviceInfo): Boolean = transaction {
+    suspend fun flagSuspiciousLogin(studentId: UUID, device: DeviceInfo): Boolean = exposedTransaction {
         SuspiciousLoginsTable.insert {
             it[id] = UUID.randomUUID()
             it[SuspiciousLoginsTable.studentId] = studentId

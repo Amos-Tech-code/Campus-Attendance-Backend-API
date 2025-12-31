@@ -1,6 +1,7 @@
 package com.amos_tech_code.data.repository
 
 import com.amos_tech_code.data.database.entities.LecturersTable
+import com.amos_tech_code.data.database.utils.exposedTransaction
 import com.amos_tech_code.domain.models.Lecturer
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.*
@@ -11,8 +12,8 @@ import java.util.*
 
 class LecturerRepository() {
 
-    fun findByEmail(email: String): Lecturer? {
-        return transaction {
+    suspend fun findByEmail(email: String): Lecturer? {
+        return exposedTransaction {
             LecturersTable
                 .selectAll().where { LecturersTable.email eq email }
                 .map { it.toLecturer() }
@@ -20,8 +21,8 @@ class LecturerRepository() {
         }
     }
 
-    fun findById(id: UUID): Lecturer? {
-        return transaction {
+    suspend fun findById(id: UUID): Lecturer? {
+        return exposedTransaction {
             LecturersTable
                 .selectAll().where { LecturersTable.id eq id }
                 .map { it.toLecturer() }
@@ -29,8 +30,8 @@ class LecturerRepository() {
         }
     }
 
-    fun create(lecturer: Lecturer): Lecturer {
-        return transaction {
+    suspend fun create(lecturer: Lecturer): Lecturer {
+        return exposedTransaction {
             LecturersTable.insert {
                 it[id] = lecturer.id
                 it[email] = lecturer.email
@@ -42,8 +43,8 @@ class LecturerRepository() {
         }
     }
 
-    fun updateProfileComplete(lecturerId: UUID, complete: Boolean): Boolean {
-        return transaction {
+    suspend fun updateProfileComplete(lecturerId: UUID, complete: Boolean): Boolean {
+        return exposedTransaction {
             LecturersTable.update({ LecturersTable.id eq lecturerId }) {
                 it[isProfileComplete] = complete
                 it[updatedAt] = LocalDateTime.now()
@@ -51,11 +52,11 @@ class LecturerRepository() {
         }
     }
 
-    fun updateLastLogin(
+    suspend fun updateLastLogin(
         lecturerId: UUID,
         timestamp: LocalDateTime
     ): Boolean {
-        return transaction {
+        return exposedTransaction {
             LecturersTable.update({ LecturersTable.id eq lecturerId }) {
                 it[lastLoginAt] = timestamp
                 it[updatedAt] = LocalDateTime.now()

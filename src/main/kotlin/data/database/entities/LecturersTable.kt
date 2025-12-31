@@ -24,9 +24,11 @@ object LecturerUniversitiesTable : Table("lecturer_universities") {
     val id = uuid("id").autoGenerate()
     val lecturerId = uuid("lecturer_id").references(LecturersTable.id, onDelete = ReferenceOption.CASCADE)
     val universityId = uuid("university_id").references(UniversitiesTable.id, onDelete = ReferenceOption.CASCADE)
+    val isActive = bool("is_active").default(true)
     val createdAt = datetime("created_at").clientDefault { now() }
 
     override val primaryKey = PrimaryKey(id)
+
     init { uniqueIndex("unique_lecturer_university", lecturerId, universityId) }
 }
 

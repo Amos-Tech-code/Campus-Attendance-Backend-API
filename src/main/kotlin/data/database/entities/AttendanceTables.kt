@@ -22,9 +22,7 @@ object AttendanceSessionsTable : Table("attendance_sessions") {
 
     // Add these fields for multi-programme support
     val sessionTitle = varchar("session_title", 255).nullable() // e.g., "Math 101 - Week 5 Lecture"
-    val sessionType = customEnumeration(
-        "session_type", "VARCHAR(20)",
-        { SessionType.valueOf(it as String) }, {it.name} ).default(SessionType.REGULAR)
+    val sessionType = enumerationByName<SessionType>("session_type", 20).default(SessionType.REGULAR)
 
     // Weekly session tracking
     val weekNumber = integer("week_number")
@@ -35,9 +33,7 @@ object AttendanceSessionsTable : Table("attendance_sessions") {
     val qrCodeUrl = text("qr_code_url").nullable() // Generated QR code URL
 
     // Configuration
-    val allowedMethod = customEnumeration(
-        "allowed_method", "VARCHAR(20)",
-        { AttendanceMethod.valueOf(it as String) }, { it.name } )
+    val allowedMethod = enumerationByName<AttendanceMethod>("allowed_method", 20)
     val isLocationRequired = bool("is_location_required").default(false)
     val lecturerLatitude = double("lecturer_latitude").nullable()
     val lecturerLongitude = double("lecturer_longitude").nullable()
@@ -49,9 +45,7 @@ object AttendanceSessionsTable : Table("attendance_sessions") {
     val scheduledEndTime = datetime("scheduled_end_time")
 
     // Status
-    val status = customEnumeration(
-        "status", "VARCHAR(20)",
-        { AttendanceSessionStatus.valueOf(it as String) }, { it.name })
+    val status = enumerationByName<AttendanceSessionStatus>("status", 20)
 
     val createdAt = datetime("created_at").clientDefault { now() }
     val updatedAt = datetime("updated_at").clientDefault { now() }
@@ -88,11 +82,7 @@ object AttendanceRecordsTable : Table("attendance_records") {
     val studentId = uuid("student_id")
         .references(StudentsTable.id, onDelete = ReferenceOption.CASCADE)
 
-    val attendanceMethodUsed = customEnumeration(
-        "attendance_method_used", "VARCHAR(20)",
-        { AttendanceMethod.valueOf(it as String) },
-        { it.name }
-    )
+    val attendanceMethodUsed = enumerationByName<AttendanceMethod>("attendance_method_used", 20)
 
     val studentLatitude = double("student_latitude").nullable()
     val studentLongitude = double("student_longitude").nullable()

@@ -203,7 +203,7 @@ class MarkAttendanceServiceImpl(
         )
     }
 
-    private fun performVerificationChecks(
+    private suspend fun performVerificationChecks(
         studentId: UUID,
         session: AttendanceSession,
         request: MarkAttendanceRequest
@@ -239,7 +239,7 @@ class MarkAttendanceServiceImpl(
         return distance <= radiusMeters
     }
 
-    private fun verifyDevice(studentId: UUID, deviceId: String): Boolean {
+    private suspend fun verifyDevice(studentId: UUID, deviceId: String): Boolean {
         val registeredDevice = studentRepository.findDeviceByStudentId(studentId)
         return registeredDevice?.deviceId == deviceId
     }

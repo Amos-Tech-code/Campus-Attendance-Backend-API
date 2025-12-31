@@ -32,7 +32,7 @@ class AuthServiceImpl(
      * Mock implementation of authenticateLecturerWithGoogle for testing
      * Simulates Google authentication without actually calling Google API
      */
-    override fun mockAuthenticateLecturerWithGoogle(idToken: String): LecturerAuthResponse {
+    override suspend fun mockAuthenticateLecturerWithGoogle(idToken: String): LecturerAuthResponse {
         try {
             val DEFAULT_LECTURER_EMAIL = "lecturer@example.com"
 
@@ -55,9 +55,9 @@ class AuthServiceImpl(
             } else {
                 throw ResourceNotFoundException("User not found")
             }
-        } catch (e: Exception) {
-            when (e) {
-                is ValidationException -> throw e
+        } catch (ex: Exception) {
+            when (ex) {
+                is AppException -> throw ex
                 else -> throw InternalServerException("An unknown error occurred: Mock implementation of authenticateLecturerWithGoogle.")
             }
         }

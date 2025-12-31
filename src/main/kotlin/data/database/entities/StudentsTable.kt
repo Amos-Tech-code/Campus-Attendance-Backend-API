@@ -70,9 +70,11 @@ object StudentEnrollmentsTable : Table("student_enrollments") {
     val updatedAt = datetime("updated_at").clientDefault { now() }
 
     override val primaryKey = PrimaryKey(id)
+
     init {
         uniqueIndex("unique_student_programme_term",
             studentId, programmeId, academicTermId)
         index(false, programmeId, academicTermId, yearOfStudy)
     }
+
 }

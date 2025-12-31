@@ -4,24 +4,47 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class AcademicSetupResponse(
-    val universityName: String,
-    val programmes: List<ProgrammeResponse>,
+    val university: UniversityResponse,
+    val academicTerm: AcademicTermResponse?,
+    val programmes: List<LecturerProgrammeResponse>,
+    val isActive: Boolean,
     val createdAt: Long
 )
 
-
 @Serializable
-data class ProgrammeResponse(
+data class UniversityResponse(
     val id: String,
-    val name: String,
-    val department: String,
-    val yearOfStudy: Int,
-    val units: List<UnitResponse>
+    val name: String
 )
 
 @Serializable
-data class UnitResponse(
+data class AcademicTermResponse(
     val id: String,
+    val academicYear: String,
+    val semester: Int,
+    val isActive: Boolean
+)
+
+@Serializable
+data class LecturerProgrammeResponse(
+    val programmeId: String,
+    val programmeName: String,
+    val departmentId: String,
+    val departmentName: String,
+
+    val yearOfStudy: Int,
+    val expectedStudentCount: Int,
+
+    val units: List<LecturerUnitResponse>
+)
+
+@Serializable
+data class LecturerUnitResponse(
+    val unitId: String,
     val code: String,
-    val name: String
+    val name: String,
+    val semester: Int,
+    val lectureDay: String? = null,
+    val lectureTime: String? = null,
+    val lectureVenue: String? = null
 )
