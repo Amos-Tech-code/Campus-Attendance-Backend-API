@@ -9,7 +9,7 @@ data class StartSessionRequest(
     val unitId: String,
     val allowedMethod: AttendanceMethodRequest,
     val isLocationRequired: Boolean,
-    val location: AttendanceLocationRequest? = null,
+    val location: AttendanceLocationRequest? = null, // If location is required location cannot be null
     val radiusMeters: Int = 50,
     val durationMinutes: Int = 60,
     val scheduledStartTime: String? = null

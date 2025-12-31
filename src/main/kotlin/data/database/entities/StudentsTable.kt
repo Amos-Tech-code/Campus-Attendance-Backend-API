@@ -62,9 +62,8 @@ object StudentEnrollmentsTable : Table("student_enrollments") {
 
     val yearOfStudy = integer("year_of_study")
     val enrollmentDate = datetime("enrollment_date").clientDefault { now() }
-    val enrollmentSource = customEnumeration(
-        "enrollment_source", "VARCHAR(20)",
-        { StudentEnrollmentSource.valueOf( it as String) }, { it.name })
+    val enrollmentSource = enumerationByName<StudentEnrollmentSource>("enrollment_source", 20)
+
     val isActive = bool("is_active").default(true)
 
     val updatedAt = datetime("updated_at").clientDefault { now() }

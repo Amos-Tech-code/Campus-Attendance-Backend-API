@@ -13,7 +13,7 @@ data class SessionResponse(
     val universityId: String,
     val programmes: List<ProgrammeInfo>,
     val unit: UnitInfo,
-    val location: LocationInfo,
+    val location: LocationInfo?,
     val timeInfo: TimeInfo,
     val status: AttendanceSessionStatus
 )

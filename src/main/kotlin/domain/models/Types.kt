@@ -29,7 +29,7 @@ enum class SeverityLevel {
 
 
 enum class StudentEnrollmentSource {
-    ATTENDANCE, MANUAL
+    ATTENDANCE, SELF, MANUAL
 }
 
 enum class SessionType {

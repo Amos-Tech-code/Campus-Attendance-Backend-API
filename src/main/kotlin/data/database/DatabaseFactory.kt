@@ -104,11 +104,14 @@ fun Application.seedDatabase() {
             // Seed admin user if none exist
             // Check if any lecturer exists
             val existingLecturer = LecturersTable
-                .selectAll()
-                .limit(1)
-                .singleOrNull()
+                .select(LecturersTable.id)
+                .any()
 
-            if (existingLecturer == null) {
+            val existingStudent = StudentsTable
+                .select(StudentsTable.id)
+                .any()
+
+            if (!existingLecturer) {
                 println("Seeding default lecturer...")
 
                 LecturersTable.insert {
@@ -120,10 +123,25 @@ fun Application.seedDatabase() {
                     it[createdAt] = now()
                     it[updatedAt] = now()
                 }
-
                 println("Default lecturer seeded successfully.")
             } else {
                 println("Lecturer already exist, skipping seeding.")
+            }
+
+            if (!existingStudent) {
+                println("Seeding default student...")
+
+                StudentsTable.insert {
+                    it[registrationNumber] = "SC211/0483/2022"
+                    it[fullName] = "Amos Njega Kamau"
+                    it[isActive] = true
+                    it[lastLoginAt] = null
+                    it[createdAt] = now()
+                    it[updatedAt] = now()
+                }
+                println("Default student seeded successfully.")
+            } else {
+                println("Student already exist, skipping seeding.")
             }
         }
     }
