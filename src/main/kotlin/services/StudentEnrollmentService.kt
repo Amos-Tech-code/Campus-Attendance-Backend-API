@@ -11,7 +11,7 @@ interface StudentEnrollmentService {
         request: StudentEnrollmentRequest
     ): StudentEnrollmentResponse
 
-    suspend fun getStudentEnrollments(studentId: UUID): List<StudentEnrollmentResponse>
+    suspend fun getStudentEnrollment(studentId: UUID): StudentEnrollmentResponse
 
     suspend fun deactivateEnrollment(
         studentId: UUID,

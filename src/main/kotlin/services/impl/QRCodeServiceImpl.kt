@@ -60,6 +60,7 @@ class QRCodeServiceImpl : QRCodeService {
         unitCode: String,
         sessionId: UUID
     ): String {
+
         validateSessionData(sessionCode, unitCode, sessionId)
 
         return try {
@@ -118,15 +119,15 @@ class QRCodeServiceImpl : QRCodeService {
         if (data.length > MAX_DATA_LENGTH) {
             throw IllegalArgumentException("QR code data too long: ${data.length} > $MAX_DATA_LENGTH")
         }
-        if (width < 100 || width > 2000) {
+        if (width !in 100..2000) {
             throw IllegalArgumentException("Width must be between 100 and 2000")
         }
-        if (height < 100 || height > 2000) {
+        if (height !in 100..2000) {
             throw IllegalArgumentException("Height must be between 100 and 2000")
         }
     }
 
-    private fun validateSessionData(sessionCode: String, secretKey: String, sessionId: UUID) {
+    private fun validateSessionData(sessionCode: String, unitCode: String, sessionId: UUID) {
         if (sessionCode.isBlank()) {
             throw IllegalArgumentException("Session code cannot be blank")
         }
@@ -136,11 +137,8 @@ class QRCodeServiceImpl : QRCodeService {
         if (!sessionCode.matches(Regex("\\d{6}"))) {
             throw IllegalArgumentException("Session code must contain only digits")
         }
-        if (secretKey.isBlank()) {
-            throw IllegalArgumentException("Secret key cannot be blank")
-        }
-        if (secretKey.length != 8) {
-            throw IllegalArgumentException("Secret key must be 8 characters")
+        if (unitCode.isBlank()) {
+            throw IllegalArgumentException("Unit code cannot be blank")
         }
     }
 }

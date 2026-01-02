@@ -41,12 +41,11 @@ data class ProgrammeInfoResponse(
     val yearOfStudy: Int
 )
 
-
-
 @Serializable
 data class VerifyAttendanceResponse(
     val requiresProgrammeSelection: Boolean,
     val availableProgrammes: List<ProgrammeInfoResponse>,
+    val requiresLocation: Boolean,
     val sessionInfo: SessionInfo
 )
 

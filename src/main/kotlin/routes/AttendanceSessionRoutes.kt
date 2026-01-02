@@ -91,8 +91,21 @@ fun Route.attendanceSessionRoutes(
 
         }
 
+        post("/verify") {
+
+            val studentId = call.getUserIdFromJWT() ?: return@post call.respondBadRequest("Student ID is required")
+            if (call.getUserRoleFromJWT()?.uppercase() != UserRole.STUDENT.name) return@post call.respondForbidden()
+
+            val request = call.receive<VerifySessionRequest>()
+
+            val result = attendanceSessionService.verifySessionForAttendance(studentId, request)
+
+            call.respond(HttpStatusCode.OK, result)
+
+        }
 
         post("/mark") {
+
             val studentId = call.getUserIdFromJWT() ?: return@post call.respondBadRequest("Student ID is required")
             if (call.getUserRoleFromJWT()?.uppercase() != UserRole.STUDENT.name) return@post call.respondForbidden()
 
@@ -106,19 +119,6 @@ fun Route.attendanceSessionRoutes(
             )
         }
 
-        post("/verify") {
-
-            val studentId = call.getUserIdFromJWT() ?: return@post call.respondBadRequest("Student ID is required")
-            if (call.getUserRoleFromJWT()?.uppercase() != UserRole.STUDENT.name) return@post call.respondForbidden()
-
-            val request = call.receive<VerifySessionRequest>()
-
-            val result = attendanceSessionService.verifySessionForAttendance(studentId, request)
-
-            call.respond(HttpStatusCode.OK, result)
-
-
-        }
     }
 
 }

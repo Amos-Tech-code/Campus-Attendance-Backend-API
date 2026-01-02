@@ -32,7 +32,7 @@ enum class StudentEnrollmentSource {
     ATTENDANCE, SELF, MANUAL
 }
 
-enum class SessionType {
+enum class AttendanceSessionType {
     REGULAR, MAKEUP, SPECIAL
 }
 

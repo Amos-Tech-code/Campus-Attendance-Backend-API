@@ -1,24 +1,28 @@
 package com.amos_tech_code.plugins
 
 import com.amos_tech_code.domain.dtos.response.GenericResponseDto
-import com.amos_tech_code.utils.AuthenticationException
-import com.amos_tech_code.utils.AuthorizationException
-import com.amos_tech_code.utils.ConflictException
-import com.amos_tech_code.utils.InternalServerException
-import com.amos_tech_code.utils.ResourceNotFoundException
-import com.amos_tech_code.utils.ValidationException
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.Application
-import io.ktor.server.application.install
-import io.ktor.server.plugins.statuspages.StatusPages
-import io.ktor.server.response.respond
+import com.amos_tech_code.utils.*
+import io.ktor.http.*
+import io.ktor.server.application.*
+import io.ktor.server.plugins.BadRequestException
+import io.ktor.server.plugins.statuspages.*
+import io.ktor.server.response.*
 import kotlinx.serialization.ExperimentalSerializationApi
 
 @OptIn(ExperimentalSerializationApi::class)
 fun Application.configureExceptionHandler() {
     install(StatusPages) {
+
+        status(HttpStatusCode.NotFound) { call, status ->
+            call.respondNotFound()
+        }
+
         exception<Throwable> { call, cause ->
             when (cause) {
+
+                is BadRequestException -> {
+                    call.respondBadRequest("Invalid Request")
+                }
 
                 is ValidationException -> {
                     call.respond(

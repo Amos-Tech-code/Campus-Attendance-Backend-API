@@ -27,7 +27,7 @@ class StudentEnrollmentServiceImpl(
             val programmeId = UUID.fromString(request.programmeId)
 
             // Check if student is already enrolled in ANY active programme
-            val existingActiveEnrollment = repository.findActiveEnrollmentInUniversity(studentId, universityId)
+            val existingActiveEnrollment = repository.findActiveEnrollment(studentId)
             if (existingActiveEnrollment != null) {
                 throw ValidationException(
                     "Student is already enrolled in ${existingActiveEnrollment.programmeName} " +
@@ -46,7 +46,7 @@ class StudentEnrollmentServiceImpl(
             )
 
             // Get student info
-            val student = repository.getStudentInfo(studentId)
+            repository.getStudentInfo(studentId)
                 ?: throw ValidationException("Student not found")
 
             // Check if student is already enrolled in this programme for this term
@@ -86,9 +86,9 @@ class StudentEnrollmentServiceImpl(
         }
     }
 
-    override suspend fun getStudentEnrollments(studentId: UUID): List<StudentEnrollmentResponse> {
+    override suspend fun getStudentEnrollment(studentId: UUID): StudentEnrollmentResponse {
         try {
-            return repository.getStudentEnrollments(studentId)
+            return repository.getStudentEnrollment(studentId)
         } catch (ex: Exception) {
             when(ex) {
                 is AppException -> throw ex

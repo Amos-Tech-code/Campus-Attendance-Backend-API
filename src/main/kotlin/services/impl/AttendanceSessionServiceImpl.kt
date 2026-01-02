@@ -1,8 +1,6 @@
 package com.amos_tech_code.services.impl
 
 import com.amos_tech_code.data.repository.AttendanceSessionRepository
-import com.amos_tech_code.data.repository.ProgrammeRepository
-import com.amos_tech_code.domain.dtos.requests.AttendanceMethodRequest
 import com.amos_tech_code.domain.dtos.requests.StartSessionRequest
 import com.amos_tech_code.domain.dtos.requests.UpdateSessionRequest
 import com.amos_tech_code.domain.dtos.requests.VerifySessionRequest
@@ -10,28 +8,22 @@ import com.amos_tech_code.domain.dtos.response.ProgrammeInfoResponse
 import com.amos_tech_code.domain.dtos.response.SessionInfo
 import com.amos_tech_code.domain.dtos.response.SessionResponse
 import com.amos_tech_code.domain.dtos.response.VerifyAttendanceResponse
-import com.amos_tech_code.domain.models.AttendanceMethod
 import com.amos_tech_code.domain.models.AttendanceSessionStatus
+import com.amos_tech_code.domain.models.AttendanceSessionType
 import com.amos_tech_code.domain.models.CreateSessionData
 import com.amos_tech_code.domain.models.UpdateSessionData
 import com.amos_tech_code.services.AttendanceSessionService
 import com.amos_tech_code.services.CloudStorageService
 import com.amos_tech_code.services.QRCodeService
 import com.amos_tech_code.services.SessionCodeGenerator
-import com.amos_tech_code.utils.AppException
-import com.amos_tech_code.utils.ConflictException
-import com.amos_tech_code.utils.InternalServerException
-import com.amos_tech_code.utils.ResourceNotFoundException
-import com.amos_tech_code.utils.ValidationException
-import com.amos_tech_code.utils.toLocalDateTimeOrThrow
+import com.amos_tech_code.utils.*
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import java.time.Instant
 import java.time.LocalDateTime
-import java.util.UUID
+import java.util.*
 
 class AttendanceSessionServiceImpl(
     private val attendanceSessionRepository: AttendanceSessionRepository,
-    private val programmeRepository: ProgrammeRepository,
     private val qrCodeService: QRCodeService,
     private val sessionCodeGenerator: SessionCodeGenerator,
     private val cloudStorageService: CloudStorageService
@@ -50,8 +42,9 @@ class AttendanceSessionServiceImpl(
             val unitId = UUID.fromString(request.unitId)
             val programmeIds = request.programmeIds.map { UUID.fromString(it) }
 
+            val academicTermId = attendanceSessionRepository.resolveActiveAcademicTermId(universityId)
             // Validate lecturer authorization
-            attendanceSessionRepository.validateLecturerAuthorization(lecturerId, universityId, unitId, programmeIds)
+            attendanceSessionRepository.validateLecturerAuthorization(lecturerId, universityId, academicTermId, unitId, programmeIds)
 
             // Generate unique session code
             val sessionCode = generateUniqueSessionCode()
@@ -67,13 +60,10 @@ class AttendanceSessionServiceImpl(
             val sessionData = CreateSessionData(
                 lecturerId = lecturerId,
                 universityId = universityId,
+                academicTermId = academicTermId,
                 unitId = unitId,
                 sessionCode = sessionCode,
-                allowedMethod = when (request.allowedMethod) {
-                    AttendanceMethodRequest.QR_CODE -> AttendanceMethod.QR_CODE
-                    AttendanceMethodRequest.MANUAL_CODE -> AttendanceMethod.MANUAL_CODE
-                    AttendanceMethodRequest.ANY -> AttendanceMethod.ANY
-                },
+                allowedMethod = request.allowedMethod,
                 qrCodeUrl = qrCodeUrl,
                 isLocationRequired = request.isLocationRequired,
                 lecturerLatitude = request.location?.latitude,
@@ -82,7 +72,10 @@ class AttendanceSessionServiceImpl(
                 scheduledStartTime = scheduledStartTime,
                 scheduledEndTime = scheduledEndTime,
                 durationMinutes = request.durationMinutes,
-                sessionStatus = if (scheduledStartTime == null) AttendanceSessionStatus.ACTIVE else AttendanceSessionStatus.SCHEDULED
+                sessionStatus = if (request.scheduledStartTime == null) AttendanceSessionStatus.ACTIVE else AttendanceSessionStatus.SCHEDULED,
+                title = request.title,
+                attendanceSessionType = AttendanceSessionType.valueOf(request.attendanceSessionType.name),
+                weekNumber = request.weekNumber
             )
 
             var sessionId : UUID? = null
@@ -121,57 +114,31 @@ class AttendanceSessionServiceImpl(
     ): SessionResponse {
 
         return try {
+
             validateUpdateSessionRequest(request)
 
             val sessionUUID = UUID.fromString(sessionId)
-            // Get existing session to verify ownership
-            val existingSession = attendanceSessionRepository.getSessionDetails(sessionUUID)
-                ?: throw ResourceNotFoundException("Session not found")
 
-            // Verify lecturer owns this session
-            if (existingSession.sessionId != lecturerId.toString()) {
-                throw ResourceNotFoundException("Session not found")
-            }
-
-            // Validate authorization if unit is being changed
-            request.unitId?.let { newUnitId ->
-                val universityId = UUID.fromString(existingSession.universityId)
-                val programmeIds = request.programmeIds?.map { UUID.fromString(it) }
-                    ?: existingSession.programmes.map { UUID.fromString(it.id) }
-
-                attendanceSessionRepository.validateLecturerAuthorization(
-                    lecturerId,
-                    universityId,
-                    UUID.fromString(newUnitId),
-                    programmeIds
-                )
-            }
-
-            // Update session in repository
-            val updatedSession = attendanceSessionRepository.updateSession(
-                sessionUUID,
-                lecturerId,
-                UpdateSessionData(
-                    programmeIds = request.programmeIds?.map { UUID.fromString(it) },
-                    unitId = request.unitId?.let { UUID.fromString(it) },
-                    allowedMethod = request.allowedMethod?.let { when (it) {
-                        AttendanceMethodRequest.QR_CODE -> AttendanceMethod.QR_CODE
-                        AttendanceMethodRequest.MANUAL_CODE -> AttendanceMethod.MANUAL_CODE
-                        AttendanceMethodRequest.ANY -> AttendanceMethod.ANY
-                    }},
+            attendanceSessionRepository.updateSession(
+                sessionId = sessionUUID,
+                lecturerId = lecturerId,
+                updateData = UpdateSessionData(
+                    title = request.title,
+                    attendanceSessionType = request.attendanceSessionType?.let {
+                        AttendanceSessionType.valueOf(it.name)
+                    },
+                    weekNumber = request.weekNumber,
+                    programmeIds = request.programmeIds?.map(UUID::fromString),
+                    unitId = request.unitId?.let(UUID::fromString),
+                    allowedMethod = request.allowedMethod,
                     isLocationRequired = request.isLocationRequired,
                     lecturerLatitude = request.location?.latitude,
                     lecturerLongitude = request.location?.longitude,
                     locationRadius = request.radiusMeters,
-                    durationMinutes = request.durationMinutes?.let {
-                        // Adjust end time if duration changes
-                        val newEndTime = LocalDateTime.now().plusMinutes(it.toLong())
-                        it to newEndTime
-                    }
+                    scheduledStartTime = request.scheduledStartTime?.toLocalDateTimeOrThrow(),
+                    durationMinutes = request.durationMinutes
                 )
-            )
-
-            updatedSession ?: throw InternalServerException("Failed to update session")
+            ) ?: throw ResourceNotFoundException("Session not found")
 
         } catch (ex: Exception) {
             when (ex) {
@@ -182,24 +149,32 @@ class AttendanceSessionServiceImpl(
     }
 
     override suspend fun endSession(lecturerId: UUID, sessionId: String): Boolean {
-        if (sessionId.isBlank()) {
-            throw ValidationException("Session ID is required")
+        try {
+            if (sessionId.isBlank()) {
+                throw ValidationException("Session ID is required")
+            }
+
+            val sessionUUID = UUID.fromString(sessionId)
+
+            // Get QR code URL before ending session to delete from cloud storage
+            val qrCodeUrl = attendanceSessionRepository.getSessionQrCodeUrl(sessionUUID)
+
+            // End the session
+            val success = attendanceSessionRepository.endSession(lecturerId, sessionUUID)
+
+            // Delete QR code from cloud storage if session was ended successfully
+            if (success && qrCodeUrl != null) {
+                cloudStorageService.deleteQRCode(qrCodeUrl)
+            }
+
+            return success
+
+        } catch (ex: Exception) {
+            when (ex) {
+                is AppException -> throw ex
+                else -> throw InternalServerException("Failed to end session")
+            }
         }
-
-        val sessionUUID = UUID.fromString(sessionId)
-
-        // Get QR code URL before ending session to delete from cloud storage
-        val qrCodeUrl = attendanceSessionRepository.getSessionQrCodeUrl(sessionUUID)
-
-        // End the session
-        val success = attendanceSessionRepository.endSession(lecturerId, sessionUUID)
-
-        // Delete QR code from cloud storage if session was ended successfully
-        if (success && qrCodeUrl != null) {
-            cloudStorageService.deleteQRCode(qrCodeUrl)
-        }
-
-        return success
     }
 
     override suspend fun getActiveSession(lecturerId: UUID): SessionResponse {
@@ -208,7 +183,8 @@ class AttendanceSessionServiceImpl(
     }
 
     override suspend fun verifySessionForAttendance(studentId: UUID, request: VerifySessionRequest): VerifyAttendanceResponse {
-        try {// Validate request
+        try {
+            // Validate request
             validateVerifySessionRequest(request)
 
             // Get active session
@@ -217,28 +193,36 @@ class AttendanceSessionServiceImpl(
                 request.unitCode
             ) ?: throw ResourceNotFoundException("Invalid session or session has ended")
 
-            // Check if first attendance
-            val isFirstAttendance = attendanceSessionRepository.isFirstAttendance(studentId, session.id)
-
-            if (!isFirstAttendance) {
-                // Not first time - no programme selection needed
-                return VerifyAttendanceResponse(
-                    requiresProgrammeSelection = false,
-                    availableProgrammes = emptyList(),
-                    sessionInfo = SessionInfo(
-                        sessionId = session.id.toString(),
-                        unitName = session.unitName,
-                        unitCode = session.unitCode,
-                        lecturerName = session.lecturerName
-                    )
-                )
-            }
-
             // First time attendance - check if programme selection is needed
             val sessionProgrammes = attendanceSessionRepository.getSessionProgrammes(session.id)
 
             if (sessionProgrammes.isEmpty()) {
                 throw ValidationException("No programmes associated with this session")
+            }
+
+            // Check if first attendance
+            val isFirstAttendance = attendanceSessionRepository.isFirstAttendance(studentId)
+
+            if (!isFirstAttendance) {
+                // Not first time - no programme selection needed
+                return VerifyAttendanceResponse(
+                    requiresProgrammeSelection = false,
+                    availableProgrammes = sessionProgrammes.map { programme ->
+                        ProgrammeInfoResponse(
+                            id = programme.programmeId.toString(),
+                            name = programme.programmeName,
+                            department = programme.departmentName,
+                            yearOfStudy = programme.yearOfStudy
+                        )
+                    },
+                    requiresLocation = session.isLocationRequired,
+                    sessionInfo = SessionInfo(
+                        sessionId = session.id.toString(),
+                        unitName = session.unitName,
+                        unitCode = session.unitCode,
+                        lecturerName = session.lecturerName
+                    ),
+                )
             }
 
             return VerifyAttendanceResponse(
@@ -251,6 +235,7 @@ class AttendanceSessionServiceImpl(
                         yearOfStudy = programme.yearOfStudy
                     )
                 },
+                requiresLocation = session.isLocationRequired,
                 sessionInfo = SessionInfo(
                     sessionId = session.id.toString(),
                     unitName = session.unitName,
@@ -314,6 +299,10 @@ class AttendanceSessionServiceImpl(
             throw ValidationException("Unit ID is required")
         }
 
+        require (request.weekNumber in 1..20) {
+            throw ValidationException("Invalid academic week number")
+        }
+
         // --- UUID format validation ---
         try {
             UUID.fromString(request.universityId)
@@ -328,21 +317,21 @@ class AttendanceSessionServiceImpl(
             val location = request.location
                 ?: throw ValidationException("Location is required when location tracking is enabled")
 
-            if (location.latitude !in -90.0..90.0) {
+            require (location.latitude in -90.0..90.0) {
                 throw ValidationException("Invalid latitude value")
             }
 
-            if (location.longitude !in -180.0..180.0) {
+            require (location.longitude in -180.0..180.0) {
                 throw ValidationException("Invalid longitude value")
             }
 
-            if (request.radiusMeters !in 1..1000) {
+            require (request.radiusMeters in 1..1000) {
                 throw ValidationException("Location radius must be between 1 and 1000 meters")
             }
         }
 
         // --- Session duration ---
-        if (request.durationMinutes !in 1..240) {
+        require (request.durationMinutes in 1..240) {
             throw ValidationException("Duration must be between 1 and 240 minutes")
         }
 
@@ -357,6 +346,7 @@ class AttendanceSessionServiceImpl(
     }
 
     private fun validateUpdateSessionRequest(request: UpdateSessionRequest) {
+
         if (request.isLocationRequired == true) {
             val location = request.location
                 ?: throw ValidationException("Location is required when location tracking is enabled")
@@ -429,10 +419,6 @@ class AttendanceSessionServiceImpl(
         if (request.unitCode.isBlank()) {
             throw ValidationException("Invalid QR code")
         }
-        if (request.unitCode.length != 8) {
-            throw ValidationException("Invalid QR code")
-        }
     }
-
 
 }

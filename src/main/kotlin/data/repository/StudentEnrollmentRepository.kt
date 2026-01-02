@@ -8,7 +8,9 @@ import com.amos_tech_code.domain.models.ExistingEnrollment
 import com.amos_tech_code.domain.models.StudentEnrollmentInfo
 import com.amos_tech_code.domain.models.StudentEnrollmentSource
 import com.amos_tech_code.domain.models.TeachingAssignmentInfo
+import com.amos_tech_code.utils.ResourceNotFoundException
 import com.amos_tech_code.utils.ValidationException
+import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.innerJoin
@@ -21,20 +23,20 @@ import java.util.*
 
 class StudentEnrollmentRepository {
 
-    suspend fun findActiveEnrollmentInUniversity(
-        studentId: UUID,
-        universityId: UUID
+    suspend fun findActiveEnrollment(
+        studentId: UUID
     ): ActiveEnrollmentInfo? = exposedTransaction {
+
         StudentEnrollmentsTable
             .innerJoin(
                 ProgrammesTable,
-                { StudentEnrollmentsTable.programmeId },
-                { ProgrammesTable.id }
+                onColumn = { StudentEnrollmentsTable.programmeId },
+                otherColumn = { ProgrammesTable.id }
             )
             .innerJoin(
                 UniversitiesTable,
-                { StudentEnrollmentsTable.universityId },
-                { UniversitiesTable.id }
+                onColumn = { StudentEnrollmentsTable.universityId },
+                otherColumn = { UniversitiesTable.id }
             )
             .select(
                 StudentEnrollmentsTable.id,
@@ -43,7 +45,6 @@ class StudentEnrollmentRepository {
             )
             .where {
                 (StudentEnrollmentsTable.studentId eq studentId) and
-                        (StudentEnrollmentsTable.universityId eq universityId) and
                         (StudentEnrollmentsTable.isActive eq true)
             }
             .singleOrNull()
@@ -176,163 +177,20 @@ class StudentEnrollmentRepository {
         getEnrollmentById(enrollmentId)
     }
 
-    suspend fun getEnrollmentById(enrollmentId: UUID): StudentEnrollmentResponse = exposedTransaction {
-        StudentEnrollmentsTable
-            .innerJoin(
-                otherTable = StudentsTable,
-                onColumn = { StudentEnrollmentsTable.studentId },
-                otherColumn = { StudentsTable.id }
-            )
-            .innerJoin(
-                otherTable = UniversitiesTable,
-                onColumn = { StudentEnrollmentsTable.universityId },
-                otherColumn = { UniversitiesTable.id }
-            )
-            .innerJoin(
-                otherTable = ProgrammesTable,
-                onColumn = { StudentEnrollmentsTable.programmeId },
-                otherColumn = { ProgrammesTable.id }
-            )
-            .innerJoin(
-                otherTable = AcademicTermsTable,
-                onColumn = { StudentEnrollmentsTable.academicTermId },
-                otherColumn = { AcademicTermsTable.id }
-            )
-            .leftJoin(
-                otherTable = DepartmentsTable,
-                onColumn = { ProgrammesTable.departmentId },
-                otherColumn = { DepartmentsTable.id }
-            )
-            .select(
-                StudentEnrollmentsTable.id,
-                StudentEnrollmentsTable.yearOfStudy,
-                StudentEnrollmentsTable.enrollmentDate,
-                StudentEnrollmentsTable.enrollmentSource,
-                StudentEnrollmentsTable.isActive,
-                StudentsTable.id,
-                StudentsTable.registrationNumber,
-                StudentsTable.fullName,
-                UniversitiesTable.id,
-                UniversitiesTable.name,
-                ProgrammesTable.id,
-                ProgrammesTable.name,
-                DepartmentsTable.id,
-                DepartmentsTable.name,
-                AcademicTermsTable.id,
-                AcademicTermsTable.academicYear,
-                AcademicTermsTable.semester,
-                AcademicTermsTable.isActive
-            )
-            .where { StudentEnrollmentsTable.id eq enrollmentId }
-            .single()
-            .let { row ->
-                StudentEnrollmentResponse(
-                    enrollmentId = row[StudentEnrollmentsTable.id].toString(),
-                    studentId = row[StudentsTable.id].toString(),
-                    registrationNumber = row[StudentsTable.registrationNumber],
-                    fullName = row[StudentsTable.fullName],
-                    university = UniversityResponse(
-                        id = row[UniversitiesTable.id].toString(),
-                        name = row[UniversitiesTable.name]
-                    ),
-                    programme = ProgrammeResponse(
-                        id = row[ProgrammesTable.id].toString(),
-                        name = row[ProgrammesTable.name]
-                    ),
-                    academicTerm = AcademicTermResponse(
-                        id = row[AcademicTermsTable.id].toString(),
-                        academicYear = row[AcademicTermsTable.academicYear],
-                        semester = row[AcademicTermsTable.semester],
-                        isActive = row[AcademicTermsTable.isActive]
-                    ),
-                    yearOfStudy = row[StudentEnrollmentsTable.yearOfStudy],
-                    enrollmentDate = row[StudentEnrollmentsTable.enrollmentDate].toInstant(ZoneOffset.UTC).toEpochMilli(),
-                    enrollmentSource = row[StudentEnrollmentsTable.enrollmentSource].name,
-                    isActive = row[StudentEnrollmentsTable.isActive]
-                )
-            }
-    }
+    suspend fun getStudentEnrollment(studentId: UUID): StudentEnrollmentResponse = exposedTransaction {
 
-    suspend fun getStudentEnrollments(studentId: UUID): List<StudentEnrollmentResponse> = exposedTransaction {
-        StudentEnrollmentsTable
-            .innerJoin(
-                otherTable = StudentsTable,
-                onColumn = { StudentEnrollmentsTable.studentId },
-                otherColumn = { StudentsTable.id }
-            )
-            .innerJoin(
-                otherTable = UniversitiesTable,
-                onColumn = { StudentEnrollmentsTable.universityId },
-                otherColumn = { UniversitiesTable.id }
-            )
-            .innerJoin(
-                otherTable = ProgrammesTable,
-                onColumn = { StudentEnrollmentsTable.programmeId },
-                otherColumn = { ProgrammesTable.id }
-            )
-            .innerJoin(
-                otherTable = AcademicTermsTable,
-                onColumn = { StudentEnrollmentsTable.academicTermId },
-                otherColumn = { AcademicTermsTable.id }
-            )
-            .leftJoin(
-                otherTable = DepartmentsTable,
-                onColumn = { ProgrammesTable.departmentId },
-                otherColumn = { DepartmentsTable.id }
-            )
-            .select(
-                StudentEnrollmentsTable.id,
-                StudentEnrollmentsTable.yearOfStudy,
-                StudentEnrollmentsTable.enrollmentDate,
-                StudentEnrollmentsTable.enrollmentSource,
-                StudentEnrollmentsTable.isActive,
-                StudentsTable.id,
-                StudentsTable.registrationNumber,
-                StudentsTable.fullName,
-                UniversitiesTable.id,
-                UniversitiesTable.name,
-                ProgrammesTable.id,
-                ProgrammesTable.name,
-                DepartmentsTable.id,
-                DepartmentsTable.name,
-                AcademicTermsTable.id,
-                AcademicTermsTable.academicYear,
-                AcademicTermsTable.semester,
-                AcademicTermsTable.isActive
-            )
+        val enrollmentId = StudentEnrollmentsTable
+            .select(StudentEnrollmentsTable.id)
             .where {
                 (StudentEnrollmentsTable.studentId eq studentId) and
                         (StudentEnrollmentsTable.isActive eq true)
             }
-            .orderBy(StudentEnrollmentsTable.enrollmentDate to SortOrder.DESC)
-            .map { row ->
-                StudentEnrollmentResponse(
-                    enrollmentId = row[StudentEnrollmentsTable.id].toString(),
-                    studentId = row[StudentsTable.id].toString(),
-                    registrationNumber = row[StudentsTable.registrationNumber],
-                    fullName = row[StudentsTable.fullName],
-                    university = UniversityResponse(
-                        id = row[UniversitiesTable.id].toString(),
-                        name = row[UniversitiesTable.name]
-                    ),
-                    programme = ProgrammeResponse(
-                        id = row[ProgrammesTable.id].toString(),
-                        name = row[ProgrammesTable.name]
-                    ),
-                    academicTerm = AcademicTermResponse(
-                        id = row[AcademicTermsTable.id].toString(),
-                        academicYear = row[AcademicTermsTable.academicYear],
-                        semester = row[AcademicTermsTable.semester],
-                        isActive = row[AcademicTermsTable.isActive]
-                    ),
-                    yearOfStudy = row[StudentEnrollmentsTable.yearOfStudy],
-                    enrollmentDate = row[StudentEnrollmentsTable.enrollmentDate].toInstant(ZoneOffset.UTC).toEpochMilli(),
-                    enrollmentSource = row[StudentEnrollmentsTable.enrollmentSource].name,
-                    isActive = row[StudentEnrollmentsTable.isActive]
-                )
-            }
-    }
+            .singleOrNull()
+            ?.get(StudentEnrollmentsTable.id) ?: throw ResourceNotFoundException("No active enrollment found")
 
+        getEnrollmentById(enrollmentId)
+
+    }
 
     suspend fun reactivateEnrollment(
         enrollmentId: UUID,
@@ -377,8 +235,6 @@ class StudentEnrollmentRepository {
 
         val currentEnrollment = StudentEnrollmentsTable
             .select(
-                StudentEnrollmentsTable.id,
-                StudentEnrollmentsTable.studentId,
                 StudentEnrollmentsTable.yearOfStudy
             )
             .where {
@@ -390,11 +246,11 @@ class StudentEnrollmentRepository {
 
         val currentYear = currentEnrollment[StudentEnrollmentsTable.yearOfStudy]
 
-        require(newYearOfStudy >= currentYear) {
+        if (newYearOfStudy < currentYear) {
             throw ValidationException("Year of study cannot be decreased")
         }
 
-        require(newYearOfStudy <= currentYear + 1) {
+        if (newYearOfStudy > currentYear + 1) {
             throw ValidationException("Invalid year progression")
         }
 
@@ -405,5 +261,88 @@ class StudentEnrollmentRepository {
 
         getEnrollmentById(enrollmentId)
     }
+
+    private fun getEnrollmentById(enrollmentId: UUID): StudentEnrollmentResponse {
+
+        val row = StudentEnrollmentsTable
+            .innerJoin(StudentsTable,
+                { StudentEnrollmentsTable.studentId },
+                { StudentsTable.id }
+            )
+            .innerJoin(UniversitiesTable,
+                { StudentEnrollmentsTable.universityId },
+                { UniversitiesTable.id }
+            )
+            .innerJoin(
+                ProgrammesTable,
+                onColumn = { StudentEnrollmentsTable.programmeId },
+                otherColumn = { ProgrammesTable.id },
+                additionalConstraint = {
+                    ProgrammesTable.universityId eq StudentEnrollmentsTable.universityId
+                }
+            )
+            .innerJoin(AcademicTermsTable,
+                { StudentEnrollmentsTable.academicTermId },
+                { AcademicTermsTable.id }
+            )
+            .leftJoin(DepartmentsTable,
+                { ProgrammesTable.departmentId },
+                { DepartmentsTable.id }
+            )
+            .select(
+                StudentEnrollmentsTable.id,
+                StudentEnrollmentsTable.yearOfStudy,
+                StudentEnrollmentsTable.enrollmentDate,
+                StudentEnrollmentsTable.enrollmentSource,
+                StudentEnrollmentsTable.isActive,
+                StudentsTable.id,
+                StudentsTable.registrationNumber,
+                StudentsTable.fullName,
+                UniversitiesTable.id,
+                UniversitiesTable.name,
+                ProgrammesTable.id,
+                ProgrammesTable.name,
+                DepartmentsTable.id,
+                DepartmentsTable.name,
+                AcademicTermsTable.id,
+                AcademicTermsTable.academicYear,
+                AcademicTermsTable.semester,
+                AcademicTermsTable.isActive
+            )
+            .where { StudentEnrollmentsTable.id eq enrollmentId }
+            .singleOrNull()
+            ?: throw ValidationException("Enrollment not found")
+
+        return row.toEnrollmentResponse()
+    }
+
+    private fun ResultRow.toEnrollmentResponse(): StudentEnrollmentResponse =
+        StudentEnrollmentResponse(
+            enrollmentId = this[StudentEnrollmentsTable.id].toString(),
+            studentId = this[StudentsTable.id].toString(),
+            registrationNumber = this[StudentsTable.registrationNumber],
+            fullName = this[StudentsTable.fullName],
+            university = UniversityResponse(
+                id = this[UniversitiesTable.id].toString(),
+                name = this[UniversitiesTable.name]
+            ),
+            programme = ProgrammeResponse(
+                id = this[ProgrammesTable.id].toString(),
+                name = this[ProgrammesTable.name]
+            ),
+            academicTerm = AcademicTermResponse(
+                id = this[AcademicTermsTable.id].toString(),
+                academicYear = this[AcademicTermsTable.academicYear],
+                semester = this[AcademicTermsTable.semester],
+                isActive = this[AcademicTermsTable.isActive]
+            ),
+            yearOfStudy = this[StudentEnrollmentsTable.yearOfStudy],
+            enrollmentDate = this[StudentEnrollmentsTable.enrollmentDate]
+                .toInstant(ZoneOffset.UTC)
+                .toEpochMilli(),
+            enrollmentSource = this[StudentEnrollmentsTable.enrollmentSource].name,
+            isActive = this[StudentEnrollmentsTable.isActive]
+        )
+
 
 }

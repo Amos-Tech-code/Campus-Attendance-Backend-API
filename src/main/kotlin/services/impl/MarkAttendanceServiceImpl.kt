@@ -45,7 +45,7 @@ class MarkAttendanceServiceImpl(
                 throw ConflictException("You have already marked attendance for this session")
             }
 
-            val isFirstAttendance = attendanceSessionRepository.isFirstAttendance(studentId, session.id)
+            val isFirstAttendance = attendanceSessionRepository.isFirstAttendance(studentId)
 
             return if (isFirstAttendance) {
                 handleFirstTimeAttendance(studentId, session, request)
@@ -161,6 +161,7 @@ class MarkAttendanceServiceImpl(
         request: MarkAttendanceRequest,
         programmeId: UUID
     ): MarkAttendanceResponse {
+
         val verificationResult = performVerificationChecks(studentId, session, request)
         val flags = mutableListOf<AttendanceFlag>()
 
@@ -201,6 +202,7 @@ class MarkAttendanceServiceImpl(
             attendedAt = attendanceRecord.attendedAt.toString(),
             message = if (flags.isEmpty()) "Attendance marked successfully" else "Attendance marked with warnings"
         )
+
     }
 
     private suspend fun performVerificationChecks(
@@ -231,9 +233,9 @@ class MarkAttendanceServiceImpl(
         lecturerLng: Double,
         studentLat: Double?,
         studentLng: Double?,
-        radiusMeters: Int
+        radiusMeters: Int?
     ): Boolean {
-        if (studentLat == null || studentLng == null) return false
+        if (studentLat == null || studentLng == null || radiusMeters == null) return false
 
         val distance = calculateDistance(lecturerLat, lecturerLng, studentLat, studentLng)
         return distance <= radiusMeters

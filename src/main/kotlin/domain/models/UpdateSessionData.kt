@@ -5,6 +5,9 @@ import java.util.UUID
 
 
 data class UpdateSessionData(
+    val title: String? = null,
+    val attendanceSessionType: AttendanceSessionType? = null,
+    val weekNumber: Int? = null,
     val programmeIds: List<UUID>? = null,
     val unitId: UUID? = null,
     val allowedMethod: AttendanceMethod? = null,
@@ -12,5 +15,6 @@ data class UpdateSessionData(
     val lecturerLatitude: Double? = null,
     val lecturerLongitude: Double? = null,
     val locationRadius: Int? = null,
-    val durationMinutes: Pair<Int, LocalDateTime>? = null
+    val scheduledStartTime: LocalDateTime? = null,
+    val durationMinutes: Int? = null
 )

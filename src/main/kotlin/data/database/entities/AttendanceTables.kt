@@ -2,7 +2,7 @@ package com.amos_tech_code.data.database.entities
 
 import com.amos_tech_code.domain.models.AttendanceMethod
 import com.amos_tech_code.domain.models.AttendanceSessionStatus
-import com.amos_tech_code.domain.models.SessionType
+import com.amos_tech_code.domain.models.AttendanceSessionType
 import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.datetime
@@ -22,22 +22,22 @@ object AttendanceSessionsTable : Table("attendance_sessions") {
 
     // Add these fields for multi-programme support
     val sessionTitle = varchar("session_title", 255).nullable() // e.g., "Math 101 - Week 5 Lecture"
-    val sessionType = enumerationByName<SessionType>("session_type", 20).default(SessionType.REGULAR)
+    val attendanceSessionType = enumerationByName<AttendanceSessionType>("session_type", 20).default(AttendanceSessionType.REGULAR)
 
     // Weekly session tracking
     val weekNumber = integer("week_number")
     val sessionNumber = integer("session_number").default(1)
 
     // Session codes
-    val sessionCode = varchar("session_code", 6).uniqueIndex()
+    val sessionCode = varchar("session_code", 6)
     val qrCodeUrl = text("qr_code_url").nullable() // Generated QR code URL
 
     // Configuration
     val allowedMethod = enumerationByName<AttendanceMethod>("allowed_method", 20)
-    val isLocationRequired = bool("is_location_required").default(false)
+    val isLocationRequired = bool("is_location_required")
     val lecturerLatitude = double("lecturer_latitude").nullable()
     val lecturerLongitude = double("lecturer_longitude").nullable()
-    val locationRadius = integer("location_radius").default(50)
+    val locationRadius = integer("location_radius").nullable().default(50)
 
     // Time management
     val durationMinutes = integer("duration_minutes").default(30)
@@ -52,6 +52,7 @@ object AttendanceSessionsTable : Table("attendance_sessions") {
 
     override val primaryKey = PrimaryKey(id)
     init {
+        index(false,sessionCode, status)
         index(false, lecturerId, universityId, status)
         index(false, unitId, academicTermId, weekNumber)
         uniqueIndex("unique_lecturer_unit_week_session",

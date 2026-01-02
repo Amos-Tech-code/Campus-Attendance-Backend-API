@@ -30,16 +30,16 @@ fun Route.studentEnrollmentRoutes(
             call.respond(response)
         }
 
-        // Get all active enrollments for student
+        // Get all active enrollment for student
         get {
             val studentId = call.getUserIdFromJWT()
                 ?: return@get call.respondBadRequest("Student ID is required.")
 
-            val enrollments = enrollmentService.getStudentEnrollments(
+            val enrollment = enrollmentService.getStudentEnrollment(
                 studentId = studentId
             )
 
-            call.respond(enrollments)
+            call.respond(enrollment)
         }
 
         // Deactivate an enrollment

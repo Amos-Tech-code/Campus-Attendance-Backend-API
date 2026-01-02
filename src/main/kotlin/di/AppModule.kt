@@ -46,7 +46,7 @@ val appModule = module {
     single<LecturerAcademicService> { LecturerAcademicServiceImpl(get()) }
 
     single<AttendanceSessionService> {
-        AttendanceSessionServiceImpl(get(), get(), get(), get(), get())
+        AttendanceSessionServiceImpl(get(), get(), get(), get())
     }
 
     single<QRCodeService> { QRCodeServiceImpl() }

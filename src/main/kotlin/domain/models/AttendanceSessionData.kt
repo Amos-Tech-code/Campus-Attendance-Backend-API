@@ -10,9 +10,10 @@ data class AttendanceSession(
     val unitId: UUID,
     val universityId: UUID,
     val lecturerId: UUID,
+    val isLocationRequired: Boolean,
     val lecturerLatitude: Double?,
     val lecturerLongitude: Double?,
-    val locationRadius: Int,
+    val locationRadius: Int?,
     val unitName: String,
     val unitCode: String,
     val lecturerName: String
