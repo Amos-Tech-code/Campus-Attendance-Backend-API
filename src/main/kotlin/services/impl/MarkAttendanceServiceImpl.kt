@@ -1,17 +1,21 @@
 package com.amos_tech_code.services.impl
 
 import com.amos_tech_code.data.repository.AttendanceSessionRepository
-import com.amos_tech_code.data.repository.ProgrammeRepository
+import com.amos_tech_code.data.repository.StudentEnrollmentRepository
 import com.amos_tech_code.data.repository.StudentRepository
 import com.amos_tech_code.domain.dtos.requests.MarkAttendanceRequest
 import com.amos_tech_code.domain.dtos.response.AttendanceFlag
 import com.amos_tech_code.domain.dtos.response.MarkAttendanceResponse
 import com.amos_tech_code.domain.dtos.response.ProgrammeInfoResponse
 import com.amos_tech_code.domain.dtos.response.VerificationResult
+import com.amos_tech_code.domain.models.AttendanceMethod
 import com.amos_tech_code.domain.models.AttendanceSession
 import com.amos_tech_code.domain.models.FlagType
+import com.amos_tech_code.domain.models.LocationVerification
+import com.amos_tech_code.domain.models.ProgrammeResolution
 import com.amos_tech_code.domain.models.SeverityLevel
 import com.amos_tech_code.domain.models.StudentEnrollmentSource
+import com.amos_tech_code.domain.models.VerificationOutcome
 import com.amos_tech_code.services.MarkAttendanceService
 import com.amos_tech_code.utils.AppException
 import com.amos_tech_code.utils.ConflictException
@@ -27,223 +31,383 @@ import kotlin.math.sqrt
 class MarkAttendanceServiceImpl(
     private val attendanceSessionRepository: AttendanceSessionRepository,
     private val studentRepository: StudentRepository,
-    private val programmeRepository: ProgrammeRepository
+    private val studentEnrollmentRepository: StudentEnrollmentRepository
 ) : MarkAttendanceService {
 
-    override suspend fun processIntelligentAttendance(studentId: UUID, request: MarkAttendanceRequest): MarkAttendanceResponse {
+    override suspend fun processIntelligentAttendance(
+        studentId: UUID,
+        request: MarkAttendanceRequest
+    ): MarkAttendanceResponse {
+
         try {
             validateMarkAttendanceRequest(request)
 
-            // Verify session exists and is active
-            val session = attendanceSessionRepository.getActiveSessionBySessionCodeAndUnitCode(
-                request.sessionCode,
-                request.unitCode
-            ) ?: return createErrorResponse("Invalid session or session has ended")
+            val session = attendanceSessionRepository
+                .getActiveSessionBySessionCodeAndUnitCode(
+                    request.sessionCode,
+                    request.unitCode
+                ) ?: throw ValidationException("Invalid or inactive session")
 
-            // Simple duplicate check
             if (attendanceSessionRepository.hasExistingAttendance(studentId, session.id)) {
-                throw ConflictException("You have already marked attendance for this session")
+                throw ConflictException("Attendance already recorded")
             }
 
-            val isFirstAttendance = attendanceSessionRepository.isFirstAttendance(studentId)
+            val programmeResolution = resolveProgramme(
+                studentId, session, request.programmeId
+            )
 
-            return if (isFirstAttendance) {
-                handleFirstTimeAttendance(studentId, session, request)
-            } else {
-                handleSubsequentAttendance(studentId, session, request)
+            if (programmeResolution.requiresSelection) {
+                return programmeResolution.selectionResponse!!
             }
+
+            val programmeId = programmeResolution.programmeId!!
+
+            val flags = mutableListOf<AttendanceFlag>()
+
+            // Method (hard)
+            val methodVerified = verifyMethod(session.allowedMethod, request.methodUsed)
+            if (!methodVerified) {
+                throw ValidationException("Attendance method not allowed")
+            }
+
+            // Schedule (grace)
+            val scheduleResult = verifySchedule(session)
+            scheduleResult.flag?.let { flags += it }
+
+            // Device (hard)
+            val deviceVerified = verifyDevice(studentId, request.deviceId)
+            if (!deviceVerified) {
+                throw ValidationException("Unrecognized device")
+            }
+
+            // Location (grace)
+            val locationResult = verifyLocation(session, request.studentLat, request.studentLng)
+            locationResult.flag?.let { flags += it }
+
+            val overallVerified = true // all hard rules passed
+
+            val record = attendanceSessionRepository.createAttendanceRecord(
+                studentId = studentId,
+                sessionId = session.id,
+                deviceId = request.deviceId,
+                studentLat = request.studentLat,
+                studentLng = request.studentLng,
+                distance = locationResult.distance,
+                isDeviceVerified = deviceVerified,
+                isLocationVerified = locationResult.verified,
+                attendanceMethod = request.methodUsed,
+                isSuspicious = flags.isNotEmpty(),
+                suspiciousReason = flags.joinToString { it.type.name }
+            )
+
+            return MarkAttendanceResponse(
+                success = true,
+                sessionId = session.id.toString(),
+                programmeId = programmeId.toString(),
+                verification = VerificationResult(
+                    locationVerified = locationResult.verified,
+                    deviceVerified = deviceVerified,
+                    methodVerified = methodVerified,
+                    attendanceTimeVerified = scheduleResult.verified,
+                    overallVerified = overallVerified
+                ),
+                flags = flags,
+                attendedAt = record.attendedAt.toString(),
+                message = if (flags.isEmpty())
+                    "Attendance marked successfully"
+                else
+                    "Attendance marked with warnings"
+            )
+
         } catch (ex: Exception) {
-            when (ex) {
+            when(ex) {
                 is AppException -> throw ex
-                else -> throw InternalServerException("Failed to process attendance: ${ex.message}")
+                else -> throw InternalServerException("Failed to mark attendance")
             }
         }
     }
 
-    private suspend fun handleFirstTimeAttendance(
+    private suspend fun resolveProgramme(
         studentId: UUID,
         session: AttendanceSession,
-        request: MarkAttendanceRequest
-    ): MarkAttendanceResponse {
-        val sessionProgrammes = attendanceSessionRepository.getSessionProgrammes(session.id)
+        requestedProgrammeId: String?
+    ): ProgrammeResolution {
+
+        val sessionProgrammes =
+            attendanceSessionRepository.getSessionProgrammes(session.id)
 
         if (sessionProgrammes.isEmpty()) {
-            return createErrorResponse("No programmes associated with this session")
+            throw ValidationException("No programmes linked to this session")
         }
 
-        val academicTermId = UUID.randomUUID() // TODO(): Remove Random UUID * Replace with real impl
+        // 1. Check active enrollment FIRST
+        val activeEnrollment =
+            studentEnrollmentRepository.findActiveEnrollment(studentId)
 
-        return when {
+        if (activeEnrollment != null) {
 
-            // Case 1: Session has only one programme - auto-link student to it
-            sessionProgrammes.size == 1 -> {
-                val programme = sessionProgrammes.first()
-                // Link student to programme on first attendance
-                programmeRepository.linkStudentToProgramme(
-                    studentId = studentId,
-                    programmeId = programme.programmeId,
-                    unitId = session.unitId,
-                    universityId = session.universityId,
-                    academicTermId = academicTermId,
-                    enrollmentSource = StudentEnrollmentSource.ATTENDANCE,
-                )
-                createAttendanceRecord(studentId, session, request, programme.programmeId)
+            val enrolledProgrammeId = activeEnrollment.programmeId
+
+            val allowed = sessionProgrammes.any {
+                it.programmeId == enrolledProgrammeId
             }
 
-            // Case 2: Session has multiple programmes - student must select one
-            else -> {
-                // Multiple programmes - check if programmeId provided
-                request.programmeId?.let { programmeIdStr ->
-                    val programmeId = UUID.fromString(programmeIdStr)
-                    if (sessionProgrammes.any { it.programmeId == programmeId }) {
-                        // Link student to selected programme
-                        programmeRepository.linkStudentToProgramme(
-                            studentId,
-                            programmeId,
-                            session.unitId,
-                            session.universityId,
-                            academicTermId = academicTermId,
-                            enrollmentSource = StudentEnrollmentSource.ATTENDANCE
-                        )
-                        return createAttendanceRecord(studentId, session, request, programmeId)
-                    }
-                }
+            if (!allowed) {
+                throw ValidationException(
+                    "You are enrolled in ${activeEnrollment.programmeName}, " +
+                            "but this session is for a different programme"
+                )
+            }
 
-                // No valid programme selected
-                MarkAttendanceResponse(
+            return ProgrammeResolution(programmeId = enrolledProgrammeId)
+        }
+
+        // 2. No active enrollment — auto-enroll if only one programme
+        if (sessionProgrammes.size == 1) {
+            val programme = sessionProgrammes.first()
+
+            studentEnrollmentRepository.createEnrollment(
+                studentId = studentId,
+                universityId = session.universityId,
+                programmeId = programme.programmeId,
+                academicTermId = session.academicTermId,
+                yearOfStudy = programme.yearOfStudy,
+                enrollmentSource = StudentEnrollmentSource.ATTENDANCE
+            )
+
+            return ProgrammeResolution(programmeId = programme.programmeId)
+        }
+
+        // 3. Multiple programmes — require explicit selection
+        if (requestedProgrammeId == null) {
+            return ProgrammeResolution(
+                requiresSelection = true,
+                selectionResponse = MarkAttendanceResponse(
                     success = false,
                     sessionId = session.id.toString(),
-                    verification = VerificationResult(
-                        locationVerified = false,
-                        deviceVerified = false,
-                        methodVerified = false,
-                        overallVerified = false
-                    ),
                     requiresProgrammeSelection = true,
-                    availableProgrammes = sessionProgrammes.map { programme ->
+                    availableProgrammes = sessionProgrammes.map {
                         ProgrammeInfoResponse(
-                            id = programme.programmeId.toString(),
-                            name = programme.programmeName,
-                            department = programme.departmentName,
-                            yearOfStudy = programme.yearOfStudy
+                            it.programmeId.toString(),
+                            it.programmeName,
+                            it.departmentName,
+                            it.yearOfStudy
                         )
                     },
+                    verification = VerificationResult(
+                        false, false, false, false, false
+                    ),
                     attendedAt = LocalDateTime.now().toString(),
                     message = "Please select your programme"
                 )
-            }
-        }
-    }
-
-    private suspend fun handleSubsequentAttendance(
-        studentId: UUID,
-        session: AttendanceSession,
-        request: MarkAttendanceRequest
-    ): MarkAttendanceResponse {
-        // Get student's linked programme
-        val studentProgramme = programmeRepository.getStudentActiveProgramme(studentId, session.universityId)
-            ?: return createErrorResponse("No programme linked to student")
-
-        // Verify session programme matches student's linked programme
-        val sessionProgrammes = attendanceSessionRepository.getSessionProgrammes(session.id)
-        val isProgrammeValid = sessionProgrammes.any { it.programmeId == studentProgramme.programmeId }
-
-        if (!isProgrammeValid) {
-            return createErrorResponse("Session is not available for your linked programme")
+            )
         }
 
-        return createAttendanceRecord(studentId, session, request, studentProgramme.programmeId)
-    }
+        // 4. Validate selected programme
+        val parsedProgrammeId = UUID.fromString(requestedProgrammeId)
 
-    private suspend fun createAttendanceRecord(
-        studentId: UUID,
-        session: AttendanceSession,
-        request: MarkAttendanceRequest,
-        programmeId: UUID
-    ): MarkAttendanceResponse {
-
-        val verificationResult = performVerificationChecks(studentId, session, request)
-        val flags = mutableListOf<AttendanceFlag>()
-
-        if (!verificationResult.locationVerified) {
-            flags.add(AttendanceFlag(
-                type = FlagType.LOCATION_MISMATCH,
-                message = "Location verification failed",
-                severity = SeverityLevel.MEDIUM
-            ))
+        val valid = sessionProgrammes.any {
+            it.programmeId == parsedProgrammeId
         }
 
-        if (!verificationResult.deviceVerified) {
-            flags.add(AttendanceFlag(
-                type = FlagType.DEVICE_MISMATCH,
-                message = "Device verification failed",
-                severity = SeverityLevel.HIGH
-            ))
+        if (!valid) {
+            throw ValidationException("Invalid programme selection")
         }
 
-        val attendanceRecord = attendanceSessionRepository.createAttendanceRecord(
+        val selectedProgramme = sessionProgrammes.first {
+            it.programmeId == parsedProgrammeId
+        }
+
+        studentEnrollmentRepository.createEnrollment(
             studentId = studentId,
-            sessionId = session.id,
-            programmeId = programmeId,
-            sessionCode = request.sessionCode,
-            deviceId = request.deviceId,
-            studentLat = request.studentLat,
-            studentLng = request.studentLng,
-            isLocationVerified = verificationResult.locationVerified,
-            isDeviceVerified = verificationResult.deviceVerified
+            universityId = session.universityId,
+            programmeId = parsedProgrammeId,
+            academicTermId = session.academicTermId,
+            yearOfStudy = selectedProgramme.yearOfStudy,
+            enrollmentSource = StudentEnrollmentSource.ATTENDANCE
         )
 
-        return MarkAttendanceResponse(
-            success = true,
-            sessionId = session.id.toString(),
-            programmeId = programmeId.toString(),
-            verification = verificationResult,
-            flags = flags,
-            attendedAt = attendanceRecord.attendedAt.toString(),
-            message = if (flags.isEmpty()) "Attendance marked successfully" else "Attendance marked with warnings"
-        )
-
+        return ProgrammeResolution(programmeId = parsedProgrammeId)
     }
 
-    private suspend fun performVerificationChecks(
+    /*private suspend fun resolveProgramme(
         studentId: UUID,
         session: AttendanceSession,
-        request: MarkAttendanceRequest
-    ): VerificationResult {
-        val locationVerified = verifyLocation(
-            lecturerLat = session.lecturerLatitude ?: 0.0,
-            lecturerLng = session.lecturerLongitude ?: 0.0,
-            studentLat = request.studentLat,
-            studentLng = request.studentLng,
-            radiusMeters = session.locationRadius
-        )
+        requestedProgrammeId: String?
+    ): ProgrammeResolution {
 
-        val deviceVerified = verifyDevice(studentId, request.deviceId)
+        val sessionProgrammes =
+            attendanceSessionRepository.getSessionProgrammes(session.id)
 
-        return VerificationResult(
-            locationVerified = locationVerified,
-            deviceVerified = deviceVerified,
-            methodVerified = true,
-            overallVerified = locationVerified && deviceVerified
+        if (sessionProgrammes.isEmpty()) {
+            throw ValidationException("No programmes linked to this session")
+        }
+
+        val activeEnrollment =
+            programmeRepository.getStudentActiveProgramme(
+                studentId,
+                session.universityId
+            )
+
+        // Already enrolled
+        if (activeEnrollment != null) {
+            val valid = sessionProgrammes.any {
+                it.programmeId == activeEnrollment.programmeId
+            }
+
+            if (!valid) {
+                throw ValidationException("Session not available for your programme")
+            }
+
+            return ProgrammeResolution(programmeId = activeEnrollment.programmeId)
+        }
+
+        // First-time — single programme
+        if (sessionProgrammes.size == 1) {
+            val programme = sessionProgrammes.first()
+
+            programmeRepository.linkStudentToProgramme(
+                studentId = studentId,
+                programmeId = programme.programmeId,
+                unitId = session.unitId,
+                universityId = session.universityId,
+                academicTermId = session.academicTermId,
+                enrollmentSource = StudentEnrollmentSource.ATTENDANCE
+            )
+
+            return ProgrammeResolution(programmeId = programme.programmeId)
+        }
+
+        // First-time — multiple programmes
+        if (requestedProgrammeId != null) {
+            val parsed = UUID.fromString(requestedProgrammeId)
+            val valid = sessionProgrammes.any { it.programmeId == parsed }
+
+            if (!valid) {
+                throw ValidationException("Invalid programme selection")
+            }
+
+            programmeRepository.linkStudentToProgramme(
+                studentId,
+                parsed,
+                session.unitId,
+                session.universityId,
+                session.academicTermId,
+                StudentEnrollmentSource.ATTENDANCE
+            )
+
+            return ProgrammeResolution(programmeId = parsed)
+        }
+
+        // Require explicit selection
+        return ProgrammeResolution(
+            requiresSelection = true,
+            selectionResponse = MarkAttendanceResponse(
+                success = false,
+                sessionId = session.id.toString(),
+                requiresProgrammeSelection = true,
+                availableProgrammes = sessionProgrammes.map {
+                    ProgrammeInfoResponse(
+                        it.programmeId.toString(),
+                        it.programmeName,
+                        it.departmentName,
+                        it.yearOfStudy
+                    )
+                },
+                verification = VerificationResult(false, false, false, false,false),
+                attendedAt = LocalDateTime.now().toString(),
+                message = "Please select your programme first"
+            )
         )
+    }*/
+
+    private fun verifyMethod(
+        allowed: AttendanceMethod,
+        used: AttendanceMethod
+    ): Boolean {
+        return when {
+            used == AttendanceMethod.LECTURER_MANUAL -> true
+            allowed == AttendanceMethod.ANY -> true
+            allowed == used -> true
+            else -> false
+        }
     }
 
-    private fun verifyLocation(
-        lecturerLat: Double,
-        lecturerLng: Double,
-        studentLat: Double?,
-        studentLng: Double?,
-        radiusMeters: Int?
-    ): Boolean {
-        if (studentLat == null || studentLng == null || radiusMeters == null) return false
+    private fun verifySchedule(session: AttendanceSession): VerificationOutcome {
+        val now = LocalDateTime.now()
 
-        val distance = calculateDistance(lecturerLat, lecturerLng, studentLat, studentLng)
-        return distance <= radiusMeters
+        if (now.isBefore(session.scheduledStartTime)) {
+            throw ValidationException("Attendance has not started yet")
+        }
+
+        val hardClose = session.scheduledEndTime.plusMinutes(10)
+        val graceClose = session.scheduledEndTime.plusMinutes(5)
+
+        return when {
+            now.isAfter(hardClose) ->
+                throw ValidationException("Attendance window closed")
+
+            now.isAfter(graceClose) ->
+                VerificationOutcome(
+                    verified = true,
+                    flag = AttendanceFlag(
+                        FlagType.OUTSIDE_SCHEDULE_WINDOW,
+                        "Attendance marked slightly outside scheduled time",
+                        SeverityLevel.LOW
+                    )
+                )
+
+            else -> VerificationOutcome(true)
+        }
     }
 
     private suspend fun verifyDevice(studentId: UUID, deviceId: String): Boolean {
         val registeredDevice = studentRepository.findDeviceByStudentId(studentId)
         return registeredDevice?.deviceId == deviceId
+    }
+
+    private fun verifyLocation(
+        session: AttendanceSession,
+        studentLat: Double?,
+        studentLng: Double?
+    ): LocationVerification {
+
+        if (!session.isLocationRequired) {
+            return LocationVerification(true, 0.0)
+        }
+
+        if (studentLat == null || studentLng == null) {
+            throw ValidationException("Location details are required")
+        }
+
+        val distance = calculateDistance(
+            session.lecturerLatitude!!,
+            session.lecturerLongitude!!,
+            studentLat,
+            studentLng
+        )
+
+        val allowed = session.locationRadius!!
+        val graceRadius = allowed + 20 // meters
+
+        return when {
+            distance > graceRadius ->
+                throw ValidationException("You are too far from the attendance location")
+
+            distance > allowed ->
+                LocationVerification(
+                    verified = false,
+                    distance = distance,
+                    flag = AttendanceFlag(
+                        FlagType.LOCATION_MISMATCH,
+                        "Slightly outside allowed location radius",
+                        SeverityLevel.MEDIUM
+                    )
+                )
+
+            else ->
+                LocationVerification(true, distance)
+        }
     }
 
     private fun calculateDistance(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
@@ -272,11 +436,9 @@ class MarkAttendanceServiceImpl(
             throw ValidationException("Session code must contain only digits")
         }
         if (request.unitCode.isBlank()) {
-            throw ValidationException("Secret key is required")
+            throw ValidationException("Unit code is required")
         }
-        if (request.unitCode.length != 8) {
-            throw ValidationException("Secret key must be 8 characters")
-        }
+
         if (request.deviceId.isBlank()) {
             throw ValidationException("Device ID is required")
         }
@@ -287,20 +449,10 @@ class MarkAttendanceServiceImpl(
         request.studentLng?.let { lng ->
             if (lng < -180 || lng > 180) throw ValidationException("Invalid longitude")
         }
+
+        require(request.methodUsed.name.isNotBlank()) {
+            throw ValidationException("Method used is required")
+        }
     }
 
-    private fun createErrorResponse(message: String): MarkAttendanceResponse {
-        return MarkAttendanceResponse(
-            success = false,
-            sessionId = "",
-            verification = VerificationResult(
-                locationVerified = false,
-                deviceVerified = false,
-                methodVerified = false,
-                overallVerified = false
-            ),
-            attendedAt = LocalDateTime.now().toString(),
-            message = message
-        )
-    }
 }

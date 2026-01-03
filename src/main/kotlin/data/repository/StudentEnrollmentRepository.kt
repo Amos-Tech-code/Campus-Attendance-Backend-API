@@ -41,6 +41,7 @@ class StudentEnrollmentRepository {
             .select(
                 StudentEnrollmentsTable.id,
                 ProgrammesTable.name,
+                ProgrammesTable.id,
                 UniversitiesTable.name
             )
             .where {
@@ -52,6 +53,7 @@ class StudentEnrollmentRepository {
                 ActiveEnrollmentInfo(
                     enrollmentId = row[StudentEnrollmentsTable.id],
                     programmeName = row[ProgrammesTable.name],
+                    programmeId = row[ProgrammesTable.id],
                     universityName = row[UniversitiesTable.name]
                 )
             }

@@ -23,6 +23,7 @@ data class VerificationResult(
     val locationVerified: Boolean,
     val deviceVerified: Boolean,
     val methodVerified: Boolean,
+    val attendanceTimeVerified: Boolean,
     val overallVerified: Boolean
 )
 

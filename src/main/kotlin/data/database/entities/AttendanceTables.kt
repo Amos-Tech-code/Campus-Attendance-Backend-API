@@ -91,7 +91,6 @@ object AttendanceRecordsTable : Table("attendance_records") {
     val isLocationVerified = bool("is_location_verified").default(false)
 
     val deviceId = varchar("device_id", 255)
-    val expectedDeviceId = varchar("expected_device_id", 255).nullable()
     val isDeviceVerified = bool("is_device_verified").default(false)
 
     val isSuspicious = bool("is_suspicious").default(false)

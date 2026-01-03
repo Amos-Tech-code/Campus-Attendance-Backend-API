@@ -1,5 +1,6 @@
 package com.amos_tech_code.domain.dtos.requests
 
+import com.amos_tech_code.domain.models.AttendanceMethod
 import kotlinx.serialization.Serializable
 
 // Enhanced Request DTO
@@ -10,7 +11,8 @@ data class MarkAttendanceRequest(
     val deviceId: String,
     val programmeId: String? = null, // Required only for first-time attendance with multiple programmes
     val studentLat: Double? = null,
-    val studentLng: Double? = null
+    val studentLng: Double? = null,
+    val methodUsed: AttendanceMethod
 )
 
 @Serializable

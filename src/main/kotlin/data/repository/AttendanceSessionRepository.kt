@@ -108,6 +108,7 @@ class AttendanceSessionRepository() {
             it[locationRadius] = sessionData.locationRadius
             it[scheduledStartTime] = sessionData.scheduledStartTime
             it[scheduledEndTime] = sessionData.scheduledEndTime
+            it[durationMinutes] = sessionData.durationMinutes
             it[status] = sessionData.sessionStatus
         }
 
@@ -384,18 +385,30 @@ class AttendanceSessionRepository() {
         }
     }
 
+    suspend fun autoActivateSessions() = exposedTransaction {
+        AttendanceSessionsTable.update(
+            {
+                (AttendanceSessionsTable.status eq AttendanceSessionStatus.SCHEDULED) and
+                        (AttendanceSessionsTable.scheduledStartTime greaterEq LocalDateTime.now())
+            }
+        ) {
+            it[status] = AttendanceSessionStatus.ACTIVE
+        }
+    }
+
     /**
      * Attendance Marking Implementation
      * Link students with universities and programmes on first attendance
      */
 
-    // Add to your AttendanceSessionRepository
     suspend fun hasExistingAttendance(studentId: UUID, sessionId: UUID): Boolean = exposedTransaction {
             AttendanceRecordsTable
-                .selectAll().where {
+                .select(AttendanceRecordsTable.id)
+                .where {
                     (AttendanceRecordsTable.studentId eq studentId) and
                             (AttendanceRecordsTable.sessionId eq sessionId)
                 }
+                .limit(1)
                 .count() > 0
     }
 
@@ -425,7 +438,11 @@ class AttendanceSessionRepository() {
                         locationRadius = row[AttendanceSessionsTable.locationRadius],
                         unitName = row[UnitsTable.name],
                         unitCode = row[UnitsTable.code],
-                        lecturerName = row[LecturersTable.fullName] ?: "Unknown"
+                        lecturerName = row[LecturersTable.fullName] ?: "Unknown",
+                        academicTermId = row[AttendanceSessionsTable.academicTermId],
+                        allowedMethod = row[AttendanceSessionsTable.allowedMethod],
+                        scheduledStartTime = row[AttendanceSessionsTable.scheduledStartTime],
+                        scheduledEndTime = row[AttendanceSessionsTable.scheduledEndTime]
                     )
                 }
                 .singleOrNull()
@@ -457,63 +474,19 @@ class AttendanceSessionRepository() {
     suspend fun createAttendanceRecord(
         studentId: UUID,
         sessionId: UUID,
-        programmeId: UUID,
-        sessionCode: String,
         deviceId: String,
         studentLat: Double?,
         studentLng: Double?,
+        distance: Double?,
+        isDeviceVerified: Boolean,
         isLocationVerified: Boolean,
-        isDeviceVerified: Boolean
+        attendanceMethod: AttendanceMethod,
+        isSuspicious: Boolean,
+        suspiciousReason: String?
     ): AttendanceRecord = exposedTransaction {
+
         val attendanceId = UUID.randomUUID()
         val attendedAt = LocalDateTime.now()
-
-        // Calculate distance if location provided
-        val distance = if (studentLat != null && studentLng != null) {
-            val session = AttendanceSessionsTable
-                .selectAll().where { AttendanceSessionsTable.id eq sessionId }
-                .singleOrNull()
-
-            session?.let {
-                val lecturerLat = it[AttendanceSessionsTable.lecturerLatitude]
-                val lecturerLng = it[AttendanceSessionsTable.lecturerLongitude]
-
-                if (lecturerLat != null && lecturerLng != null) {
-                    calculateDistance(
-                        lecturerLat,
-                        lecturerLng,
-                        studentLat,
-                        studentLng
-                    )
-                } else {
-                    null
-                }
-            }
-        } else null
-
-        // Get attendance method from session
-        val attendanceMethod = AttendanceSessionsTable
-            .selectAll().where { AttendanceSessionsTable.id eq sessionId }
-            .single()[AttendanceSessionsTable.allowedMethod]
-
-        // Get expected device ID
-        val expectedDeviceId = DevicesTable
-            .selectAll().where {
-                (DevicesTable.studentId eq studentId)
-            }
-            .orderBy(DevicesTable.lastSeen to SortOrder.DESC)
-            .limit(1)
-            .singleOrNull()
-            ?.get(DevicesTable.deviceId)
-
-        // Check for suspicious activity
-        val isSuspicious = !isLocationVerified || !isDeviceVerified
-        val suspiciousReason = when {
-            !isLocationVerified && !isDeviceVerified -> "Location and device verification failed"
-            !isLocationVerified -> "Location verification failed"
-            !isDeviceVerified -> "Device verification failed"
-            else -> null
-        }
 
         // Insert attendance record
         AttendanceRecordsTable.insert {
@@ -526,35 +499,13 @@ class AttendanceSessionRepository() {
             it[AttendanceRecordsTable.distanceFromLecturer] = distance
             it[AttendanceRecordsTable.isLocationVerified] = isLocationVerified
             it[AttendanceRecordsTable.deviceId] = deviceId
-            it[AttendanceRecordsTable.expectedDeviceId] = expectedDeviceId
             it[AttendanceRecordsTable.isDeviceVerified] = isDeviceVerified
             it[AttendanceRecordsTable.isSuspicious] = isSuspicious
             it[AttendanceRecordsTable.suspiciousReason] = suspiciousReason
             it[AttendanceRecordsTable.attendedAt] = attendedAt
         }
 
-        // Update device last seen
-        //updateDeviceLastSeen(studentId, deviceId)
-
-        AttendanceRecord(
-            id = attendanceId,
-            attendedAt = attendedAt
-        )
-    }
-
-    private fun calculateDistance(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
-        val earthRadius = 6371000.0 // meters
-
-        val dLat = Math.toRadians(lat2 - lat1)
-        val dLng = Math.toRadians(lng2 - lng1)
-
-        val a = sin(dLat / 2) * sin(dLat / 2) +
-                cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
-                sin(dLng / 2) * sin(dLng / 2)
-
-        val c = 2 * atan2(sqrt(a), sqrt(1 - a))
-
-        return earthRadius * c
+        AttendanceRecord(attendanceId, attendedAt)
     }
 
     private fun nextSessionNumber(
