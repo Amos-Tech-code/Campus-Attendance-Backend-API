@@ -1,27 +1,32 @@
-package com.amos_tech_code.data.repository
+package data.repository
 
-import com.amos_tech_code.data.database.entities.*
+import api.dtos.response.LiveAttendanceSnapshot
+import api.dtos.response.LiveAttendanceStudentDto
+import api.dtos.response.ProgrammeAttendanceDto
 import com.amos_tech_code.data.database.utils.exposedTransaction
 import com.amos_tech_code.domain.dtos.response.*
-import com.amos_tech_code.domain.models.AttendanceMethod
-import com.amos_tech_code.domain.models.AttendanceRecord
-import com.amos_tech_code.domain.models.AttendanceSession
-import com.amos_tech_code.domain.models.AttendanceSessionStatus
-import com.amos_tech_code.domain.models.CreateSessionData
-import com.amos_tech_code.domain.models.SessionProgramme
-import com.amos_tech_code.domain.models.UpdateSessionData
+import com.amos_tech_code.domain.models.*
 import com.amos_tech_code.utils.AuthorizationException
-import io.ktor.server.plugins.NotFoundException
+import data.database.entities.*
+import domain.models.AttendanceMethod
+import domain.models.AttendanceSessionStatus
+import io.ktor.server.plugins.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import java.time.LocalDateTime
 import java.util.*
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.sin
-import kotlin.math.sqrt
 
 class AttendanceSessionRepository() {
+
+    suspend fun existsByIdAndLecturerId(sessionId: UUID, lecturerId: UUID) : Boolean = exposedTransaction {
+        AttendanceSessionsTable
+            .select(
+                AttendanceSessionsTable.lecturerId
+            ).where {
+                (AttendanceSessionsTable.id eq sessionId) and
+                        (AttendanceSessionsTable.lecturerId eq lecturerId)
+            }.any()
+    }
 
     suspend fun getActiveSession(lecturerId: UUID): SessionResponse? = exposedTransaction {
         val session = AttendanceSessionsTable
@@ -408,8 +413,7 @@ class AttendanceSessionRepository() {
                     (AttendanceRecordsTable.studentId eq studentId) and
                             (AttendanceRecordsTable.sessionId eq sessionId)
                 }
-                .limit(1)
-                .count() > 0
+                .any()
     }
 
     suspend fun getActiveSessionBySessionCodeAndUnitCode(sessionCode: String, unitCode: String): AttendanceSession? =
@@ -451,8 +455,7 @@ class AttendanceSessionRepository() {
     suspend fun isFirstAttendance(studentId: UUID): Boolean = exposedTransaction {
         AttendanceRecordsTable
             .select(AttendanceRecordsTable.id).where { AttendanceRecordsTable.studentId eq studentId }
-            .limit(1)
-            .empty()
+            .any()
     }
 
     suspend fun getSessionProgrammes(sessionId: UUID): List<SessionProgramme> = exposedTransaction {
@@ -474,7 +477,7 @@ class AttendanceSessionRepository() {
     suspend fun createAttendanceRecord(
         studentId: UUID,
         sessionId: UUID,
-        deviceId: String,
+        deviceId: String?,
         studentLat: Double?,
         studentLng: Double?,
         distance: Double?,
@@ -505,7 +508,12 @@ class AttendanceSessionRepository() {
             it[AttendanceRecordsTable.attendedAt] = attendedAt
         }
 
-        AttendanceRecord(attendanceId, attendedAt)
+        AttendanceRecord(
+            id = attendanceId,
+            attendedAt = attendedAt,
+            isSuspicious = isSuspicious,
+            suspiciousReason = suspiciousReason
+        )
     }
 
     private fun nextSessionNumber(
@@ -525,6 +533,73 @@ class AttendanceSessionRepository() {
             .maxOfOrNull { it[AttendanceSessionsTable.sessionNumber] }
             ?.plus(1)
             ?: 1
+
+
+    /**
+     * Live Attendance Implementation
+     * Query Service (Grouped by Programme)
+     */
+    suspend fun getLiveAttendanceSnapshot(
+        sessionId: UUID
+    ): LiveAttendanceSnapshot = exposedTransaction {
+
+        val rows = SessionProgrammesTable
+            .innerJoin(ProgrammesTable)
+            .leftJoin(
+                AttendanceRecordsTable,
+                { SessionProgrammesTable.sessionId },
+                { AttendanceRecordsTable.sessionId }
+            )
+            .leftJoin(StudentsTable)
+            .select(
+                SessionProgrammesTable.programmeId,
+                SessionProgrammesTable.yearOfStudy,
+                ProgrammesTable.id,
+                ProgrammesTable.name,
+
+                AttendanceRecordsTable.id,
+                AttendanceRecordsTable.studentId,
+                AttendanceRecordsTable.attendedAt,
+                AttendanceRecordsTable.isSuspicious,
+                AttendanceRecordsTable.suspiciousReason,
+
+                StudentsTable.id,
+                StudentsTable.registrationNumber,
+                StudentsTable.fullName
+            )
+            .where{
+                SessionProgrammesTable.sessionId eq sessionId
+            }
+
+        val grouped = rows.groupBy {
+            it[SessionProgrammesTable.programmeId]
+        }
+
+        LiveAttendanceSnapshot(
+            sessionId = sessionId.toString(),
+            programmes = grouped.map { (_, rowsForProgramme) ->
+                val first = rowsForProgramme.first()
+
+                ProgrammeAttendanceDto(
+                    programmeId = first[ProgrammesTable.id].toString(),
+                    programmeName = first[ProgrammesTable.name],
+                    yearOfStudy = first[SessionProgrammesTable.yearOfStudy],
+                    students = rowsForProgramme
+                        .filter { it[AttendanceRecordsTable.id] != null }
+                        .map {
+                            LiveAttendanceStudentDto(
+                                studentId = it[StudentsTable.id].toString(),
+                                regNo = it[StudentsTable.registrationNumber],
+                                name = it[StudentsTable.fullName],
+                                attendedAt = it[AttendanceRecordsTable.attendedAt].toString(),
+                                isSuspicious = it[AttendanceRecordsTable.isSuspicious],
+                                suspiciousReason = it[AttendanceRecordsTable.suspiciousReason]
+                            )
+                        }
+                )
+            }
+        )
+    }
 
 
 }

@@ -1,6 +1,6 @@
 package com.amos_tech_code.domain.dtos.response
 
-import com.amos_tech_code.domain.models.UserRole
+import domain.models.UserRole
 import kotlinx.serialization.Serializable
 
 @Serializable

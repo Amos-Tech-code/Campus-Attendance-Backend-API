@@ -1,8 +1,8 @@
-package com.amos_tech_code.data.database.entities
+package data.database.entities
 
-import com.amos_tech_code.domain.models.AttendanceMethod
-import com.amos_tech_code.domain.models.AttendanceSessionStatus
-import com.amos_tech_code.domain.models.AttendanceSessionType
+import domain.models.AttendanceMethod
+import domain.models.AttendanceSessionStatus
+import domain.models.AttendanceSessionType
 import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.datetime
@@ -90,7 +90,7 @@ object AttendanceRecordsTable : Table("attendance_records") {
     val distanceFromLecturer = double("distance_from_lecturer").nullable()
     val isLocationVerified = bool("is_location_verified").default(false)
 
-    val deviceId = varchar("device_id", 255)
+    val deviceId = varchar("device_id", 255).nullable()
     val isDeviceVerified = bool("is_device_verified").default(false)
 
     val isSuspicious = bool("is_suspicious").default(false)

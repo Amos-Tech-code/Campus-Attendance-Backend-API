@@ -11,5 +11,7 @@ data class StudentProgramme(
 
 data class AttendanceRecord(
     val id: UUID,
-    val attendedAt: LocalDateTime
+    val attendedAt: LocalDateTime,
+    val isSuspicious: Boolean = false,
+    val suspiciousReason: String? = null
 )

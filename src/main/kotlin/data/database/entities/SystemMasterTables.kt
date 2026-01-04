@@ -1,4 +1,4 @@
-package com.amos_tech_code.data.database.entities
+package data.database.entities
 
 import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.Table

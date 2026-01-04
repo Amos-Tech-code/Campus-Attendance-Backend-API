@@ -1,12 +1,11 @@
 package com.amos_tech_code.data.repository
 
-import com.amos_tech_code.data.database.entities.LecturersTable
+import data.database.entities.LecturersTable
 import com.amos_tech_code.data.database.utils.exposedTransaction
 import com.amos_tech_code.domain.models.Lecturer
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.LocalDateTime
 import java.util.*
 

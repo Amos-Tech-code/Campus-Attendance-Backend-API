@@ -1,6 +1,6 @@
 package com.amos_tech_code.services.impl
 
-import com.amos_tech_code.data.repository.AttendanceSessionRepository
+import data.repository.AttendanceSessionRepository
 import com.amos_tech_code.domain.dtos.requests.StartSessionRequest
 import com.amos_tech_code.domain.dtos.requests.UpdateSessionRequest
 import com.amos_tech_code.domain.dtos.requests.VerifySessionRequest
@@ -8,8 +8,8 @@ import com.amos_tech_code.domain.dtos.response.ProgrammeInfoResponse
 import com.amos_tech_code.domain.dtos.response.SessionInfo
 import com.amos_tech_code.domain.dtos.response.SessionResponse
 import com.amos_tech_code.domain.dtos.response.VerifyAttendanceResponse
-import com.amos_tech_code.domain.models.AttendanceSessionStatus
-import com.amos_tech_code.domain.models.AttendanceSessionType
+import domain.models.AttendanceSessionStatus
+import domain.models.AttendanceSessionType
 import com.amos_tech_code.domain.models.CreateSessionData
 import com.amos_tech_code.domain.models.UpdateSessionData
 import com.amos_tech_code.services.AttendanceSessionService
@@ -18,6 +18,7 @@ import com.amos_tech_code.services.QRCodeService
 import com.amos_tech_code.services.SessionCodeGenerator
 import com.amos_tech_code.utils.*
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import utils.toLocalDateTimeOrThrow
 import java.time.Instant
 import java.time.LocalDateTime
 import java.util.*

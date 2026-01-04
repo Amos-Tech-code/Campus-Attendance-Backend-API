@@ -1,8 +1,8 @@
 package com.amos_tech_code.data.repository
 
-import com.amos_tech_code.data.database.entities.DevicesTable
-import com.amos_tech_code.data.database.entities.StudentsTable
-import com.amos_tech_code.data.database.entities.SuspiciousLoginsTable
+import data.database.entities.DevicesTable
+import data.database.entities.StudentsTable
+import data.database.entities.SuspiciousLoginsTable
 import com.amos_tech_code.data.database.utils.exposedTransaction
 import com.amos_tech_code.domain.dtos.requests.DeviceInfo
 import com.amos_tech_code.domain.models.Device
@@ -10,7 +10,6 @@ import com.amos_tech_code.domain.models.Student
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import java.time.LocalDateTime
 import java.util.UUID

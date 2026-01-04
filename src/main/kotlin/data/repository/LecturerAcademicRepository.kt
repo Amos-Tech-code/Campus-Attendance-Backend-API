@@ -1,6 +1,5 @@
 package com.amos_tech_code.data.repository
 
-import com.amos_tech_code.data.database.entities.*
 import com.amos_tech_code.data.database.utils.exposedTransaction
 import com.amos_tech_code.domain.dtos.requests.AcademicTermRef
 import com.amos_tech_code.domain.dtos.requests.UnitSetupRequest
@@ -21,6 +20,15 @@ import com.amos_tech_code.domain.dtos.response.UniversityResponse
 import com.amos_tech_code.domain.dtos.response.UniversitySuggestion
 import com.amos_tech_code.domain.models.*
 import com.amos_tech_code.utils.ValidationException
+import data.database.entities.AcademicTermsTable
+import data.database.entities.DepartmentsTable
+import data.database.entities.LecturerTeachingAssignmentsTable
+import data.database.entities.LecturerUniversitiesTable
+import data.database.entities.LecturersTable
+import data.database.entities.ProgrammeUnitsTable
+import data.database.entities.ProgrammesTable
+import data.database.entities.UnitsTable
+import data.database.entities.UniversitiesTable
 import org.jetbrains.exposed.sql.*
 import java.util.*
 

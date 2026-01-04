@@ -1,15 +1,22 @@
 package com.amos_tech_code.data.repository
 
-import com.amos_tech_code.data.database.entities.*
 import com.amos_tech_code.data.database.utils.exposedTransaction
 import com.amos_tech_code.domain.dtos.response.*
 import com.amos_tech_code.domain.models.ActiveEnrollmentInfo
 import com.amos_tech_code.domain.models.ExistingEnrollment
 import com.amos_tech_code.domain.models.StudentEnrollmentInfo
-import com.amos_tech_code.domain.models.StudentEnrollmentSource
+import domain.models.StudentEnrollmentSource
 import com.amos_tech_code.domain.models.TeachingAssignmentInfo
 import com.amos_tech_code.utils.ResourceNotFoundException
 import com.amos_tech_code.utils.ValidationException
+import data.database.entities.AcademicTermsTable
+import data.database.entities.DepartmentsTable
+import data.database.entities.LecturerTeachingAssignmentsTable
+import data.database.entities.LecturersTable
+import data.database.entities.ProgrammesTable
+import data.database.entities.StudentEnrollmentsTable
+import data.database.entities.StudentsTable
+import data.database.entities.UniversitiesTable
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
@@ -267,11 +274,13 @@ class StudentEnrollmentRepository {
     private fun getEnrollmentById(enrollmentId: UUID): StudentEnrollmentResponse {
 
         val row = StudentEnrollmentsTable
-            .innerJoin(StudentsTable,
+            .innerJoin(
+                StudentsTable,
                 { StudentEnrollmentsTable.studentId },
                 { StudentsTable.id }
             )
-            .innerJoin(UniversitiesTable,
+            .innerJoin(
+                UniversitiesTable,
                 { StudentEnrollmentsTable.universityId },
                 { UniversitiesTable.id }
             )
@@ -283,11 +292,13 @@ class StudentEnrollmentRepository {
                     ProgrammesTable.universityId eq StudentEnrollmentsTable.universityId
                 }
             )
-            .innerJoin(AcademicTermsTable,
+            .innerJoin(
+                AcademicTermsTable,
                 { StudentEnrollmentsTable.academicTermId },
                 { AcademicTermsTable.id }
             )
-            .leftJoin(DepartmentsTable,
+            .leftJoin(
+                DepartmentsTable,
                 { ProgrammesTable.departmentId },
                 { DepartmentsTable.id }
             )

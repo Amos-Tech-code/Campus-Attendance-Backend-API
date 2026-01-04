@@ -1,6 +1,6 @@
 package com.amos_tech_code.domain.dtos.requests
 
-import com.amos_tech_code.domain.models.AttendanceMethod
+import domain.models.AttendanceMethod
 import kotlinx.serialization.Serializable
 
 // Enhanced Request DTO

@@ -1,13 +1,14 @@
-package com.amos_tech_code.plugins
+package plugins
 
 import com.amos_tech_code.domain.dtos.response.GenericResponseDto
-import com.amos_tech_code.routes.attendanceSessionRoutes
+import api.routes.attendanceSessionRoutes
 import com.amos_tech_code.routes.authRoutes
 import com.amos_tech_code.routes.lecturerAcademicSetupRoutes
 import com.amos_tech_code.routes.studentEnrollmentRoutes
 import com.amos_tech_code.services.AttendanceSessionService
 import com.amos_tech_code.services.AuthService
 import com.amos_tech_code.services.LecturerAcademicService
+import com.amos_tech_code.domain.services.LiveAttendanceService
 import com.amos_tech_code.services.MarkAttendanceService
 import com.amos_tech_code.services.StudentEnrollmentService
 import io.ktor.http.HttpStatusCode
@@ -25,6 +26,7 @@ fun Application.configureRouting() {
     val attendanceSessionService by inject<AttendanceSessionService>()
     val markAttendanceService by inject<MarkAttendanceService>()
     val studentEnrollmentService by inject<StudentEnrollmentService>()
+    val liveAttendanceService by inject<LiveAttendanceService>()
 
     routing {
 
@@ -41,9 +43,17 @@ fun Application.configureRouting() {
         authRoutes(authService)
 
         authenticate("jwt-auth") {
+
             lecturerAcademicSetupRoutes(lecturerAcademicService)
-            attendanceSessionRoutes(attendanceSessionService, markAttendanceService)
+
+            attendanceSessionRoutes(
+                attendanceSessionService,
+                markAttendanceService,
+                liveAttendanceService
+            )
+
             studentEnrollmentRoutes(studentEnrollmentService)
+
         }
 
     }

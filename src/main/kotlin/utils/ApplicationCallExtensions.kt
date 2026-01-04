@@ -1,7 +1,6 @@
 package com.amos_tech_code.utils
 
 import com.amos_tech_code.domain.dtos.response.GenericResponseDto
-import com.amos_tech_code.domain.models.UserRole
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.auth.jwt.JWTPrincipal
@@ -9,10 +8,10 @@ import io.ktor.server.auth.principal
 import io.ktor.server.response.respond
 import java.util.UUID
 
-suspend fun ApplicationCall.respondUnauthorized() {
+suspend fun ApplicationCall.respondInternalServerError() {
     respond(
-        HttpStatusCode.Unauthorized,
-        GenericResponseDto(HttpStatusCode.Unauthorized.value, message = "Unauthorized")
+        HttpStatusCode.InternalServerError,
+        GenericResponseDto(HttpStatusCode.InternalServerError.value, message = "Internal server error")
     )
 }
 

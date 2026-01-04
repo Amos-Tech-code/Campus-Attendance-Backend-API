@@ -1,6 +1,6 @@
 package com.amos_tech_code.domain.dtos.requests
 
-import com.amos_tech_code.domain.models.StudentEnrollmentSource
+import domain.models.StudentEnrollmentSource
 import kotlinx.serialization.Serializable
 
 @Serializable

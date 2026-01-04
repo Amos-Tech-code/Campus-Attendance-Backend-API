@@ -1,26 +1,37 @@
-package com.amos_tech_code.services.impl
+package domain.services.impl
 
-import com.amos_tech_code.data.repository.AttendanceSessionRepository
+import data.repository.AttendanceSessionRepository
 import com.amos_tech_code.data.repository.StudentEnrollmentRepository
 import com.amos_tech_code.data.repository.StudentRepository
+import com.amos_tech_code.domain.dtos.requests.LecturerMarkAttendanceRequest
 import com.amos_tech_code.domain.dtos.requests.MarkAttendanceRequest
 import com.amos_tech_code.domain.dtos.response.AttendanceFlag
+import api.dtos.response.AttendanceMarkedEventDto
+import api.dtos.response.LiveAttendanceEvent
+import api.dtos.response.LiveAttendanceMessage
+import api.dtos.response.LiveAttendanceStudentDto
 import com.amos_tech_code.domain.dtos.response.MarkAttendanceResponse
 import com.amos_tech_code.domain.dtos.response.ProgrammeInfoResponse
 import com.amos_tech_code.domain.dtos.response.VerificationResult
-import com.amos_tech_code.domain.models.AttendanceMethod
+import domain.models.AttendanceMethod
 import com.amos_tech_code.domain.models.AttendanceSession
-import com.amos_tech_code.domain.models.FlagType
+import domain.models.FlagType
 import com.amos_tech_code.domain.models.LocationVerification
 import com.amos_tech_code.domain.models.ProgrammeResolution
-import com.amos_tech_code.domain.models.SeverityLevel
-import com.amos_tech_code.domain.models.StudentEnrollmentSource
+import domain.models.SeverityLevel
+import domain.models.StudentEnrollmentSource
 import com.amos_tech_code.domain.models.VerificationOutcome
+import com.amos_tech_code.domain.services.AttendanceEventBus
+import domain.services.AttendanceEventPublisher
 import com.amos_tech_code.services.MarkAttendanceService
 import com.amos_tech_code.utils.AppException
+import com.amos_tech_code.utils.BackgroundTaskScope
 import com.amos_tech_code.utils.ConflictException
 import com.amos_tech_code.utils.InternalServerException
 import com.amos_tech_code.utils.ValidationException
+import domain.models.LiveAttendanceEventType
+import kotlinx.coroutines.launch
+import org.slf4j.LoggerFactory
 import java.time.LocalDateTime
 import java.util.*
 import kotlin.math.atan2
@@ -31,10 +42,111 @@ import kotlin.math.sqrt
 class MarkAttendanceServiceImpl(
     private val attendanceSessionRepository: AttendanceSessionRepository,
     private val studentRepository: StudentRepository,
-    private val studentEnrollmentRepository: StudentEnrollmentRepository
+    private val studentEnrollmentRepository: StudentEnrollmentRepository,
+   // private val attendanceEventPublisher: AttendanceEventPublisher,
+    private val attendanceEventBus: AttendanceEventBus,
+    private val backgroundTaskScope: BackgroundTaskScope
 ) : MarkAttendanceService {
 
-    override suspend fun processIntelligentAttendance(
+    private val logger = LoggerFactory.getLogger(MarkAttendanceServiceImpl::class.java)
+
+    override suspend fun lecturerSignAttendance(
+        lecturerId: UUID,
+        request: LecturerMarkAttendanceRequest
+    ): Boolean {
+
+        try {
+            // Request validation
+            request.validate()
+
+            val sessionId = UUID.fromString(request.sessionId)
+            // 1. Verify session exists
+            if (!attendanceSessionRepository.existsByIdAndLecturerId(sessionId, lecturerId))
+                throw ValidationException("You do not own this session")
+
+            // 3. Load student
+            val student = studentRepository.findByRegistrationNumber(request.studentRegNo)
+                ?: throw ValidationException("Student not found")
+
+            // 4. Already marked?
+            if (attendanceSessionRepository.hasExistingAttendance(student.id, sessionId)) {
+                throw ConflictException("Attendance already recorded for this student")
+            }
+
+            // 5. Resolve enrollment
+            val sessionProgrammes = attendanceSessionRepository.getSessionProgrammes(sessionId)
+
+            if (sessionProgrammes.isEmpty()) {
+                throw ValidationException("Session has no linked programmes")
+            }
+
+            val activeEnrollment =
+                studentEnrollmentRepository.findActiveEnrollment(student.id)
+                    ?: throw ValidationException("Student has no active enrollment")
+
+            val matches = sessionProgrammes.any {
+                it.programmeId == activeEnrollment.programmeId
+            }
+
+            if (!matches) {
+                throw ValidationException(
+                    "Student is enrolled in a different programme: ${activeEnrollment.programmeName}"
+                )
+            }
+
+            // 6. Create attendance (OVERRIDE)
+            val record = attendanceSessionRepository.createAttendanceRecord(
+                studentId = student.id,
+                sessionId = sessionId,
+                deviceId = null,
+                studentLat = null,
+                studentLng = null,
+                distance = null,
+                isDeviceVerified = true,
+                isLocationVerified = true,
+                attendanceMethod = AttendanceMethod.LECTURER_MANUAL,
+                isSuspicious = false,
+                suspiciousReason = null,
+            )
+
+            // PUBLISH ATTENDANCE MARKED EVENT
+            val event = AttendanceMarkedEventDto(
+                sessionId = sessionId.toString(),
+                programmeId = activeEnrollment.programmeId.toString(),
+                student = LiveAttendanceStudentDto(
+                    studentId = student.id.toString(),
+                    regNo = student.registrationNumber,
+                    name = student.fullName,
+                    attendedAt = record.attendedAt.toString(),
+                    isSuspicious = record.isSuspicious,
+                    suspiciousReason = record.suspiciousReason
+                )
+            )
+
+            backgroundTaskScope.scope.launch {
+                try {
+                    //attendanceEventPublisher.publishAttendanceMarked(event)
+                    attendanceEventBus.publish(
+                        LiveAttendanceEvent.AttendanceMarked(data = event)                    )
+                } catch (e: Exception) {
+                    // NEVER propagate
+                    logger.error("Failed to publish attendance event: $event", e)
+                }
+            }
+
+            return true
+
+
+        } catch (ex: Exception) {
+            when(ex) {
+                is AppException -> throw ex
+                else -> throw InternalServerException("Failed to mark attendance for student registration number: ${request.studentRegNo}")
+            }
+        }
+
+    }
+
+    override suspend fun processAttendanceMarking(
         studentId: UUID,
         request: MarkAttendanceRequest
     ): MarkAttendanceResponse {
@@ -100,7 +212,7 @@ class MarkAttendanceServiceImpl(
                 suspiciousReason = flags.joinToString { it.type.name }
             )
 
-            return MarkAttendanceResponse(
+            val response = MarkAttendanceResponse(
                 success = true,
                 sessionId = session.id.toString(),
                 programmeId = programmeId.toString(),
@@ -118,6 +230,36 @@ class MarkAttendanceServiceImpl(
                 else
                     "Attendance marked with warnings"
             )
+
+            // PUBLISH ATTENDANCE MARKED EVENT
+            backgroundTaskScope.scope.launch {
+                try {
+                    val student = studentRepository.findById(studentId)
+                        ?: throw InternalServerException("Student not found after attendance record")
+
+                    val event = AttendanceMarkedEventDto(
+                        sessionId = session.id.toString(),
+                        programmeId = programmeId.toString(),
+                        student = LiveAttendanceStudentDto(
+                            studentId = student.id.toString(),
+                            regNo = student.registrationNumber,
+                            name = student.fullName,
+                            attendedAt = record.attendedAt.toString(),
+                            isSuspicious = flags.isNotEmpty(),
+                            suspiciousReason = flags.joinToString { it.type.name }.ifBlank { null }
+                        )
+                    )
+
+                    attendanceEventBus.publish(
+                        LiveAttendanceEvent.AttendanceMarked(data = event)
+                    )
+                } catch (e: Exception) {
+                    // NEVER propagate
+                    logger.error("Failed to publish attendance event:", e)
+                }
+            }
+
+            return response
 
         } catch (ex: Exception) {
             when(ex) {
@@ -229,97 +371,6 @@ class MarkAttendanceServiceImpl(
 
         return ProgrammeResolution(programmeId = parsedProgrammeId)
     }
-
-    /*private suspend fun resolveProgramme(
-        studentId: UUID,
-        session: AttendanceSession,
-        requestedProgrammeId: String?
-    ): ProgrammeResolution {
-
-        val sessionProgrammes =
-            attendanceSessionRepository.getSessionProgrammes(session.id)
-
-        if (sessionProgrammes.isEmpty()) {
-            throw ValidationException("No programmes linked to this session")
-        }
-
-        val activeEnrollment =
-            programmeRepository.getStudentActiveProgramme(
-                studentId,
-                session.universityId
-            )
-
-        // Already enrolled
-        if (activeEnrollment != null) {
-            val valid = sessionProgrammes.any {
-                it.programmeId == activeEnrollment.programmeId
-            }
-
-            if (!valid) {
-                throw ValidationException("Session not available for your programme")
-            }
-
-            return ProgrammeResolution(programmeId = activeEnrollment.programmeId)
-        }
-
-        // First-time — single programme
-        if (sessionProgrammes.size == 1) {
-            val programme = sessionProgrammes.first()
-
-            programmeRepository.linkStudentToProgramme(
-                studentId = studentId,
-                programmeId = programme.programmeId,
-                unitId = session.unitId,
-                universityId = session.universityId,
-                academicTermId = session.academicTermId,
-                enrollmentSource = StudentEnrollmentSource.ATTENDANCE
-            )
-
-            return ProgrammeResolution(programmeId = programme.programmeId)
-        }
-
-        // First-time — multiple programmes
-        if (requestedProgrammeId != null) {
-            val parsed = UUID.fromString(requestedProgrammeId)
-            val valid = sessionProgrammes.any { it.programmeId == parsed }
-
-            if (!valid) {
-                throw ValidationException("Invalid programme selection")
-            }
-
-            programmeRepository.linkStudentToProgramme(
-                studentId,
-                parsed,
-                session.unitId,
-                session.universityId,
-                session.academicTermId,
-                StudentEnrollmentSource.ATTENDANCE
-            )
-
-            return ProgrammeResolution(programmeId = parsed)
-        }
-
-        // Require explicit selection
-        return ProgrammeResolution(
-            requiresSelection = true,
-            selectionResponse = MarkAttendanceResponse(
-                success = false,
-                sessionId = session.id.toString(),
-                requiresProgrammeSelection = true,
-                availableProgrammes = sessionProgrammes.map {
-                    ProgrammeInfoResponse(
-                        it.programmeId.toString(),
-                        it.programmeName,
-                        it.departmentName,
-                        it.yearOfStudy
-                    )
-                },
-                verification = VerificationResult(false, false, false, false,false),
-                attendedAt = LocalDateTime.now().toString(),
-                message = "Please select your programme first"
-            )
-        )
-    }*/
 
     private fun verifyMethod(
         allowed: AttendanceMethod,
@@ -452,6 +503,15 @@ class MarkAttendanceServiceImpl(
 
         require(request.methodUsed.name.isNotBlank()) {
             throw ValidationException("Method used is required")
+        }
+    }
+
+    private fun LecturerMarkAttendanceRequest.validate() {
+        require(sessionId.isNotBlank()) {
+            throw ValidationException("Session Id is required")
+        }
+        require(studentRegNo.isNotBlank()) {
+            throw ValidationException("Student Registration Number is required.")
         }
     }
 

@@ -10,7 +10,7 @@ import com.amos_tech_code.domain.dtos.response.StudentAuthResponse
 import com.amos_tech_code.domain.models.Device
 import com.amos_tech_code.domain.models.Lecturer
 import com.amos_tech_code.domain.models.Student
-import com.amos_tech_code.domain.models.UserRole
+import domain.models.UserRole
 import com.amos_tech_code.services.AuthService
 import com.amos_tech_code.services.GoogleAuthService
 import com.amos_tech_code.utils.AppException

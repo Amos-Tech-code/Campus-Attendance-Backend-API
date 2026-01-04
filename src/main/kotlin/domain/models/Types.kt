@@ -1,10 +1,8 @@
-package com.amos_tech_code.domain.models
-
+package domain.models
 
 enum class UserRole {
     STUDENT, LECTURER, ADMIN // Admin for future impl
 }
-
 
 enum class AttendanceMethod {
     QR_CODE, // Qr Code scan
@@ -17,7 +15,6 @@ enum class AttendanceSessionStatus {
     SCHEDULED, ACTIVE, ENDED, CANCELLED, EXPIRED
 }
 
-
 enum class FlagType {
     LOCATION_MISMATCH, DEVICE_MISMATCH,
     METHOD_NOT_ALLOWED, SUSPICIOUS_DEVICE, OUTSIDE_SCHEDULE_WINDOW
@@ -27,7 +24,6 @@ enum class SeverityLevel {
     LOW, MEDIUM, HIGH, CRITICAL
 }
 
-
 enum class StudentEnrollmentSource {
     ATTENDANCE, SELF, MANUAL
 }
@@ -35,4 +31,9 @@ enum class StudentEnrollmentSource {
 enum class AttendanceSessionType {
     REGULAR, MAKEUP, SPECIAL
 }
+
+enum class LiveAttendanceEventType {
+    INITIAL_STATE, ATTENDANCE_MARKED
+}
+
 

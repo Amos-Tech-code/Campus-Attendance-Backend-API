@@ -1,5 +1,8 @@
 package com.amos_tech_code.domain.models
 
+import domain.models.AttendanceMethod
+import domain.models.AttendanceSessionStatus
+import domain.models.AttendanceSessionType
 import java.time.LocalDateTime
 import java.util.UUID
 

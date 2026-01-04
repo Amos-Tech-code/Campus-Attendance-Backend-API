@@ -57,6 +57,10 @@ dependencies {
     implementation("com.google.zxing:javase:3.5.1")
     // Cloudinary SDK
     implementation("com.cloudinary:cloudinary-http44:1.36.0")
+    // Websockets
+    implementation("io.ktor:ktor-server-websockets:3.3.0")
+    // SSE
+    implementation("io.ktor:ktor-server-sse:3.3.0")
 
 }
 

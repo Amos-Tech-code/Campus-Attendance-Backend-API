@@ -1,6 +1,6 @@
-package com.amos_tech_code.data.database.entities
+package data.database.entities
 
-import com.amos_tech_code.domain.models.StudentEnrollmentSource
+import domain.models.StudentEnrollmentSource
 import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.datetime

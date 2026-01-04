@@ -1,9 +1,10 @@
 package com.amos_tech_code.domain.dtos.response
 
-import com.amos_tech_code.domain.models.AttendanceMethod
-import com.amos_tech_code.domain.models.AttendanceSessionStatus
-import com.amos_tech_code.domain.models.AttendanceSessionType
+import domain.models.AttendanceMethod
+import domain.models.AttendanceSessionStatus
+import domain.models.AttendanceSessionType
 import kotlinx.serialization.Serializable
+import kotlin.Boolean
 
 @Serializable
 data class SessionResponse(

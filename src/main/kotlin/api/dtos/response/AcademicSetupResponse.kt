@@ -1,13 +1,14 @@
 package com.amos_tech_code.domain.dtos.response
 
 import kotlinx.serialization.Serializable
+import kotlin.Boolean
 
 @Serializable
 data class AcademicSetupResponse(
     val university: UniversityResponse,
     val academicTerm: AcademicTermResponse?,
     val programmes: List<LecturerProgrammeResponse>,
-    val isActive: Boolean,
+    val isActive: kotlin.Boolean,
     val createdAt: Long
 )
 

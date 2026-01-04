@@ -6,7 +6,7 @@ import com.amos_tech_code.domain.dtos.requests.ProgrammeSuggestionRequest
 import com.amos_tech_code.domain.dtos.requests.UnitSuggestionRequest
 import com.amos_tech_code.domain.dtos.requests.UniversitySuggestionRequest
 import com.amos_tech_code.domain.dtos.requests.UpdateAcademicSetupRequest
-import com.amos_tech_code.domain.models.UserRole
+import domain.models.UserRole
 import com.amos_tech_code.services.LecturerAcademicService
 import com.amos_tech_code.utils.ValidationException
 import com.amos_tech_code.utils.getUserIdFromJWT
