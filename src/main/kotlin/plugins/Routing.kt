@@ -2,7 +2,7 @@ package plugins
 
 import com.amos_tech_code.domain.dtos.response.GenericResponseDto
 import api.routes.attendanceSessionRoutes
-import com.amos_tech_code.routes.authRoutes
+import api.routes.authRoutes
 import com.amos_tech_code.routes.lecturerAcademicSetupRoutes
 import com.amos_tech_code.routes.studentEnrollmentRoutes
 import com.amos_tech_code.services.AttendanceSessionService

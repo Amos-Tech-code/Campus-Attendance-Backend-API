@@ -3,7 +3,7 @@ package com.amos_tech_code.services
 import com.amos_tech_code.domain.dtos.requests.DeviceInfo
 import com.amos_tech_code.domain.dtos.requests.StudentRegistrationRequest
 import com.amos_tech_code.domain.dtos.response.LecturerAuthResponse
-import com.amos_tech_code.domain.dtos.response.StudentAuthResponse
+import api.dtos.response.StudentAuthResponse
 
 interface AuthService {
 

@@ -17,7 +17,7 @@ interface LiveAttendanceService {
 
     suspend fun getInitialSnapshot(
         sessionId: UUID
-    ): LiveAttendanceEvent
+    ): LiveAttendanceSnapshot
 
     fun liveEvents(
         sessionId: UUID

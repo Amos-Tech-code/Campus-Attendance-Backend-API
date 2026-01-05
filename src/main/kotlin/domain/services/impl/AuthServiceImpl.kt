@@ -6,7 +6,7 @@ import com.amos_tech_code.data.repository.StudentRepository
 import com.amos_tech_code.domain.dtos.requests.DeviceInfo
 import com.amos_tech_code.domain.dtos.requests.StudentRegistrationRequest
 import com.amos_tech_code.domain.dtos.response.LecturerAuthResponse
-import com.amos_tech_code.domain.dtos.response.StudentAuthResponse
+import api.dtos.response.StudentAuthResponse
 import com.amos_tech_code.domain.models.Device
 import com.amos_tech_code.domain.models.Lecturer
 import com.amos_tech_code.domain.models.Student

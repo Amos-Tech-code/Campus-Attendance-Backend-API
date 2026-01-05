@@ -1,10 +1,10 @@
-package com.amos_tech_code.routes
+package api.routes
 
 import com.amos_tech_code.domain.dtos.requests.GoogleSignInRequest
 import com.amos_tech_code.domain.dtos.requests.StudentLoginRequest
 import com.amos_tech_code.domain.dtos.requests.StudentRegistrationRequest
 import com.amos_tech_code.domain.dtos.response.LecturerAuthResponse
-import com.amos_tech_code.domain.dtos.response.StudentAuthResponse
+import api.dtos.response.StudentAuthResponse
 import com.amos_tech_code.services.AuthService
 import io.ktor.http.*
 import io.ktor.server.request.*
@@ -17,8 +17,8 @@ fun Route.authRoutes(authService: AuthService) {
         // Lecturer Google Sign-in
         post("/lecturers/google") {
             val request = call.receive<GoogleSignInRequest>()
-            val result = authService.mockAuthenticateLecturerWithGoogle(request.idToken) // TODO(): Remove
-            //val result = authService.authenticateLecturerWithGoogle(request.idToken)
+            //val result = authService.mockAuthenticateLecturerWithGoogle(request.idToken) // TODO(): Remove
+            val result = authService.authenticateLecturerWithGoogle(request.idToken)
 
             call.respond(
                 HttpStatusCode.OK,

@@ -1,5 +1,6 @@
 package api.routes
 
+import api.dtos.response.LiveAttendanceEvent
 import com.amos_tech_code.domain.dtos.requests.*
 import com.amos_tech_code.domain.dtos.response.GenericResponseDto
 import com.amos_tech_code.services.AttendanceSessionService
@@ -12,7 +13,8 @@ import io.ktor.http.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import utils.writeSse
+import utils.writeSseLiveEvent
+import utils.writeSseSnapshot
 import java.util.*
 
 fun Route.attendanceSessionRoutes(
@@ -146,7 +148,11 @@ fun Route.attendanceSessionRoutes(
                 throw AuthorizationException("Forbidden")
             }
 
-            val sessionId = UUID.fromString(call.parameters["sessionId"])
+            val sessionId = try {
+                UUID.fromString(call.parameters["sessionId"])
+            } catch (e: Exception) {
+                throw ValidationException("Invalid session Id")
+            }
 
             liveAttendanceService.authorize(lecturerId, sessionId)
 
@@ -157,19 +163,24 @@ fun Route.attendanceSessionRoutes(
 
                 // 1️⃣ Send initial snapshot
                 val snapshot = liveAttendanceService.getInitialSnapshot(sessionId)
-                writeSse(
-                    event = LiveAttendanceEventType.INITIAL_STATE.name,
+                writeSseSnapshot(
+                    event = LiveAttendanceEventType.INITIAL_STATE,
                     data = snapshot
                 )
 
                 // 2️⃣ Stream live events
-                liveAttendanceService.liveEvents(sessionId)
-                    .collect { event ->
-                        writeSse(
-                            event = LiveAttendanceEventType.ATTENDANCE_MARKED.name,
-                            data = event
-                        )
+                liveAttendanceService.liveEvents(sessionId).collect { event ->
+                    when (event) {
+                        is LiveAttendanceEvent.AttendanceMarked -> {
+                            writeSseLiveEvent(
+                                event = LiveAttendanceEventType.ATTENDANCE_MARKED,
+                                data = event.data
+                            )
+                        }
+
+                        else -> {}
                     }
+                }
             }
         }
 

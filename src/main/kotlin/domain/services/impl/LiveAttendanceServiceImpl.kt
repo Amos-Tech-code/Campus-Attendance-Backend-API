@@ -8,6 +8,9 @@ import com.amos_tech_code.domain.services.AttendanceEventBus
 import com.amos_tech_code.domain.services.AttendanceWebSocketManager
 import com.amos_tech_code.domain.services.LiveAttendanceService
 import com.amos_tech_code.utils.AuthorizationException
+import com.amos_tech_code.utils.ConflictException
+import domain.models.AttendanceSessionStatus
+import domain.models.LiveAttendanceEventType
 import io.ktor.server.websocket.DefaultWebSocketServerSession
 import kotlinx.coroutines.flow.Flow
 import java.util.UUID
@@ -27,15 +30,15 @@ class LiveAttendanceServiceImpl(
         if (!ownsSession) {
             throw AuthorizationException("You do not own this attendance session")
         }
+        if(attendanceSessionRepository.getSessionDetails(sessionId)?.status != AttendanceSessionStatus.ACTIVE) {
+            throw ConflictException("This session has already ended.")
+        }
     }
 
     override suspend fun getInitialSnapshot(
         sessionId: UUID
-    ): LiveAttendanceEvent {
-        val data = attendanceSessionRepository.getLiveAttendanceSnapshot(sessionId)
-        return LiveAttendanceEvent.InitialState(
-            data = data
-        )
+    ): LiveAttendanceSnapshot {
+        return attendanceSessionRepository.getLiveAttendanceSnapshot(sessionId)
     }
 
     override fun liveEvents(

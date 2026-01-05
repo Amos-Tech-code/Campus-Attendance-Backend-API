@@ -1,4 +1,4 @@
-package com.amos_tech_code.domain.dtos.response
+package api.dtos.response
 
 import domain.models.UserRole
 import kotlinx.serialization.Serializable
