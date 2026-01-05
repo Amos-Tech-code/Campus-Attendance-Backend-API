@@ -1,21 +1,28 @@
 package com.amos_tech_code.domain.models
 
+import domain.models.AttendanceMethod
+import domain.models.AttendanceSessionStatus
+import domain.models.AttendanceSessionType
 import java.time.LocalDateTime
 import java.util.UUID
 
 data class CreateSessionData(
     val lecturerId: UUID,
     val universityId: UUID,
+    val academicTermId: UUID,
+    val title: String?,
+    val attendanceSessionType: AttendanceSessionType,
+    val weekNumber: Int,
     val unitId: UUID,
     val sessionCode: String,
-    val secretKey: String,
-    val attendanceMethod: AttendanceMethod,
     val qrCodeUrl: String?,
-    val lecturerLatitude: Double,
-    val lecturerLongitude: Double,
-    val locationRadius: Int,
+    val isLocationRequired: Boolean,
+    val allowedMethod: AttendanceMethod,
+    val lecturerLatitude: Double?,
+    val lecturerLongitude: Double?,
+    val locationRadius: Int?,
     val scheduledStartTime: LocalDateTime,
-    val actualStartTime: LocalDateTime,
     val scheduledEndTime: LocalDateTime,
-    val durationMinutes: Int
+    val durationMinutes: Int,
+    val sessionStatus: AttendanceSessionStatus
 )

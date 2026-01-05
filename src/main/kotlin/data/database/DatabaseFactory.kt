@@ -1,21 +1,24 @@
 package com.amos_tech_code.data.database
 
 import com.amos_tech_code.config.AppConfig
-import com.amos_tech_code.data.database.entities.AttendanceRecordsTable
-import com.amos_tech_code.data.database.entities.AttendanceSessionsTable
-import com.amos_tech_code.data.database.entities.DepartmentsTable
-import com.amos_tech_code.data.database.entities.DevicesTable
-import com.amos_tech_code.data.database.entities.LecturerTeachingAssignmentsTable
-import com.amos_tech_code.data.database.entities.LecturerUniversitiesTable
-import com.amos_tech_code.data.database.entities.LecturersTable
-import com.amos_tech_code.data.database.entities.ProgrammeUnitsTable
-import com.amos_tech_code.data.database.entities.ProgrammesTable
-import com.amos_tech_code.data.database.entities.SessionProgrammesTable
-import com.amos_tech_code.data.database.entities.StudentProgrammesTable
-import com.amos_tech_code.data.database.entities.StudentsTable
-import com.amos_tech_code.data.database.entities.SuspiciousLoginsTable
-import com.amos_tech_code.data.database.entities.UnitsTable
-import com.amos_tech_code.data.database.entities.UniversitiesTable
+import data.database.entities.AcademicTermsTable
+import data.database.entities.AttendanceExportsTable
+import data.database.entities.AttendanceRecordsTable
+import data.database.entities.AttendanceSessionsTable
+import data.database.entities.AttendanceSummariesTable
+import data.database.entities.DepartmentsTable
+import data.database.entities.DevicesTable
+import data.database.entities.LecturerTeachingAssignmentsTable
+import data.database.entities.LecturerUniversitiesTable
+import data.database.entities.LecturersTable
+import data.database.entities.ProgrammeUnitsTable
+import data.database.entities.ProgrammesTable
+import data.database.entities.SessionProgrammesTable
+import data.database.entities.StudentEnrollmentsTable
+import data.database.entities.StudentsTable
+import data.database.entities.SuspiciousLoginsTable
+import data.database.entities.UnitsTable
+import data.database.entities.UniversitiesTable
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import io.ktor.server.application.Application
@@ -23,7 +26,6 @@ import io.ktor.server.application.ApplicationStarted
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.LocalDateTime.now
 
@@ -51,30 +53,35 @@ object DatabaseFactory {
             transaction {
                 // Create tables if they don't exist
                 SchemaUtils.createMissingTablesAndColumns(
-                    // Students
-                    StudentsTable,
-                    DevicesTable,
-                    StudentProgrammesTable,
-                    SuspiciousLoginsTable,
-
-                    // Lecturers
-                    LecturersTable,
+                    // System Master Tables
                     UniversitiesTable,
-                    LecturerUniversitiesTable,
+                    AcademicTermsTable,
                     ProgrammesTable,
                     DepartmentsTable,
                     UnitsTable,
                     ProgrammeUnitsTable,
+
+                    // Students
+                    StudentsTable,
+                    DevicesTable,
+                    SuspiciousLoginsTable,
+                    StudentEnrollmentsTable,
+
+                    // Lecturers
+                    LecturersTable,
+                    LecturerUniversitiesTable,
                     LecturerTeachingAssignmentsTable,
 
                     // Attendance
                     AttendanceSessionsTable,
                     SessionProgrammesTable,
-                    AttendanceRecordsTable
+                    AttendanceRecordsTable,
+                    AttendanceExportsTable,
+                    AttendanceSummariesTable
 
                 )
 
-                // updateOwnerPassword()
+                // updateAdminPassword()
             }
         } catch (e: Exception) {
             println("Database initialization failed: ${e.message}")
@@ -96,11 +103,14 @@ fun Application.seedDatabase() {
             // Seed admin user if none exist
             // Check if any lecturer exists
             val existingLecturer = LecturersTable
-                .selectAll()
-                .limit(1)
-                .singleOrNull()
+                .select(LecturersTable.id)
+                .any()
 
-            if (existingLecturer == null) {
+            val existingStudent = StudentsTable
+                .select(StudentsTable.id)
+                .any()
+
+            if (!existingLecturer) {
                 println("Seeding default lecturer...")
 
                 LecturersTable.insert {
@@ -112,10 +122,25 @@ fun Application.seedDatabase() {
                     it[createdAt] = now()
                     it[updatedAt] = now()
                 }
-
                 println("Default lecturer seeded successfully.")
             } else {
                 println("Lecturer already exist, skipping seeding.")
+            }
+
+            if (!existingStudent) {
+                println("Seeding default student...")
+
+                StudentsTable.insert {
+                    it[registrationNumber] = "SC211/0483/2022"
+                    it[fullName] = "Amos Njega Kamau"
+                    it[isActive] = true
+                    it[lastLoginAt] = null
+                    it[createdAt] = now()
+                    it[updatedAt] = now()
+                }
+                println("Default student seeded successfully.")
+            } else {
+                println("Student already exist, skipping seeding.")
             }
         }
     }

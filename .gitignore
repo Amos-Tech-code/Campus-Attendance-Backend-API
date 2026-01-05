@@ -38,6 +38,8 @@ local.properties
 .vscode/
 
 # Environment variables
-.env
+.env*
+.env.prod
+.env.dev
 .env.local
 .env.*.local

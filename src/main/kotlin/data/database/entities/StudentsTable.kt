@@ -1,69 +1,38 @@
-package com.amos_tech_code.data.database.entities
+package data.database.entities
 
-import org.jetbrains.exposed.sql.Column
+import domain.models.StudentEnrollmentSource
 import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.datetime
-import java.time.LocalDateTime
 import java.time.LocalDateTime.now
-import java.util.UUID
 
 object StudentsTable : Table("students") {
-    val id: Column<UUID> = uuid("id").autoGenerate()
-    val registrationNumber: Column<String> = varchar("reg_no", 255)
-    val fullName: Column<String> = varchar("full_name", 255)
-
-    val lastLoginAt: Column<LocalDateTime?> = datetime("last_login_at").nullable()
-    val isActive: Column<Boolean> = bool("is_active").default(true)
-
-    val createdAt: Column<LocalDateTime> = datetime("created_at").clientDefault { now() }
-    val updatedAt: Column<LocalDateTime> = datetime("updated_at").clientDefault { now() }
+    val id = uuid("id").autoGenerate()
+    val registrationNumber = varchar("reg_no", 255)
+    val fullName = varchar("full_name", 255)
+    val lastLoginAt = datetime("last_login_at").nullable()
+    val isActive = bool("is_active").default(true)
+    val createdAt = datetime("created_at").clientDefault { now() }
+    val updatedAt = datetime("updated_at").clientDefault { now() }
 
     override val primaryKey = PrimaryKey(id)
-    init {
-        uniqueIndex("unique_reg_no", registrationNumber)
-    }
+    init { uniqueIndex("unique_reg_no", registrationNumber) }
 }
 
+// Devices registered by students
 object DevicesTable : Table("student_devices") {
-    val id: Column<UUID> = uuid("id").autoGenerate()
-    val studentId: Column<UUID> = uuid("student_id").references(StudentsTable.id, onDelete = ReferenceOption.CASCADE)
-
-    val deviceId: Column<String> = varchar("device_id", 255)
-    val deviceModel: Column<String> = varchar("model", 100)
-    val os: Column<String> = varchar("os", 50)
-    val fcmToken: Column<String?> = varchar("fcm_token", 255).nullable()
-
-    val lastSeen: Column<LocalDateTime> = datetime("last_seen").clientDefault { now() }
-    val createdAt: Column<LocalDateTime> = datetime("created_at").clientDefault { now() }
-    val updatedAt: Column<LocalDateTime> = datetime("updated_at").clientDefault { now() }
+    val id = uuid("id").autoGenerate()
+    val studentId = uuid("student_id").references(StudentsTable.id, onDelete = ReferenceOption.CASCADE)
+    val deviceId = varchar("device_id", 255)
+    val deviceModel = varchar("model", 100)
+    val os = varchar("os", 50)
+    val fcmToken = varchar("fcm_token", 255).nullable()
+    val lastSeen = datetime("last_seen").clientDefault { now() }
+    val createdAt = datetime("created_at").clientDefault { now() }
+    val updatedAt = datetime("updated_at").clientDefault { now() }
 
     override val primaryKey = PrimaryKey(id)
-
-    init {
-        uniqueIndex("unique_student_device", studentId, deviceId)
-    }
-
-}
-
-// Student Programme Enrollment
-object StudentProgrammesTable : Table("student_programmes") {
-    val id: Column<UUID> = uuid("id").autoGenerate()
-    val studentId: Column<UUID> = uuid("student_id").references(StudentsTable.id, onDelete = ReferenceOption.CASCADE)
-    val programmeId: Column<UUID> = uuid("programme_id").references(ProgrammesTable.id, onDelete = ReferenceOption.CASCADE)
-    val universityId: Column<UUID> = uuid("university_id").references(UniversitiesTable.id, onDelete = ReferenceOption.CASCADE)
-    val yearOfStudy: Column<Int> = integer("year_of_study")
-    val academicYear: Column<String?> = varchar("academic_year", 9).nullable() // e.g., "2024-2025"
-    val isActive: Column<Boolean> = bool("is_active").default(true)
-    val enrolledAt: Column<LocalDateTime> = datetime("enrolled_at").clientDefault { now() }
-    val createdAt: Column<LocalDateTime> = datetime("created_at").clientDefault { now() }
-
-    override val primaryKey = PrimaryKey(id)
-
-    init {
-        uniqueIndex("unique_student_programme_year", studentId, programmeId, academicYear)
-        index(isUnique = false, studentId, isActive)
-    }
+    init { uniqueIndex("unique_student_device", studentId, deviceId) }
 }
 
 
@@ -79,3 +48,32 @@ object SuspiciousLoginsTable : Table("suspicious_logins") {
     override val primaryKey = PrimaryKey(id)
 }
 
+
+object StudentEnrollmentsTable : Table("student_enrollments") {
+    val id = uuid("id").autoGenerate()
+    val studentId = uuid("student_id")
+        .references(StudentsTable.id, onDelete = ReferenceOption.CASCADE)
+    val universityId = uuid("university_id")
+        .references(UniversitiesTable.id, onDelete = ReferenceOption.CASCADE)
+    val programmeId = uuid("programme_id")
+        .references(ProgrammesTable.id, onDelete = ReferenceOption.CASCADE)
+    val academicTermId = uuid("academic_term_id")
+        .references(AcademicTermsTable.id, onDelete = ReferenceOption.CASCADE)
+
+    val yearOfStudy = integer("year_of_study")
+    val enrollmentDate = datetime("enrollment_date").clientDefault { now() }
+    val enrollmentSource = enumerationByName<StudentEnrollmentSource>("enrollment_source", 20)
+
+    val isActive = bool("is_active").default(true)
+
+    val updatedAt = datetime("updated_at").clientDefault { now() }
+
+    override val primaryKey = PrimaryKey(id)
+
+    init {
+        uniqueIndex("unique_student_programme_term",
+            studentId, programmeId, academicTermId)
+        index(false, programmeId, academicTermId, yearOfStudy)
+    }
+
+}

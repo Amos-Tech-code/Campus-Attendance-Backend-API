@@ -1,6 +1,6 @@
 package com.amos_tech_code.config
 
-import com.amos_tech_code.domain.models.UserRole
+import domain.models.UserRole
 import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
