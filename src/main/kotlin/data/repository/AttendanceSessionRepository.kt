@@ -538,24 +538,51 @@ class AttendanceSessionRepository() {
     /**
      * Live Attendance Implementation
      * Query Service (Grouped by Programme)
+     *
      */
     suspend fun getLiveAttendanceSnapshot(
         sessionId: UUID
     ): LiveAttendanceSnapshot = exposedTransaction {
 
-        val rows = SessionProgrammesTable
-            .innerJoin(ProgrammesTable)
+        val rows = AttendanceSessionsTable
+            .innerJoin(
+                SessionProgrammesTable,
+                onColumn = { AttendanceSessionsTable.id },
+                otherColumn = { SessionProgrammesTable.sessionId }
+            )
+            .innerJoin(
+                ProgrammesTable,
+                onColumn = { SessionProgrammesTable.programmeId },
+                otherColumn = { ProgrammesTable.id }
+            )
+            .innerJoin(
+                LecturerTeachingAssignmentsTable,
+                onColumn = { SessionProgrammesTable.programmeId },
+                otherColumn = { LecturerTeachingAssignmentsTable.programmeId }
+            ) {
+                (LecturerTeachingAssignmentsTable.yearOfStudy eq SessionProgrammesTable.yearOfStudy) and
+                        (LecturerTeachingAssignmentsTable.unitId eq AttendanceSessionsTable.unitId) and
+                        (LecturerTeachingAssignmentsTable.academicTermId eq AttendanceSessionsTable.academicTermId) and
+                        (LecturerTeachingAssignmentsTable.lecturerId eq AttendanceSessionsTable.lecturerId)
+            }
             .leftJoin(
                 AttendanceRecordsTable,
-                { SessionProgrammesTable.sessionId },
-                { AttendanceRecordsTable.sessionId }
+                onColumn = { AttendanceSessionsTable.id },
+                otherColumn = { AttendanceRecordsTable.sessionId }
             )
-            .leftJoin(StudentsTable)
+            .leftJoin(
+                StudentsTable,
+                onColumn = { AttendanceRecordsTable.studentId },
+                otherColumn = { StudentsTable.id }
+            )
             .select(
                 SessionProgrammesTable.programmeId,
                 SessionProgrammesTable.yearOfStudy,
+
                 ProgrammesTable.id,
                 ProgrammesTable.name,
+
+                LecturerTeachingAssignmentsTable.expectedStudents,
 
                 AttendanceRecordsTable.id,
                 AttendanceRecordsTable.studentId,
@@ -584,6 +611,7 @@ class AttendanceSessionRepository() {
                     programmeId = first[ProgrammesTable.id].toString(),
                     programmeName = first[ProgrammesTable.name],
                     yearOfStudy = first[SessionProgrammesTable.yearOfStudy],
+                    noOfExpectedStudents = first[LecturerTeachingAssignmentsTable.expectedStudents],
                     students = rowsForProgramme
                         .filter { it[AttendanceRecordsTable.id] != null }
                         .map {
@@ -600,6 +628,5 @@ class AttendanceSessionRepository() {
             }
         )
     }
-
 
 }

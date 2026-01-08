@@ -13,6 +13,7 @@ data class ProgrammeAttendanceDto(
     val programmeId: String,
     val programmeName: String,
     val yearOfStudy: Int,
+    val noOfExpectedStudents: Int,
     val students: List<LiveAttendanceStudentDto>
 )
 
