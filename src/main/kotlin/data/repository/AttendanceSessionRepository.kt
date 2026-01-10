@@ -544,88 +544,92 @@ class AttendanceSessionRepository() {
         sessionId: UUID
     ): LiveAttendanceSnapshot = exposedTransaction {
 
-        val rows = AttendanceSessionsTable
-            .innerJoin(
-                SessionProgrammesTable,
-                onColumn = { AttendanceSessionsTable.id },
-                otherColumn = { SessionProgrammesTable.sessionId }
+        // Get the session first to get academic term ID
+        val session = AttendanceSessionsTable
+            .select(
+                AttendanceSessionsTable.academicTermId,
+                AttendanceSessionsTable.unitId,
+                AttendanceSessionsTable.lecturerId
             )
-            .innerJoin(
-                ProgrammesTable,
-                onColumn = { SessionProgrammesTable.programmeId },
-                otherColumn = { ProgrammesTable.id }
-            )
-            .innerJoin(
-                LecturerTeachingAssignmentsTable,
-                onColumn = { SessionProgrammesTable.programmeId },
-                otherColumn = { LecturerTeachingAssignmentsTable.programmeId }
-            ) {
-                (LecturerTeachingAssignmentsTable.yearOfStudy eq SessionProgrammesTable.yearOfStudy) and
-                        (LecturerTeachingAssignmentsTable.unitId eq AttendanceSessionsTable.unitId) and
-                        (LecturerTeachingAssignmentsTable.academicTermId eq AttendanceSessionsTable.academicTermId) and
-                        (LecturerTeachingAssignmentsTable.lecturerId eq AttendanceSessionsTable.lecturerId)
+            .where { AttendanceSessionsTable.id eq sessionId }
+            .singleOrNull()
+            ?: throw IllegalArgumentException("Session not found")
+
+        val academicTermId = session[AttendanceSessionsTable.academicTermId]
+
+        // Step 1: Get all programmes linked to this session
+        val programmesData = SessionProgrammesTable
+            .innerJoin(ProgrammesTable) { SessionProgrammesTable.programmeId eq ProgrammesTable.id }
+            .innerJoin(LecturerTeachingAssignmentsTable) {
+                (SessionProgrammesTable.programmeId eq LecturerTeachingAssignmentsTable.programmeId) and
+                        (SessionProgrammesTable.yearOfStudy eq LecturerTeachingAssignmentsTable.yearOfStudy) and
+                        (LecturerTeachingAssignmentsTable.unitId eq session[AttendanceSessionsTable.unitId]) and
+                        (LecturerTeachingAssignmentsTable.academicTermId eq academicTermId) and
+                        (LecturerTeachingAssignmentsTable.lecturerId eq session[AttendanceSessionsTable.lecturerId])
             }
-            .leftJoin(
-                AttendanceRecordsTable,
-                onColumn = { AttendanceSessionsTable.id },
-                otherColumn = { AttendanceRecordsTable.sessionId }
-            )
-            .leftJoin(
-                StudentsTable,
-                onColumn = { AttendanceRecordsTable.studentId },
-                otherColumn = { StudentsTable.id }
-            )
             .select(
                 SessionProgrammesTable.programmeId,
                 SessionProgrammesTable.yearOfStudy,
-
-                ProgrammesTable.id,
                 ProgrammesTable.name,
-
-                LecturerTeachingAssignmentsTable.expectedStudents,
-
-                AttendanceRecordsTable.id,
-                AttendanceRecordsTable.studentId,
-                AttendanceRecordsTable.attendedAt,
-                AttendanceRecordsTable.isSuspicious,
-                AttendanceRecordsTable.suspiciousReason,
-
-                StudentsTable.id,
-                StudentsTable.registrationNumber,
-                StudentsTable.fullName
+                LecturerTeachingAssignmentsTable.expectedStudents
             )
-            .where{
-                SessionProgrammesTable.sessionId eq sessionId
-            }
+            .where { SessionProgrammesTable.sessionId eq sessionId }
+            .groupBy(
+                SessionProgrammesTable.programmeId,
+                SessionProgrammesTable.yearOfStudy,
+                ProgrammesTable.name,
+                LecturerTeachingAssignmentsTable.expectedStudents
+            )
 
-        val grouped = rows.groupBy {
-            it[SessionProgrammesTable.programmeId]
+        // Step 2: For each programme, get the students who attended
+        val programmes = programmesData.map { programmeRow ->
+            val programmeId = programmeRow[SessionProgrammesTable.programmeId]
+            val programmeName = programmeRow[ProgrammesTable.name]
+            val yearOfStudy = programmeRow[SessionProgrammesTable.yearOfStudy]
+            val expectedStudents = programmeRow[LecturerTeachingAssignmentsTable.expectedStudents]
+
+            // Get students who attended AND are enrolled in this specific programme
+            val students = AttendanceRecordsTable
+                .innerJoin(StudentsTable) { AttendanceRecordsTable.studentId eq StudentsTable.id }
+                .innerJoin(StudentEnrollmentsTable) {
+                    (AttendanceRecordsTable.studentId eq StudentEnrollmentsTable.studentId) and
+                            (StudentEnrollmentsTable.programmeId eq programmeId) and
+                            (StudentEnrollmentsTable.academicTermId eq academicTermId) and
+                            (StudentEnrollmentsTable.yearOfStudy eq yearOfStudy)
+                }
+                .select(
+                    StudentsTable.id,
+                    StudentsTable.registrationNumber,
+                    StudentsTable.fullName,
+                    AttendanceRecordsTable.attendedAt,
+                    AttendanceRecordsTable.isSuspicious,
+                    AttendanceRecordsTable.suspiciousReason
+                )
+                .where { AttendanceRecordsTable.sessionId eq sessionId }
+                .map { studentRow ->
+                    LiveAttendanceStudentDto(
+                        studentId = studentRow[StudentsTable.id].toString(),
+                        regNo = studentRow[StudentsTable.registrationNumber],
+                        name = studentRow[StudentsTable.fullName],
+                        attendedAt = studentRow[AttendanceRecordsTable.attendedAt].toString(),
+                        isSuspicious = studentRow[AttendanceRecordsTable.isSuspicious],
+                        suspiciousReason = studentRow[AttendanceRecordsTable.suspiciousReason]
+                    )
+                }
+                .distinctBy { it.studentId } // Ensure no duplicates
+
+            ProgrammeAttendanceDto(
+                programmeId = programmeId.toString(),
+                programmeName = programmeName,
+                yearOfStudy = yearOfStudy,
+                noOfExpectedStudents = expectedStudents,
+                students = students
+            )
         }
 
         LiveAttendanceSnapshot(
             sessionId = sessionId.toString(),
-            programmes = grouped.map { (_, rowsForProgramme) ->
-                val first = rowsForProgramme.first()
-
-                ProgrammeAttendanceDto(
-                    programmeId = first[ProgrammesTable.id].toString(),
-                    programmeName = first[ProgrammesTable.name],
-                    yearOfStudy = first[SessionProgrammesTable.yearOfStudy],
-                    noOfExpectedStudents = first[LecturerTeachingAssignmentsTable.expectedStudents],
-                    students = rowsForProgramme
-                        .filter { it[AttendanceRecordsTable.id] != null }
-                        .map {
-                            LiveAttendanceStudentDto(
-                                studentId = it[StudentsTable.id].toString(),
-                                regNo = it[StudentsTable.registrationNumber],
-                                name = it[StudentsTable.fullName],
-                                attendedAt = it[AttendanceRecordsTable.attendedAt].toString(),
-                                isSuspicious = it[AttendanceRecordsTable.isSuspicious],
-                                suspiciousReason = it[AttendanceRecordsTable.suspiciousReason]
-                            )
-                        }
-                )
-            }
+            programmes = programmes
         )
     }
 
