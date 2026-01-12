@@ -1,6 +1,6 @@
 package com.amos_tech_code.plugins
 
-import com.amos_tech_code.di.appModule
+import di.appModule
 import io.ktor.server.application.*
 import org.koin.ktor.plugin.Koin
 import org.koin.logger.slf4jLogger

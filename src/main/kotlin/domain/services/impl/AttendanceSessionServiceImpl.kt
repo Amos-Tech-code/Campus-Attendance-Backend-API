@@ -1,13 +1,14 @@
-package com.amos_tech_code.services.impl
+package domain.services.impl
 
 import data.repository.AttendanceSessionRepository
 import com.amos_tech_code.domain.dtos.requests.StartSessionRequest
 import com.amos_tech_code.domain.dtos.requests.UpdateSessionRequest
 import com.amos_tech_code.domain.dtos.requests.VerifySessionRequest
-import com.amos_tech_code.domain.dtos.response.ProgrammeInfoResponse
-import com.amos_tech_code.domain.dtos.response.SessionInfo
+import api.dtos.response.ProgrammeInfoResponse
+import api.dtos.response.SessionInfo
 import com.amos_tech_code.domain.dtos.response.SessionResponse
-import com.amos_tech_code.domain.dtos.response.VerifyAttendanceResponse
+import api.dtos.response.VerifyAttendanceResponse
+import com.amos_tech_code.data.repository.StudentEnrollmentRepository
 import domain.models.AttendanceSessionStatus
 import domain.models.AttendanceSessionType
 import com.amos_tech_code.domain.models.CreateSessionData
@@ -25,6 +26,7 @@ import java.util.*
 
 class AttendanceSessionServiceImpl(
     private val attendanceSessionRepository: AttendanceSessionRepository,
+    private val studentEnrollmentRepository: StudentEnrollmentRepository,
     private val qrCodeService: QRCodeService,
     private val sessionCodeGenerator: SessionCodeGenerator,
     private val cloudStorageService: CloudStorageService
@@ -194,17 +196,29 @@ class AttendanceSessionServiceImpl(
                 request.unitCode
             ) ?: throw ResourceNotFoundException("Invalid session or session has ended")
 
-            // First time attendance - check if programme selection is needed
+            // Check if any programmes linked to the session
             val sessionProgrammes = attendanceSessionRepository.getSessionProgrammes(session.id)
 
-            if (sessionProgrammes.isEmpty()) {
-                throw ValidationException("No programmes associated with this session")
-            }
+            if (sessionProgrammes.isEmpty()) throw ValidationException("No programmes associated with this session")
 
-            // Check if first attendance
-            val isFirstAttendance = attendanceSessionRepository.isFirstAttendance(studentId)
+            // Check if first attendance by checking active enrollment
+            val activeEnrollment = studentEnrollmentRepository.findActiveEnrollment(studentId)
 
-            if (!isFirstAttendance) {
+            if (activeEnrollment != null) {
+
+                val enrolledProgrammeId = activeEnrollment.programmeId
+
+                val allowed = sessionProgrammes.any {
+                    it.programmeId == enrolledProgrammeId
+                }
+
+                if (!allowed) {
+                    throw ValidationException(
+                        "You are enrolled in ${activeEnrollment.programmeName}, " +
+                                "but this session is for a different programme"
+                    )
+                }
+
                 // Not first time - no programme selection needed
                 return VerifyAttendanceResponse(
                     requiresProgrammeSelection = false,
@@ -222,28 +236,30 @@ class AttendanceSessionServiceImpl(
                         unitName = session.unitName,
                         unitCode = session.unitCode,
                         lecturerName = session.lecturerName
-                    ),
+                    )
+                )
+            } else {
+                return VerifyAttendanceResponse(
+                    requiresProgrammeSelection = sessionProgrammes.size > 1,
+                    availableProgrammes = sessionProgrammes.map { programme ->
+                        ProgrammeInfoResponse(
+                            id = programme.programmeId.toString(),
+                            name = programme.programmeName,
+                            department = programme.departmentName,
+                            yearOfStudy = programme.yearOfStudy
+                        )
+                    },
+                    requiresLocation = session.isLocationRequired,
+                    sessionInfo = SessionInfo(
+                        sessionId = session.id.toString(),
+                        unitName = session.unitName,
+                        unitCode = session.unitCode,
+                        lecturerName = session.lecturerName
+                    )
                 )
             }
 
-            return VerifyAttendanceResponse(
-                requiresProgrammeSelection = sessionProgrammes.size > 1,
-                availableProgrammes = sessionProgrammes.map { programme ->
-                    ProgrammeInfoResponse(
-                        id = programme.programmeId.toString(),
-                        name = programme.programmeName,
-                        department = programme.departmentName,
-                        yearOfStudy = programme.yearOfStudy
-                    )
-                },
-                requiresLocation = session.isLocationRequired,
-                sessionInfo = SessionInfo(
-                    sessionId = session.id.toString(),
-                    unitName = session.unitName,
-                    unitCode = session.unitCode,
-                    lecturerName = session.lecturerName
-                )
-            )
+
         } catch (ex: Exception) {
             when (ex) {
                 is AppException -> throw ex

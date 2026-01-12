@@ -1,4 +1,4 @@
-package com.amos_tech_code.di
+package di
 
 import data.repository.AttendanceSessionRepository
 import com.amos_tech_code.data.repository.LecturerAcademicRepository
@@ -6,7 +6,6 @@ import com.amos_tech_code.data.repository.LecturerRepository
 import com.amos_tech_code.data.repository.StudentEnrollmentRepository
 import com.amos_tech_code.data.repository.StudentRepository
 import com.amos_tech_code.domain.services.AttendanceEventBus
-import domain.services.AttendanceEventPublisher
 import com.amos_tech_code.services.MarkAttendanceService
 import com.amos_tech_code.services.AttendanceSessionService
 import com.amos_tech_code.services.AuthService
@@ -18,9 +17,8 @@ import com.amos_tech_code.domain.services.impl.AttendanceEventBusImpl
 import com.amos_tech_code.services.QRCodeService
 import com.amos_tech_code.services.SessionCodeGenerator
 import com.amos_tech_code.services.StudentEnrollmentService
-import domain.services.impl.AttendanceEventPublisherImpl
 import domain.services.impl.MarkAttendanceServiceImpl
-import com.amos_tech_code.services.impl.AttendanceSessionServiceImpl
+import domain.services.impl.AttendanceSessionServiceImpl
 import com.amos_tech_code.services.impl.AuthServiceImpl
 import com.amos_tech_code.services.impl.CloudStorageServiceImpl
 import com.amos_tech_code.services.impl.GoogleAuthServiceImpl
@@ -54,7 +52,9 @@ val appModule = module {
     single<LecturerAcademicService> { LecturerAcademicServiceImpl(get()) }
 
     single<AttendanceSessionService> {
-        AttendanceSessionServiceImpl(get(), get(), get(), get())
+        AttendanceSessionServiceImpl(
+            get(), get(), get(), get(), get()
+        )
     }
 
     single<QRCodeService> { QRCodeServiceImpl() }
@@ -68,15 +68,12 @@ val appModule = module {
         studentRepository = get(),
         studentEnrollmentRepository = get(),
         attendanceEventBus = get(),
-        //attendanceEventPublisher = get(),
         backgroundTaskScope = get()
     )}
 
     single<StudentEnrollmentService> { StudentEnrollmentServiceImpl(get()) }
 
     single<LiveAttendanceService> { LiveAttendanceServiceImpl(get(), get()) }
-
-    single<AttendanceEventPublisher> { AttendanceEventPublisherImpl() }
 
     single<AttendanceEventBus> { AttendanceEventBusImpl() }
 

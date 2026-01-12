@@ -4,7 +4,6 @@ import com.amos_tech_code.plugins.*
 import io.ktor.server.application.*
 import plugins.configureRouting
 import plugins.configureSSE
-import plugins.configureSockets
 
 fun main(args: Array<String>) {
 
@@ -22,7 +21,6 @@ fun Application.module() {
     configureAuthentication()
     configureHTTP()
     configureExceptionHandler()
-    configureSockets()
     configureRouting()
     configureSSE()
 }
