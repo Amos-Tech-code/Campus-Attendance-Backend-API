@@ -161,14 +161,14 @@ fun Route.attendanceSessionRoutes(
                 contentType = ContentType.Text.EventStream
             ) {
 
-                // 1️⃣ Send initial snapshot
+                // 1 Send initial snapshot
                 val snapshot = liveAttendanceService.getInitialSnapshot(sessionId)
                 writeSseSnapshot(
                     event = LiveAttendanceEventType.INITIAL_STATE,
                     data = snapshot
                 )
 
-                // 2️⃣ Stream live events
+                // 2 Stream live events
                 liveAttendanceService.liveEvents(sessionId).collect { event ->
                     when (event) {
                         is LiveAttendanceEvent.AttendanceMarked -> {
@@ -184,58 +184,6 @@ fun Route.attendanceSessionRoutes(
             }
         }
 
-        /*webSocket("/{sessionId}/live") {
-
-            val lecturerId = call.getUserIdFromJWT()
-                ?: return@webSocket close(
-                    CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Unauthorized")
-                )
-
-            if (call.getUserRoleFromJWT() != UserRole.LECTURER.name) {
-                close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Forbidden"))
-                return@webSocket
-            }
-
-            val sessionId = try { UUID.fromString(call.parameters["sessionId"]) } catch (e: Exception) {
-                throw ValidationException("Invalid session ID")
-            }
-
-            try {
-                liveAttendanceService.authorizeAndConnect(
-                    lecturerId = lecturerId,
-                    sessionId = sessionId,
-                    socket = this
-                )
-
-                val snapshot =
-                    liveAttendanceService.getInitialSnapshot(lecturerId, sessionId)
-
-                sendSerialized(
-                    LiveAttendanceMessage(
-                        type = LiveAttendanceEventType.INITIAL_STATE,
-                        data = snapshot
-                    )
-                )
-
-                for (frame in incoming) {
-                    // optional: filters, ping, etc.
-                }
-
-            } catch (ex: AppException) {
-                close(
-                    CloseReason(
-                        CloseReason.Codes.VIOLATED_POLICY,
-                        ex.message ?: "Access denied"
-                    )
-                )
-            } finally {
-                liveAttendanceService.disconnect(
-                    lecturerId = lecturerId,
-                    sessionId = sessionId,
-                    socket = this
-                )
-            }
-        }*/
 
     }
 
