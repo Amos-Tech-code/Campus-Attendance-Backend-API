@@ -5,14 +5,13 @@ import com.amos_tech_code.data.repository.StudentEnrollmentRepository
 import com.amos_tech_code.data.repository.StudentRepository
 import com.amos_tech_code.domain.dtos.requests.LecturerMarkAttendanceRequest
 import com.amos_tech_code.domain.dtos.requests.MarkAttendanceRequest
-import com.amos_tech_code.domain.dtos.response.AttendanceFlag
+import api.dtos.response.AttendanceFlag
 import api.dtos.response.AttendanceMarkedEventDto
 import api.dtos.response.LiveAttendanceEvent
-import api.dtos.response.LiveAttendanceMessage
 import api.dtos.response.LiveAttendanceStudentDto
-import com.amos_tech_code.domain.dtos.response.MarkAttendanceResponse
-import com.amos_tech_code.domain.dtos.response.ProgrammeInfoResponse
-import com.amos_tech_code.domain.dtos.response.VerificationResult
+import api.dtos.response.MarkAttendanceResponse
+import api.dtos.response.ProgrammeInfoResponse
+import api.dtos.response.VerificationResult
 import domain.models.AttendanceMethod
 import com.amos_tech_code.domain.models.AttendanceSession
 import domain.models.FlagType
@@ -22,14 +21,12 @@ import domain.models.SeverityLevel
 import domain.models.StudentEnrollmentSource
 import com.amos_tech_code.domain.models.VerificationOutcome
 import com.amos_tech_code.domain.services.AttendanceEventBus
-import domain.services.AttendanceEventPublisher
 import com.amos_tech_code.services.MarkAttendanceService
 import com.amos_tech_code.utils.AppException
 import com.amos_tech_code.utils.BackgroundTaskScope
 import com.amos_tech_code.utils.ConflictException
 import com.amos_tech_code.utils.InternalServerException
 import com.amos_tech_code.utils.ValidationException
-import domain.models.LiveAttendanceEventType
 import kotlinx.coroutines.launch
 import org.slf4j.LoggerFactory
 import java.time.LocalDateTime
@@ -339,6 +336,7 @@ class MarkAttendanceServiceImpl(
                     verification = VerificationResult(
                         false, false, false, false, false
                     ),
+                    flags = emptyList(),
                     attendedAt = LocalDateTime.now().toString(),
                     message = "Please select your programme"
                 )

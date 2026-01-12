@@ -1,7 +1,7 @@
 package com.amos_tech_code.domain.models
 
-import com.amos_tech_code.domain.dtos.response.AttendanceFlag
-import com.amos_tech_code.domain.dtos.response.MarkAttendanceResponse
+import api.dtos.response.AttendanceFlag
+import api.dtos.response.MarkAttendanceResponse
 import domain.models.AttendanceMethod
 import java.time.LocalDateTime
 import java.util.UUID

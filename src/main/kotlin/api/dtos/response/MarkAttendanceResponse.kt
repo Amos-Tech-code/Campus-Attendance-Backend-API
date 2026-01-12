@@ -1,4 +1,4 @@
-package com.amos_tech_code.domain.dtos.response
+package api.dtos.response
 
 import domain.models.FlagType
 import domain.models.SeverityLevel
@@ -8,12 +8,12 @@ import kotlin.Boolean
 // Enhanced Response DTO
 @Serializable
 data class MarkAttendanceResponse(
-    val success: kotlin.Boolean,
+    val success: Boolean,
     val sessionId: String,
     val programmeId: String? = null,
     val verification: VerificationResult,
     val flags: List<AttendanceFlag> = emptyList(),
-    val requiresProgrammeSelection: kotlin.Boolean = false,
+    val requiresProgrammeSelection: Boolean = false,
     val availableProgrammes: List<ProgrammeInfoResponse> = emptyList(),
     val attendedAt: String,
     val message: String? = null
@@ -21,11 +21,11 @@ data class MarkAttendanceResponse(
 
 @Serializable
 data class VerificationResult(
-    val locationVerified: kotlin.Boolean,
-    val deviceVerified: kotlin.Boolean,
-    val methodVerified: kotlin.Boolean,
-    val attendanceTimeVerified: kotlin.Boolean,
-    val overallVerified: kotlin.Boolean
+    val locationVerified: Boolean,
+    val deviceVerified: Boolean,
+    val methodVerified: Boolean,
+    val attendanceTimeVerified: Boolean,
+    val overallVerified: Boolean
 )
 
 @Serializable
@@ -45,7 +45,7 @@ data class ProgrammeInfoResponse(
 
 @Serializable
 data class VerifyAttendanceResponse(
-    val requiresProgrammeSelection: kotlin.Boolean,
+    val requiresProgrammeSelection: Boolean,
     val availableProgrammes: List<ProgrammeInfoResponse>,
     val requiresLocation: Boolean,
     val sessionInfo: SessionInfo

@@ -452,12 +452,6 @@ class AttendanceSessionRepository() {
                 .singleOrNull()
         }
 
-    suspend fun isFirstAttendance(studentId: UUID): Boolean = exposedTransaction {
-        AttendanceRecordsTable
-            .select(AttendanceRecordsTable.id).where { AttendanceRecordsTable.studentId eq studentId }
-            .any()
-    }
-
     suspend fun getSessionProgrammes(sessionId: UUID): List<SessionProgramme> = exposedTransaction {
         SessionProgrammesTable
             .join(ProgrammesTable, JoinType.INNER, SessionProgrammesTable.programmeId, ProgrammesTable.id)
