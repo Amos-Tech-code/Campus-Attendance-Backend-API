@@ -1,4 +1,4 @@
-package com.amos_tech_code.services.impl
+package domain.services.impl
 
 import com.amos_tech_code.domain.models.GoogleUser
 import com.amos_tech_code.services.GoogleAuthService
@@ -11,10 +11,13 @@ import io.ktor.http.HttpStatusCode
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.slf4j.LoggerFactory
 
 class GoogleAuthServiceImpl(
     private val httpClient: HttpClient
 ) : GoogleAuthService {
+
+    private val logger = LoggerFactory.getLogger(GoogleAuthServiceImpl::class.java)
 
     override suspend fun validateGoogleToken(idToken: String): GoogleUser? {
         return try {
@@ -45,7 +48,7 @@ class GoogleAuthServiceImpl(
                 null
             }
         } catch (e: Exception) {
-            println("Google token validation error: ${e.message}")
+            logger.error("Google token validation error: ${e.message}")
             null
         }
     }

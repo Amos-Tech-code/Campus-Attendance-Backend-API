@@ -135,6 +135,7 @@ class MarkAttendanceServiceImpl(
 
 
         } catch (ex: Exception) {
+            logger.error("Failed to mark attendance for student: $ex")
             when(ex) {
                 is AppException -> throw ex
                 else -> throw InternalServerException("Failed to mark attendance for student registration number: ${request.studentRegNo}")
@@ -259,6 +260,7 @@ class MarkAttendanceServiceImpl(
             return response
 
         } catch (ex: Exception) {
+            logger.error("Failed to mark attendance: $ex")
             when(ex) {
                 is AppException -> throw ex
                 else -> throw InternalServerException("Failed to mark attendance")

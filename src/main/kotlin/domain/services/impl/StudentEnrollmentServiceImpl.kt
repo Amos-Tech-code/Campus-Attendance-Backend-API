@@ -1,4 +1,4 @@
-package com.amos_tech_code.services.impl
+package domain.services.impl
 
 import com.amos_tech_code.data.repository.StudentEnrollmentRepository
 import com.amos_tech_code.domain.dtos.requests.StudentEnrollmentRequest
@@ -7,11 +7,14 @@ import com.amos_tech_code.services.StudentEnrollmentService
 import com.amos_tech_code.utils.AppException
 import com.amos_tech_code.utils.InternalServerException
 import com.amos_tech_code.utils.ValidationException
+import org.slf4j.LoggerFactory
 import java.util.*
 
 class StudentEnrollmentServiceImpl(
     private val repository: StudentEnrollmentRepository,
 ) : StudentEnrollmentService {
+
+    private val logger = LoggerFactory.getLogger(StudentEnrollmentServiceImpl::class.java)
 
     override suspend fun enrollStudent(
         studentId: UUID,
@@ -79,6 +82,7 @@ class StudentEnrollmentServiceImpl(
             )
 
         } catch (ex: Exception) {
+            logger.error("Student enrollment failed: $ex")
             when(ex) {
                 is AppException -> throw ex
                 else -> throw InternalServerException("Student enrollment failed.")
@@ -90,6 +94,7 @@ class StudentEnrollmentServiceImpl(
         try {
             return repository.getStudentEnrollment(studentId)
         } catch (ex: Exception) {
+            logger.error("Failed to fetch student enrollments: $ex")
             when(ex) {
                 is AppException -> throw ex
                 else -> throw InternalServerException("Failed to fetch student enrollments.")
@@ -104,6 +109,7 @@ class StudentEnrollmentServiceImpl(
         try {
             return repository.deactivateEnrollment(studentId, enrollmentId)
         } catch (ex: Exception) {
+            logger.error("Failed to deactivate student enrollment: $ex")
             when(ex) {
                 is AppException -> throw ex
                 else -> throw InternalServerException("Failed to deactivate student enrollment.")
@@ -123,6 +129,7 @@ class StudentEnrollmentServiceImpl(
 
             return repository.updateEnrollmentYear(studentId, enrollmentId, newYearOfStudy)
         } catch (ex: Exception) {
+            logger.error("Failed to update student enrollment: $ex")
             when(ex) {
                 is AppException -> throw ex
                 else -> throw InternalServerException("Failed to update student enrollment.")

@@ -1,4 +1,4 @@
-package com.amos_tech_code.services.impl
+package domain.services.impl
 
 import com.amos_tech_code.data.database.utils.exposedTransaction
 import com.amos_tech_code.data.repository.LecturerAcademicRepository
@@ -18,11 +18,14 @@ import com.amos_tech_code.utils.AppException
 import com.amos_tech_code.utils.InternalServerException
 import com.amos_tech_code.utils.ValidationException
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import org.slf4j.LoggerFactory
 import java.util.*
 
 class LecturerAcademicServiceImpl(
     private val lecturerAcademicRepository: LecturerAcademicRepository
 ) : LecturerAcademicService {
+
+    private val logger = LoggerFactory.getLogger(LecturerAcademicServiceImpl::class.java)
 
     override suspend fun saveAcademicSetup(
         lecturerId: UUID,
@@ -170,6 +173,7 @@ class LecturerAcademicServiceImpl(
             )
 
         } catch (ex: Exception) {
+            logger.error("Failed to save academic setup: $ex")
             when (ex) {
                 is AppException -> throw ex
                 else -> throw InternalServerException("Failed to save academic setup")
@@ -256,6 +260,7 @@ class LecturerAcademicServiceImpl(
             LecturerAcademicSetupResponse(universitySetups)
 
         } catch (ex: Exception) {
+            logger.error("Failed to retrieve academic setup: $ex")
             when(ex) {
                 is AppException -> throw ex
                 else -> throw InternalServerException("Failed to retrieve academic setup.")
@@ -340,6 +345,7 @@ class LecturerAcademicServiceImpl(
             }
 
         } catch (ex: Exception) {
+            logger.error("Failed to update academic setup: $ex")
             when (ex) {
                 is AppException -> throw ex
                 else -> throw InternalServerException("Failed to update academic setup.")

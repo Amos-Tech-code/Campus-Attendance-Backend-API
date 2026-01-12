@@ -1,4 +1,4 @@
-package com.amos_tech_code.services.impl
+package domain.services.impl
 
 import com.amos_tech_code.config.JwtConfig
 import com.amos_tech_code.data.repository.LecturerRepository
@@ -19,6 +19,7 @@ import com.amos_tech_code.utils.ConflictException
 import com.amos_tech_code.utils.InternalServerException
 import com.amos_tech_code.utils.ResourceNotFoundException
 import com.amos_tech_code.utils.ValidationException
+import org.slf4j.LoggerFactory
 import java.time.LocalDateTime
 import java.util.*
 
@@ -27,6 +28,8 @@ class AuthServiceImpl(
     private val studentRepository: StudentRepository,
     private val googleAuthService: GoogleAuthService,
 ) : AuthService {
+
+    private val logger = LoggerFactory.getLogger(AuthServiceImpl::class.java)
 
     /**
      * Mock implementation of authenticateLecturerWithGoogle for testing
@@ -105,9 +108,10 @@ class AuthServiceImpl(
                     userType = UserRole.LECTURER
                 )
             }
-        } catch (e: Exception) {
-            when(e) {
-                is AppException -> throw e
+        } catch (ex: Exception) {
+            logger.error("Lecturer sign in failed: $ex")
+            when(ex) {
+                is AppException -> throw ex
                 else -> throw InternalServerException("An unknown error occurred while verifying your google account.")
             }
         }
@@ -153,9 +157,10 @@ class AuthServiceImpl(
                 fullName = savedStudent.fullName,
                 regNumber = savedStudent.registrationNumber,
             )
-        } catch (e: Exception) {
-            when(e) {
-                is AppException -> throw e
+        } catch (ex: Exception) {
+            logger.error("Student registration failed: $ex")
+            when(ex) {
+                is AppException -> throw ex
                 else -> throw InternalServerException("An error occurred during student registration.")
             }
         }
@@ -197,9 +202,10 @@ class AuthServiceImpl(
                 regNumber = student.registrationNumber
             )
 
-        } catch (e: Exception) {
-            when(e) {
-                is AppException -> throw e
+        } catch (ex: Exception) {
+            logger.error("Student login failed: $ex")
+            when(ex) {
+                is AppException -> throw ex
                 else -> throw InternalServerException("An error occurred during student login. Please try again.")
             }
         }

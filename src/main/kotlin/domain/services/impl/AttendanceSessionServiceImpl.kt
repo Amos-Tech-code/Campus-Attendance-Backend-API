@@ -19,6 +19,7 @@ import com.amos_tech_code.services.QRCodeService
 import com.amos_tech_code.services.SessionCodeGenerator
 import com.amos_tech_code.utils.*
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import org.slf4j.LoggerFactory
 import utils.toLocalDateTimeOrThrow
 import java.time.Instant
 import java.time.LocalDateTime
@@ -31,6 +32,8 @@ class AttendanceSessionServiceImpl(
     private val sessionCodeGenerator: SessionCodeGenerator,
     private val cloudStorageService: CloudStorageService
 ) : AttendanceSessionService {
+
+    private val logger = LoggerFactory.getLogger(AttendanceSessionServiceImpl::class.java)
 
     override suspend fun startSession(lecturerId: UUID, request: StartSessionRequest): SessionResponse {
 
@@ -103,9 +106,10 @@ class AttendanceSessionServiceImpl(
             }
 
         } catch (ex: Exception) {
+            logger.error("Failed to start attendance session: $ex")
             when (ex) {
                 is AppException -> throw ex
-                else -> throw InternalServerException("Failed to start attendance session: ${ex.message}")
+                else -> throw InternalServerException("Failed to start attendance session.")
             }
         }
     }
@@ -144,6 +148,7 @@ class AttendanceSessionServiceImpl(
             ) ?: throw ResourceNotFoundException("Session not found")
 
         } catch (ex: Exception) {
+            logger.error("Failed to update session: $ex")
             when (ex) {
                 is AppException -> throw ex
                 else -> throw InternalServerException("Failed to update session: ${ex.message}")
@@ -173,6 +178,7 @@ class AttendanceSessionServiceImpl(
             return success
 
         } catch (ex: Exception) {
+            logger.error("Failed to end session: $ex")
             when (ex) {
                 is AppException -> throw ex
                 else -> throw InternalServerException("Failed to end session")
@@ -261,9 +267,10 @@ class AttendanceSessionServiceImpl(
 
 
         } catch (ex: Exception) {
+            logger.error("Attendance verification failed: $ex")
             when (ex) {
                 is AppException -> throw ex
-                else -> throw InternalServerException("Attendance verification failed: ${ex.message}")
+                else -> throw InternalServerException("Attendance verification failed.")
             }
         }
     }

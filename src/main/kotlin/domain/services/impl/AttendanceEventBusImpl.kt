@@ -1,4 +1,4 @@
-package com.amos_tech_code.domain.services.impl
+package domain.services.impl
 
 import api.dtos.response.LiveAttendanceEvent
 import com.amos_tech_code.domain.services.AttendanceEventBus

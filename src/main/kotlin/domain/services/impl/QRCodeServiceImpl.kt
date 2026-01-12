@@ -1,4 +1,4 @@
-package com.amos_tech_code.services.impl
+package domain.services.impl
 
 import com.amos_tech_code.domain.models.QRCodeData
 import com.amos_tech_code.services.QRCodeService
