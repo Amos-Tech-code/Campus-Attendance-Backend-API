@@ -14,7 +14,7 @@ fun main(args: Array<String>) {
 
 fun Application.module() {
     configureAdministration()
-    configureFrameworks()
+    configureKoin()
     configureSerialization()
     configureDatabase()
     configureMonitoring()

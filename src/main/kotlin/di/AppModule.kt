@@ -1,11 +1,13 @@
 package di
 
+import com.amos_tech_code.data.repository.AttendanceRecordRepository
 import data.repository.AttendanceSessionRepository
 import com.amos_tech_code.data.repository.LecturerAcademicRepository
 import com.amos_tech_code.data.repository.LecturerRepository
 import com.amos_tech_code.data.repository.StudentEnrollmentRepository
 import com.amos_tech_code.data.repository.StudentRepository
 import com.amos_tech_code.domain.services.AttendanceEventBus
+import com.amos_tech_code.domain.services.AttendanceManagementService
 import com.amos_tech_code.services.MarkAttendanceService
 import com.amos_tech_code.services.AttendanceSessionService
 import com.amos_tech_code.services.AuthService
@@ -13,6 +15,7 @@ import com.amos_tech_code.services.CloudStorageService
 import com.amos_tech_code.services.GoogleAuthService
 import com.amos_tech_code.services.LecturerAcademicService
 import com.amos_tech_code.domain.services.LiveAttendanceService
+import com.amos_tech_code.domain.services.impl.AttendanceManagementServiceImpl
 import domain.services.impl.AttendanceEventBusImpl
 import com.amos_tech_code.services.QRCodeService
 import com.amos_tech_code.services.SessionCodeGenerator
@@ -77,6 +80,8 @@ val appModule = module {
 
     single<AttendanceEventBus> { AttendanceEventBusImpl() }
 
+    single<AttendanceManagementService> { AttendanceManagementServiceImpl(get(), get()) }
+
     /**
      * Repositories
      */
@@ -90,5 +95,7 @@ val appModule = module {
     single { AttendanceSessionRepository() }
 
     single { StudentEnrollmentRepository() }
+
+    single { AttendanceRecordRepository() }
 
 }

@@ -3,6 +3,7 @@ package plugins
 import com.amos_tech_code.domain.dtos.response.GenericResponseDto
 import api.routes.attendanceSessionRoutes
 import api.routes.authRoutes
+import com.amos_tech_code.domain.services.AttendanceManagementService
 import com.amos_tech_code.routes.lecturerAcademicSetupRoutes
 import com.amos_tech_code.routes.studentEnrollmentRoutes
 import com.amos_tech_code.services.AttendanceSessionService
@@ -27,6 +28,7 @@ fun Application.configureRouting() {
     val markAttendanceService by inject<MarkAttendanceService>()
     val studentEnrollmentService by inject<StudentEnrollmentService>()
     val liveAttendanceService by inject<LiveAttendanceService>()
+    val attendanceManagementService by inject<AttendanceManagementService>()
 
     routing {
 
@@ -49,7 +51,8 @@ fun Application.configureRouting() {
             attendanceSessionRoutes(
                 attendanceSessionService,
                 markAttendanceService,
-                liveAttendanceService
+                liveAttendanceService,
+                attendanceManagementService
             )
 
             studentEnrollmentRoutes(studentEnrollmentService)

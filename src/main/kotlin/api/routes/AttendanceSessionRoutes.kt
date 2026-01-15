@@ -1,8 +1,10 @@
 package api.routes
 
 import api.dtos.response.LiveAttendanceEvent
+import com.amos_tech_code.api.dtos.requests.RemoveAttendanceRequest
 import com.amos_tech_code.domain.dtos.requests.*
 import com.amos_tech_code.domain.dtos.response.GenericResponseDto
+import com.amos_tech_code.domain.services.AttendanceManagementService
 import com.amos_tech_code.services.AttendanceSessionService
 import com.amos_tech_code.domain.services.LiveAttendanceService
 import com.amos_tech_code.services.MarkAttendanceService
@@ -20,7 +22,8 @@ import java.util.*
 fun Route.attendanceSessionRoutes(
     attendanceSessionService: AttendanceSessionService,
     markAttendanceService: MarkAttendanceService,
-    liveAttendanceService: LiveAttendanceService
+    liveAttendanceService: LiveAttendanceService,
+    attendanceManagementService: AttendanceManagementService
 ) {
 
     route("api/v1/attendance") {
@@ -184,6 +187,20 @@ fun Route.attendanceSessionRoutes(
             }
         }
 
+        delete("/invalidateAttendance") {
+            val lecturerId = call.getUserIdFromJWT() ?: return@delete call.respondBadRequest("Lecturer ID is required")
+            if (call.getUserRoleFromJWT()?.uppercase() != UserRole.LECTURER.name) return@delete call.respondForbidden()
+
+            val request = call.receive<RemoveAttendanceRequest>()
+
+            attendanceManagementService.removeStudentAttendance(
+                lecturerId = lecturerId,
+                request = request
+            )
+
+            call.respond(HttpStatusCode.NoContent)
+
+        }
 
     }
 
