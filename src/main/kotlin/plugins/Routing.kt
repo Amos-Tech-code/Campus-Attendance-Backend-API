@@ -1,8 +1,9 @@
 package plugins
 
+import api.routes.attendanceRoutes
 import com.amos_tech_code.domain.dtos.response.GenericResponseDto
-import api.routes.attendanceSessionRoutes
 import api.routes.authRoutes
+import api.routes.sessionRoutes
 import com.amos_tech_code.api.routes.accountRoutes
 import com.amos_tech_code.api.routes.attendanceManagementRoutes
 import com.amos_tech_code.domain.services.AccountService
@@ -41,7 +42,7 @@ fun Application.configureRouting() {
                 HttpStatusCode.OK,
                 GenericResponseDto(
                     HttpStatusCode.OK.value,
-                    "✅ SmartAttend API is running"
+                    "Campus Attendance API is running"
                 )
             )
         }
@@ -54,8 +55,9 @@ fun Application.configureRouting() {
 
             lecturerAcademicSetupRoutes(lecturerAcademicService)
 
-            attendanceSessionRoutes(
-                attendanceSessionService,
+            sessionRoutes(attendanceSessionService)
+
+            attendanceRoutes(
                 markAttendanceService,
                 liveAttendanceService
             )
