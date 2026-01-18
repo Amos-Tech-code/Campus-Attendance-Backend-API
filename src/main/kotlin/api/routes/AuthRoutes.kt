@@ -32,6 +32,25 @@ fun Route.authRoutes(authService: AuthService) {
             )
         }
 
+        /**
+         * Mock implementation of authenticateLecturerWithGoogle for testing
+         * Simulates Google authentication without actually calling Google API
+         */
+        post("mock/lecturers/google") {
+            val request = call.receive<GoogleSignInRequest>()
+            val result = authService.mockAuthenticateLecturerWithGoogle(request.idToken)
+            call.respond(
+                HttpStatusCode.OK,
+                LecturerAuthResponse(
+                    token = result.token,
+                    email = result.email,
+                    name = result.name,
+                    profileComplete = result.profileComplete,
+                    userType = result.userType,
+                )
+            )
+        }
+
         // Student Registration
         post("/students/register") {
             val request = call.receive<StudentRegistrationRequest>()

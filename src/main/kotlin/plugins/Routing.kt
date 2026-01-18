@@ -3,6 +3,9 @@ package plugins
 import com.amos_tech_code.domain.dtos.response.GenericResponseDto
 import api.routes.attendanceSessionRoutes
 import api.routes.authRoutes
+import com.amos_tech_code.api.routes.accountRoutes
+import com.amos_tech_code.api.routes.attendanceManagementRoutes
+import com.amos_tech_code.domain.services.AccountService
 import com.amos_tech_code.domain.services.AttendanceManagementService
 import com.amos_tech_code.routes.lecturerAcademicSetupRoutes
 import com.amos_tech_code.routes.studentEnrollmentRoutes
@@ -29,6 +32,7 @@ fun Application.configureRouting() {
     val studentEnrollmentService by inject<StudentEnrollmentService>()
     val liveAttendanceService by inject<LiveAttendanceService>()
     val attendanceManagementService by inject<AttendanceManagementService>()
+    val accountService by inject<AccountService>()
 
     routing {
 
@@ -46,14 +50,17 @@ fun Application.configureRouting() {
 
         authenticate("jwt-auth") {
 
+            accountRoutes(accountService)
+
             lecturerAcademicSetupRoutes(lecturerAcademicService)
 
             attendanceSessionRoutes(
                 attendanceSessionService,
                 markAttendanceService,
-                liveAttendanceService,
-                attendanceManagementService
+                liveAttendanceService
             )
+
+            attendanceManagementRoutes(attendanceManagementService)
 
             studentEnrollmentRoutes(studentEnrollmentService)
 
