@@ -10,7 +10,7 @@ import com.amos_tech_code.domain.services.AccountService
 import com.amos_tech_code.domain.services.AttendanceManagementService
 import com.amos_tech_code.routes.lecturerAcademicSetupRoutes
 import api.routes.studentEnrollmentRoutes
-import com.amos_tech_code.services.AttendanceSessionService
+import domain.services.AttendanceSessionService
 import com.amos_tech_code.services.AuthService
 import com.amos_tech_code.services.LecturerAcademicService
 import com.amos_tech_code.domain.services.LiveAttendanceService

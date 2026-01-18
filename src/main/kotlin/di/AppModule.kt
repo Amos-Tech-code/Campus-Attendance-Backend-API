@@ -10,7 +10,7 @@ import com.amos_tech_code.domain.services.AccountService
 import com.amos_tech_code.domain.services.AttendanceEventBus
 import com.amos_tech_code.domain.services.AttendanceManagementService
 import com.amos_tech_code.services.MarkAttendanceService
-import com.amos_tech_code.services.AttendanceSessionService
+import domain.services.AttendanceSessionService
 import com.amos_tech_code.services.AuthService
 import com.amos_tech_code.services.CloudStorageService
 import com.amos_tech_code.services.GoogleAuthService

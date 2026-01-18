@@ -1,5 +1,6 @@
 package data.repository
 
+import api.dtos.response.AttendanceSessionHistoryDto
 import api.dtos.response.LiveAttendanceSnapshot
 import api.dtos.response.LiveAttendanceStudentDto
 import api.dtos.response.ProgrammeAttendanceDto
@@ -14,6 +15,7 @@ import io.ktor.server.plugins.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 import java.util.*
 
 class AttendanceSessionRepository() {
@@ -626,5 +628,59 @@ class AttendanceSessionRepository() {
             programmes = programmes
         )
     }
+
+
+    /**
+     * Attendance Session history
+     */
+    suspend fun fetchSessionHistory(
+        lecturerId: UUID,
+        limit: Int,
+        offset: Int
+    ): List<AttendanceSessionHistoryDto> = exposedTransaction {
+
+        AttendanceSessionsTable
+            .innerJoin(UnitsTable)
+            .select(
+                AttendanceSessionsTable.id,
+                AttendanceSessionsTable.sessionTitle,
+                UnitsTable.code,
+                UnitsTable.name,
+                AttendanceSessionsTable.attendanceSessionType,
+                AttendanceSessionsTable.allowedMethod,
+                AttendanceSessionsTable.status,
+                AttendanceSessionsTable.scheduledStartTime,
+                AttendanceSessionsTable.scheduledEndTime
+            )
+            .where {
+                AttendanceSessionsTable.lecturerId eq lecturerId
+            }
+            .orderBy(
+                AttendanceSessionsTable.scheduledStartTime to SortOrder.DESC
+            )
+            .limit(limit).offset(offset.toLong())
+            .map { row ->
+
+                val start = row[AttendanceSessionsTable.scheduledStartTime]
+                val end = row[AttendanceSessionsTable.scheduledEndTime]
+
+                AttendanceSessionHistoryDto(
+                    sessionId = row[AttendanceSessionsTable.id].toString(),
+                    title = row[AttendanceSessionsTable.sessionTitle],
+                    unitCode = row[UnitsTable.code],
+                    unitName = row[UnitsTable.name],
+                    sessionType = row[AttendanceSessionsTable.attendanceSessionType].name,
+                    attendanceMethod = row[AttendanceSessionsTable.allowedMethod],
+                    status = row[AttendanceSessionsTable.status],
+                    startedAt = start
+                        .toInstant(ZoneOffset.UTC)
+                        .toEpochMilli(),
+                    endedAt = end
+                        .toInstant(ZoneOffset.UTC)
+                        ?.toEpochMilli()
+                )
+            }
+    }
+
 
 }

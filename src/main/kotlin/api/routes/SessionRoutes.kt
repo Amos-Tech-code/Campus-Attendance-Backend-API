@@ -4,8 +4,7 @@ import com.amos_tech_code.domain.dtos.requests.EndSessionRequest
 import com.amos_tech_code.domain.dtos.requests.StartSessionRequest
 import com.amos_tech_code.domain.dtos.requests.UpdateSessionRequest
 import com.amos_tech_code.domain.dtos.requests.VerifySessionRequest
-import com.amos_tech_code.domain.dtos.response.GenericResponseDto
-import com.amos_tech_code.services.AttendanceSessionService
+import domain.services.AttendanceSessionService
 import com.amos_tech_code.utils.ResourceNotFoundException
 import com.amos_tech_code.utils.getUserIdFromJWT
 import com.amos_tech_code.utils.getUserRoleFromJWT
@@ -95,6 +94,23 @@ fun Route.sessionRoutes(
             val result = attendanceSessionService.verifySessionForAttendance(studentId, request)
 
             call.respond(HttpStatusCode.OK, result)
+
+        }
+
+        get("/history") {
+            val lecturerId = call.getUserIdFromJWT() ?: return@get call.respondBadRequest("Lecturer ID is required")
+            if (call.getUserRoleFromJWT()?.uppercase() != UserRole.LECTURER.name) return@get call.respondForbidden()
+
+            val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 0
+            val size = call.request.queryParameters["size"]?.toIntOrNull() ?: 20
+
+            val response = attendanceSessionService.getLecturerSessionHistory(
+                lecturerId = lecturerId,
+                page = page,
+                size = size
+            )
+
+            call.respond(response)
 
         }
 
