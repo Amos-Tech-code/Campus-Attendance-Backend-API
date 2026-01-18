@@ -1,7 +1,7 @@
 package com.amos_tech_code.services
 
 import com.amos_tech_code.domain.dtos.requests.StudentEnrollmentRequest
-import com.amos_tech_code.domain.dtos.response.StudentEnrollmentResponse
+import api.dtos.response.StudentEnrollmentResponse
 import java.util.UUID
 
 interface StudentEnrollmentService {

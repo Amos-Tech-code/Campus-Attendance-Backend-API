@@ -1,11 +1,12 @@
 package com.amos_tech_code.data.repository
 
-import data.database.entities.LecturersTable
 import com.amos_tech_code.data.database.utils.exposedTransaction
 import com.amos_tech_code.domain.models.Lecturer
+import data.database.entities.LecturersTable
 import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.update
 import java.time.LocalDateTime
 import java.util.*
 
@@ -60,6 +61,19 @@ class LecturerRepository() {
                 it[lastLoginAt] = timestamp
                 it[updatedAt] = LocalDateTime.now()
             } > 0
+        }
+    }
+
+    suspend fun updateName(
+        lecturerId: UUID,
+        fullName: String
+    ) : Boolean {
+        return exposedTransaction {
+            LecturersTable
+                .update({ LecturersTable.id eq lecturerId}) {
+                    it[this.fullName] = fullName
+                    it[updatedAt] = LocalDateTime.now()
+                } > 0
         }
     }
 

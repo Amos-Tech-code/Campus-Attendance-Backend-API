@@ -1,5 +1,6 @@
-package com.amos_tech_code.data.repository
+package data.repository
 
+import api.dtos.response.StudentEnrollmentResponse
 import com.amos_tech_code.data.database.utils.exposedTransaction
 import com.amos_tech_code.domain.dtos.response.*
 import com.amos_tech_code.domain.models.ActiveEnrollmentInfo
@@ -332,7 +333,6 @@ class StudentEnrollmentRepository {
     private fun ResultRow.toEnrollmentResponse(): StudentEnrollmentResponse =
         StudentEnrollmentResponse(
             enrollmentId = this[StudentEnrollmentsTable.id].toString(),
-            studentId = this[StudentsTable.id].toString(),
             registrationNumber = this[StudentsTable.registrationNumber],
             fullName = this[StudentsTable.fullName],
             university = UniversityResponse(

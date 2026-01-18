@@ -1,7 +1,7 @@
 package domain.services.impl
 
 import data.repository.AttendanceSessionRepository
-import com.amos_tech_code.data.repository.StudentEnrollmentRepository
+import data.repository.StudentEnrollmentRepository
 import com.amos_tech_code.data.repository.StudentRepository
 import com.amos_tech_code.domain.dtos.requests.LecturerMarkAttendanceRequest
 import com.amos_tech_code.domain.dtos.requests.MarkAttendanceRequest

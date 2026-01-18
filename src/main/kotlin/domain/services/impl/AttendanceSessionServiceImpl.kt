@@ -1,5 +1,6 @@
 package domain.services.impl
 
+import api.dtos.response.AttendanceSessionHistoryResponse
 import data.repository.AttendanceSessionRepository
 import com.amos_tech_code.domain.dtos.requests.StartSessionRequest
 import com.amos_tech_code.domain.dtos.requests.UpdateSessionRequest
@@ -8,12 +9,12 @@ import api.dtos.response.ProgrammeInfoResponse
 import api.dtos.response.SessionInfo
 import com.amos_tech_code.domain.dtos.response.SessionResponse
 import api.dtos.response.VerifyAttendanceResponse
-import com.amos_tech_code.data.repository.StudentEnrollmentRepository
+import data.repository.StudentEnrollmentRepository
 import domain.models.AttendanceSessionStatus
 import domain.models.AttendanceSessionType
 import com.amos_tech_code.domain.models.CreateSessionData
 import com.amos_tech_code.domain.models.UpdateSessionData
-import com.amos_tech_code.services.AttendanceSessionService
+import domain.services.AttendanceSessionService
 import com.amos_tech_code.services.CloudStorageService
 import com.amos_tech_code.services.QRCodeService
 import com.amos_tech_code.services.SessionCodeGenerator
@@ -271,6 +272,41 @@ class AttendanceSessionServiceImpl(
             when (ex) {
                 is AppException -> throw ex
                 else -> throw InternalServerException("Attendance verification failed.")
+            }
+        }
+    }
+
+    override suspend fun getLecturerSessionHistory(
+        lecturerId: UUID,
+        page: Int,
+        size: Int
+    ): AttendanceSessionHistoryResponse {
+
+        try {
+            require(page >= 0) { "Page must be >= 0" }
+            require(size in 1..50) { "Size must be between 1 and 50" }
+
+            val offset = page * size
+
+            val sessions = attendanceSessionRepository.fetchSessionHistory(
+                lecturerId = lecturerId,
+                limit = size + 1, // fetch one extra to detect hasNext
+                offset = offset
+            )
+
+            val hasNext = sessions.size > size
+
+            return AttendanceSessionHistoryResponse(
+                page = page,
+                size = size,
+                hasNext = hasNext,
+                sessions = sessions.take(size)
+            )
+        } catch (ex: Exception) {
+            logger.error("Failed to fetch session history", ex)
+            when(ex) {
+                is AppException -> throw ex
+                else -> throw InternalServerException("Failed to fetch session history")
             }
         }
     }

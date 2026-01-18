@@ -8,6 +8,7 @@ import com.amos_tech_code.domain.dtos.requests.DeviceInfo
 import com.amos_tech_code.domain.models.Device
 import com.amos_tech_code.domain.models.Student
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
@@ -30,15 +31,6 @@ class StudentRepository() {
             .singleOrNull()
     }
 
-    suspend fun findByDeviceId(deviceId: String): Student? {
-        return exposedTransaction {
-            (StudentsTable innerJoin DevicesTable)
-                .selectAll().where { DevicesTable.deviceId eq deviceId }
-                .map { it.toStudentWithDevice() }
-                .singleOrNull()
-        }
-    }
-
     suspend fun findDeviceByStudentId(studentId: UUID): Device? = exposedTransaction {
         DevicesTable
             .selectAll()
@@ -57,6 +49,28 @@ class StudentRepository() {
             .singleOrNull()
     }
 
+    suspend fun existsByRegistrationNumber(regNo: String, excludeStudentId: UUID): Boolean =
+        exposedTransaction {
+            StudentsTable
+                .select(StudentsTable.id)
+                .where {
+                    (StudentsTable.registrationNumber eq regNo) and
+                            (StudentsTable.id neq excludeStudentId)
+                }
+                .count() > 0
+        }
+
+    suspend fun updateProfile(
+        studentId: UUID,
+        fullName: String,
+        registrationNumber: String
+    ): Boolean = exposedTransaction {
+        StudentsTable.update({ StudentsTable.id eq studentId }) {
+            it[StudentsTable.fullName] = fullName
+            it[StudentsTable.registrationNumber] = registrationNumber
+            it[StudentsTable.updatedAt] = LocalDateTime.now()
+        } > 0
+    }
 
     suspend fun createStudentWithDevice(
         student: Student,

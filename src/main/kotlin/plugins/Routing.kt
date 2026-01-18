@@ -1,11 +1,16 @@
 package plugins
 
+import api.routes.attendanceRoutes
 import com.amos_tech_code.domain.dtos.response.GenericResponseDto
-import api.routes.attendanceSessionRoutes
 import api.routes.authRoutes
+import api.routes.sessionRoutes
+import com.amos_tech_code.api.routes.accountRoutes
+import com.amos_tech_code.api.routes.attendanceManagementRoutes
+import com.amos_tech_code.domain.services.AccountService
+import com.amos_tech_code.domain.services.AttendanceManagementService
 import com.amos_tech_code.routes.lecturerAcademicSetupRoutes
-import com.amos_tech_code.routes.studentEnrollmentRoutes
-import com.amos_tech_code.services.AttendanceSessionService
+import api.routes.studentEnrollmentRoutes
+import domain.services.AttendanceSessionService
 import com.amos_tech_code.services.AuthService
 import com.amos_tech_code.services.LecturerAcademicService
 import com.amos_tech_code.domain.services.LiveAttendanceService
@@ -27,6 +32,8 @@ fun Application.configureRouting() {
     val markAttendanceService by inject<MarkAttendanceService>()
     val studentEnrollmentService by inject<StudentEnrollmentService>()
     val liveAttendanceService by inject<LiveAttendanceService>()
+    val attendanceManagementService by inject<AttendanceManagementService>()
+    val accountService by inject<AccountService>()
 
     routing {
 
@@ -35,7 +42,7 @@ fun Application.configureRouting() {
                 HttpStatusCode.OK,
                 GenericResponseDto(
                     HttpStatusCode.OK.value,
-                    "✅ SmartAttend API is running"
+                    "Campus Attendance API is running"
                 )
             )
         }
@@ -44,13 +51,18 @@ fun Application.configureRouting() {
 
         authenticate("jwt-auth") {
 
+            accountRoutes(accountService)
+
             lecturerAcademicSetupRoutes(lecturerAcademicService)
 
-            attendanceSessionRoutes(
-                attendanceSessionService,
+            sessionRoutes(attendanceSessionService)
+
+            attendanceRoutes(
                 markAttendanceService,
                 liveAttendanceService
             )
+
+            attendanceManagementRoutes(attendanceManagementService)
 
             studentEnrollmentRoutes(studentEnrollmentService)
 

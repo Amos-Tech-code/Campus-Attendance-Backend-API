@@ -1,5 +1,6 @@
-package com.amos_tech_code.services
+package domain.services
 
+import api.dtos.response.AttendanceSessionHistoryResponse
 import com.amos_tech_code.domain.dtos.requests.StartSessionRequest
 import com.amos_tech_code.domain.dtos.requests.UpdateSessionRequest
 import com.amos_tech_code.domain.dtos.requests.VerifySessionRequest
@@ -22,5 +23,11 @@ interface AttendanceSessionService {
     suspend fun getActiveSession(lecturerId: UUID): SessionResponse
 
     suspend fun verifySessionForAttendance(studentId: UUID, request: VerifySessionRequest): VerifyAttendanceResponse
+
+    suspend fun getLecturerSessionHistory(
+        lecturerId: UUID,
+        page: Int,
+        size: Int
+    ): AttendanceSessionHistoryResponse
 
 }

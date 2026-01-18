@@ -1,4 +1,4 @@
-package com.amos_tech_code.routes
+package api.routes
 
 import com.amos_tech_code.domain.dtos.requests.StudentEnrollmentRequest
 import com.amos_tech_code.domain.dtos.requests.UpdateYearRequest
@@ -13,7 +13,7 @@ import java.util.*
 fun Route.studentEnrollmentRoutes(
     enrollmentService: StudentEnrollmentService
 ) {
-    route("api/v1/students/enrollments") {
+    route("api/v1/students/enrollment") {
         // Enroll in a programme
         post {
 
