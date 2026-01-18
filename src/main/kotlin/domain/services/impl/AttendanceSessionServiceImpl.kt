@@ -8,7 +8,7 @@ import api.dtos.response.ProgrammeInfoResponse
 import api.dtos.response.SessionInfo
 import com.amos_tech_code.domain.dtos.response.SessionResponse
 import api.dtos.response.VerifyAttendanceResponse
-import com.amos_tech_code.data.repository.StudentEnrollmentRepository
+import data.repository.StudentEnrollmentRepository
 import domain.models.AttendanceSessionStatus
 import domain.models.AttendanceSessionType
 import com.amos_tech_code.domain.models.CreateSessionData

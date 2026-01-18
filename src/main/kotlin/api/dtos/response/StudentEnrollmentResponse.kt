@@ -1,12 +1,14 @@
-package com.amos_tech_code.domain.dtos.response
+package api.dtos.response
 
+import com.amos_tech_code.domain.dtos.response.AcademicTermResponse
+import com.amos_tech_code.domain.dtos.response.ProgrammeResponse
+import com.amos_tech_code.domain.dtos.response.UniversityResponse
 import kotlinx.serialization.Serializable
 import kotlin.Boolean
 
 @Serializable
 data class StudentEnrollmentResponse(
     val enrollmentId: String,
-    val studentId: String,
     val registrationNumber: String,
     val fullName: String,
     val university: UniversityResponse,

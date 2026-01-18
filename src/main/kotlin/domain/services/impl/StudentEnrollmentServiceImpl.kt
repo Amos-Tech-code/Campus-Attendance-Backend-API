@@ -1,8 +1,8 @@
 package domain.services.impl
 
-import com.amos_tech_code.data.repository.StudentEnrollmentRepository
+import api.dtos.response.StudentEnrollmentResponse
+import data.repository.StudentEnrollmentRepository
 import com.amos_tech_code.domain.dtos.requests.StudentEnrollmentRequest
-import com.amos_tech_code.domain.dtos.response.*
 import com.amos_tech_code.services.StudentEnrollmentService
 import com.amos_tech_code.utils.AppException
 import com.amos_tech_code.utils.InternalServerException
