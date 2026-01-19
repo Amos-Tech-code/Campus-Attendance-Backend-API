@@ -1,6 +1,7 @@
 package com.amos_tech_code.domain.services.impl
 
 import com.amos_tech_code.api.dtos.requests.RemoveAttendanceRequest
+import com.amos_tech_code.api.dtos.response.StudentAttendanceHistoryResponse
 import com.amos_tech_code.data.repository.AttendanceRecordRepository
 import com.amos_tech_code.domain.services.AttendanceManagementService
 import com.amos_tech_code.utils.*
@@ -43,6 +44,37 @@ class AttendanceManagementServiceImpl(
                 else -> throw InternalServerException("Failed to remove attendance record")
             }
         }
+    }
+
+    override suspend fun getStudentAttendanceHistory(
+        studentId: UUID,
+        page: Int,
+        size: Int,
+        sortDesc: Boolean
+    ): StudentAttendanceHistoryResponse {
+
+        val offset = page * size
+
+        val records = attendanceRecordRepository
+            .fetchStudentAttendanceHistory(
+                studentId = studentId,
+                limit = size,
+                offset = offset,
+                sortDesc = sortDesc
+            )
+
+        val hasNext = attendanceRecordRepository
+            .hasNextStudentAttendanceHistory(
+                studentId = studentId,
+                offset = offset + size
+            )
+
+        return StudentAttendanceHistoryResponse(
+            page = page,
+            size = size,
+            hasNext = hasNext,
+            records = records
+        )
     }
 
     private fun RemoveAttendanceRequest.validate() {
