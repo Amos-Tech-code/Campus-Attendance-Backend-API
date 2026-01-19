@@ -1,5 +1,10 @@
 package com.amos_tech_code.api.dtos.response
 
+import domain.models.AttendanceMethod
+import domain.models.AttendanceSessionStatus
+import domain.models.AttendanceSessionType
+import kotlinx.serialization.Serializable
+
 @Serializable
 data class StudentAttendanceHistoryResponse(
     val page: Int,
