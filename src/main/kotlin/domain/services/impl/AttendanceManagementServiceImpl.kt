@@ -1,16 +1,20 @@
 package com.amos_tech_code.domain.services.impl
 
 import com.amos_tech_code.api.dtos.requests.RemoveAttendanceRequest
+import com.amos_tech_code.api.dtos.response.StudentAttendanceHistoryResponse
 import com.amos_tech_code.data.repository.AttendanceRecordRepository
 import com.amos_tech_code.domain.services.AttendanceManagementService
 import com.amos_tech_code.utils.*
 import data.repository.AttendanceSessionRepository
+import org.slf4j.LoggerFactory
 import java.util.*
 
 class AttendanceManagementServiceImpl(
     private val attendanceSessionRepository: AttendanceSessionRepository,
     private val attendanceRecordRepository: AttendanceRecordRepository
 ) : AttendanceManagementService {
+
+    private val logger = LoggerFactory.getLogger(AttendanceManagementServiceImpl::class.java)
 
     override suspend fun removeStudentAttendance(
         lecturerId: UUID,
@@ -38,9 +42,49 @@ class AttendanceManagementServiceImpl(
             attendanceRecordRepository.deleteById(attendanceId)
 
         } catch (ex: Exception) {
+            logger.error("Failed to remove attendance record", ex)
             when (ex) {
                 is AppException -> throw ex
                 else -> throw InternalServerException("Failed to remove attendance record")
+            }
+        }
+    }
+
+    override suspend fun getStudentAttendanceHistory(
+        studentId: UUID,
+        page: Int,
+        size: Int,
+        sortDesc: Boolean
+    ): StudentAttendanceHistoryResponse {
+
+        try {
+            val offset = page * size
+
+            val records = attendanceRecordRepository
+                .fetchStudentAttendanceHistory(
+                    studentId = studentId,
+                    limit = size,
+                    offset = offset,
+                    sortDesc = sortDesc
+                )
+
+            val hasNext = attendanceRecordRepository
+                .hasNextStudentAttendanceHistory(
+                    studentId = studentId,
+                    offset = offset + size
+                )
+
+            return StudentAttendanceHistoryResponse(
+                page = page,
+                size = size,
+                hasNext = hasNext,
+                records = records
+            )
+        } catch (ex: Exception) {
+            logger.error("Failed to fetch student attendance record", ex)
+            when (ex) {
+                is AppException -> throw ex
+                else -> throw InternalServerException("Failed to fetch attendance record")
             }
         }
     }
