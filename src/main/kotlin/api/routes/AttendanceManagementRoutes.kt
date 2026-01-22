@@ -18,9 +18,9 @@ import io.ktor.server.routing.route
 fun Route.attendanceManagementRoutes(
     attendanceManagementService: AttendanceManagementService
 ) {
-    route("api/v1/attendance-manage") {
+    route("api/v1/attendance-manage/record") {
 
-        delete("/record") {
+        delete {
             val lecturerId = call.getUserIdFromJWT() ?: return@delete call.respondBadRequest("Lecturer ID is required")
             if (call.getUserRoleFromJWT()?.uppercase() != UserRole.LECTURER.name) return@delete call.respondForbidden()
 
