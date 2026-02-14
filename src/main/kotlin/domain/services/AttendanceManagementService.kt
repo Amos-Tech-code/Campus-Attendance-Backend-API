@@ -1,6 +1,7 @@
 package com.amos_tech_code.domain.services
 
 import com.amos_tech_code.api.dtos.requests.RemoveAttendanceRequest
+import com.amos_tech_code.api.dtos.response.AttendanceStatsResponse
 import com.amos_tech_code.api.dtos.response.StudentAttendanceHistoryResponse
 import java.util.UUID
 
@@ -17,4 +18,8 @@ interface AttendanceManagementService {
         size: Int,
         sortDesc: Boolean
     ): StudentAttendanceHistoryResponse
+
+    suspend fun getStudentAttendanceStats(
+        studentId: UUID
+    ): AttendanceStatsResponse
 }

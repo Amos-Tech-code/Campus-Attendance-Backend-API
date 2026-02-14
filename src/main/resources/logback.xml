@@ -14,4 +14,7 @@
     <!-- Suppress HikariCP logs -->
     <logger name="com.zaxxer.hikari" level="WARN" />
 
+    <!-- Suppress Ktor routing trace logs -->
+    <logger name="io.ktor.server.routing.Routing" level="INFO" />
+
 </configuration>

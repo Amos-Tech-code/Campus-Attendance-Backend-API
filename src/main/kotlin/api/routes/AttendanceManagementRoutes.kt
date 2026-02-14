@@ -55,5 +55,15 @@ fun Route.attendanceManagementRoutes(
 
         }
 
+        get("students/stats") {
+
+            val studentId = call.getUserIdFromJWT() ?: return@get call.respondForbidden()
+            if(call.getUserRoleFromJWT() != UserRole.STUDENT.name) return@get call.respondForbidden()
+
+            val response = attendanceManagementService.getStudentAttendanceStats(studentId)
+
+            call.respond(HttpStatusCode.OK, response)
+        }
+
     }
 }

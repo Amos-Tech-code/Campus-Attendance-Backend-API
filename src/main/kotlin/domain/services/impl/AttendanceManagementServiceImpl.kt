@@ -1,6 +1,7 @@
 package com.amos_tech_code.domain.services.impl
 
 import com.amos_tech_code.api.dtos.requests.RemoveAttendanceRequest
+import com.amos_tech_code.api.dtos.response.AttendanceStatsResponse
 import com.amos_tech_code.api.dtos.response.StudentAttendanceHistoryResponse
 import com.amos_tech_code.data.repository.AttendanceRecordRepository
 import com.amos_tech_code.domain.services.AttendanceManagementService
@@ -11,7 +12,7 @@ import java.util.*
 
 class AttendanceManagementServiceImpl(
     private val attendanceSessionRepository: AttendanceSessionRepository,
-    private val attendanceRecordRepository: AttendanceRecordRepository
+    private val attendanceRecordRepository: AttendanceRecordRepository,
 ) : AttendanceManagementService {
 
     private val logger = LoggerFactory.getLogger(AttendanceManagementServiceImpl::class.java)
@@ -85,6 +86,20 @@ class AttendanceManagementServiceImpl(
             when (ex) {
                 is AppException -> throw ex
                 else -> throw InternalServerException("Failed to fetch attendance record")
+            }
+        }
+    }
+
+    override suspend fun getStudentAttendanceStats(studentId: UUID): AttendanceStatsResponse {
+        try {
+
+            return attendanceRecordRepository.getStudentAttendanceStats(studentId)
+
+        } catch (ex: Exception) {
+            logger.error("Failed to fetch attendance stats", ex)
+            when (ex) {
+                is AppException -> throw ex
+                else -> throw InternalServerException("Failed to fetch attendance stats")
             }
         }
     }
