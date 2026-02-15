@@ -1,5 +1,6 @@
 package di
 
+import com.amos_tech_code.data.repository.AttendanceExportRepository
 import com.amos_tech_code.data.repository.AttendanceRecordRepository
 import data.repository.AttendanceSessionRepository
 import com.amos_tech_code.data.repository.LecturerAcademicRepository
@@ -8,16 +9,22 @@ import data.repository.StudentEnrollmentRepository
 import com.amos_tech_code.data.repository.StudentRepository
 import com.amos_tech_code.domain.services.AccountService
 import com.amos_tech_code.domain.services.AttendanceEventBus
+import com.amos_tech_code.domain.services.AttendanceExportService
 import com.amos_tech_code.domain.services.AttendanceManagementService
 import com.amos_tech_code.services.MarkAttendanceService
 import domain.services.AttendanceSessionService
 import com.amos_tech_code.services.AuthService
-import com.amos_tech_code.services.CloudStorageService
+import com.amos_tech_code.domain.services.CloudStorageService
+import com.amos_tech_code.domain.services.CsvGeneratorService
 import com.amos_tech_code.services.GoogleAuthService
 import com.amos_tech_code.services.LecturerAcademicService
 import com.amos_tech_code.domain.services.LiveAttendanceService
+import com.amos_tech_code.domain.services.PdfGeneratorService
 import com.amos_tech_code.domain.services.impl.AccountServiceImpl
+import com.amos_tech_code.domain.services.impl.AttendanceExportServiceImpl
 import com.amos_tech_code.domain.services.impl.AttendanceManagementServiceImpl
+import com.amos_tech_code.domain.services.impl.CsvGeneratorServiceImpl
+import com.amos_tech_code.domain.services.impl.PdfGeneratorServiceImpl
 import domain.services.impl.AttendanceEventBusImpl
 import com.amos_tech_code.services.QRCodeService
 import com.amos_tech_code.services.SessionCodeGenerator
@@ -45,9 +52,10 @@ val appModule = module {
 
     single { BackgroundTaskScope() }
 
-    /**
-     * Services
-     */
+    /*-----------------------------------------
+       SERVICES
+    ------------------------------------------*/
+
     single<GoogleAuthService> { GoogleAuthServiceImpl(get()) }
 
     single<AuthService> {
@@ -86,9 +94,17 @@ val appModule = module {
 
     single<AttendanceManagementService> { AttendanceManagementServiceImpl(get(), get()) }
 
-    /**
-     * Repositories
-     */
+    single<AttendanceExportService> { AttendanceExportServiceImpl(get(), get(), get(), get()) }
+
+    single<PdfGeneratorService> { PdfGeneratorServiceImpl() }
+
+    single<CsvGeneratorService> { CsvGeneratorServiceImpl() }
+
+
+
+    /*-----------------------------------------
+          REPOSITORY
+     ------------------------------------------*/
 
     single { StudentRepository() }
 
@@ -101,5 +117,7 @@ val appModule = module {
     single { StudentEnrollmentRepository() }
 
     single { AttendanceRecordRepository() }
+
+    single { AttendanceExportRepository() }
 
 }

@@ -6,7 +6,6 @@ import domain.models.AttendanceMethod
 import java.time.LocalDateTime
 import java.util.UUID
 
-// Data classes for the enhanced functionality
 data class AttendanceSession(
     val id: UUID,
     val sessionCode: String,

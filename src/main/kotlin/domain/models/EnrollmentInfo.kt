@@ -8,7 +8,6 @@ data class TeachingAssignmentInfo(
     val lecturerId: UUID
 )
 
-// Helper data classes
 data class ExistingEnrollment(
     val id: UUID,
     val isActive: Boolean

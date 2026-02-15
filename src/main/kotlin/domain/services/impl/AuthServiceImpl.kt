@@ -37,7 +37,7 @@ class AuthServiceImpl(
      */
     override suspend fun mockAuthenticateLecturerWithGoogle(idToken: String): LecturerAuthResponse {
         try {
-            val DEFAULT_LECTURER_EMAIL = "lecturer@example.com"
+            val DEFAULT_LECTURER_EMAIL = "amosk5132@gmail.com"
 
             if (idToken.isBlank()) throw ValidationException("Google id token is required.")
 
