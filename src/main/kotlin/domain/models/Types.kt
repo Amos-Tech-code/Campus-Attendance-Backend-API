@@ -12,7 +12,7 @@ enum class AttendanceMethod {
 }
 
 enum class AttendanceSessionStatus {
-    SCHEDULED, ACTIVE, ENDED, CANCELLED, EXPIRED
+    SCHEDULED, ACTIVE, ENDED, CANCELLED
 }
 
 enum class FlagType {
@@ -36,4 +36,7 @@ enum class LiveAttendanceEventType {
     INITIAL_STATE, ATTENDANCE_MARKED
 }
 
+enum class ExportFormat {
+    PDF, CSV
+}
 

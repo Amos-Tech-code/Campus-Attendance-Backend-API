@@ -1,13 +1,14 @@
 package domain.services.impl
 
 import com.amos_tech_code.config.AppConfig
-import com.amos_tech_code.services.CloudStorageService
+import com.amos_tech_code.domain.services.CloudStorageService
 import com.amos_tech_code.utils.InternalServerException
 import com.cloudinary.Cloudinary
 import com.cloudinary.utils.ObjectUtils
+import domain.models.ExportFormat
 import org.slf4j.LoggerFactory
 
-class CloudStorageServiceImpl() : CloudStorageService {
+class CloudStorageServiceImpl : CloudStorageService {
 
     private val logger = LoggerFactory.getLogger(CloudStorageServiceImpl::class.java)
 
@@ -92,11 +93,65 @@ class CloudStorageServiceImpl() : CloudStorageService {
         }
     }
 
+    override suspend fun uploadAttendanceReport(
+        fileBytes: ByteArray,
+        fileName: String,
+        format: ExportFormat
+    ): String {
+        validateFileInput(fileBytes, fileName, format)
+
+        return try {
+            logger.debug("Uploading attendance report to Cloudinary: $fileName (${fileBytes.size} bytes)")
+
+            val resourceType = if (format == ExportFormat.PDF) "raw" else "raw"
+            val folder = when (format) {
+                ExportFormat.PDF -> "attendance_reports/pdf"
+                ExportFormat.CSV -> "attendance_reports/csv"
+            }
+
+            val uploadResult = cloudinary.uploader().upload(
+                fileBytes,
+                ObjectUtils.asMap(
+                    "public_id", getFileId(fileName),
+                    "folder", folder,
+                    "type", "upload",
+                    "overwrite", false,
+                    "invalidate", true
+                )
+            )
+
+            val secureUrl = uploadResult["secure_url"] as? String
+                ?: throw InternalServerException("Cloudinary did not return secure URL")
+
+            logger.info("Attendance report uploaded successfully: $secureUrl")
+            secureUrl
+
+        } catch (e: Exception) {
+            logger.error("Failed to upload attendance report to Cloudinary: ${e.message}")
+            throw InternalServerException("Failed to upload attendance report.")
+        }
+    }
+
+    private fun validateFileInput(fileBytes: ByteArray, fileName: String, format: ExportFormat) {
+        if (fileBytes.isEmpty()) {
+            throw IllegalArgumentException("File bytes cannot be empty")
+        }
+        if (fileBytes.size > 50 * 1024 * 1024) { // 50MB limit for reports
+            throw IllegalArgumentException("File size too large: ${fileBytes.size} bytes")
+        }
+        if (fileName.isBlank()) {
+            throw IllegalArgumentException("File name cannot be blank")
+        }
+        val expectedExtension = ".${format.name.lowercase()}"
+        if (!fileName.endsWith(expectedExtension, ignoreCase = true)) {
+            throw IllegalArgumentException("File name must end with $expectedExtension")
+        }
+    }
 
     /**
      * Check if a file exists in Cloudinary
      */
-    suspend fun checkFileExists(fileUrl: String): Boolean {
+    fun checkFileExists(fileUrl: String): Boolean {
         if (fileUrl.isBlank()) return false
 
         return try {
@@ -113,7 +168,7 @@ class CloudStorageServiceImpl() : CloudStorageService {
     /**
      * Clean up old QR codes (useful for maintenance)
      */
-    suspend fun cleanupOldQRCodes(daysOld: Int = 30): Int {
+    fun cleanupOldQRCodes(daysOld: Int = 30): Int {
         return try {
             logger.info("Cleaning up QR codes older than $daysOld days")
 
@@ -127,6 +182,7 @@ class CloudStorageServiceImpl() : CloudStorageService {
         }
     }
 
+    // Helper Functions
     private fun validateInput(imageBytes: ByteArray, fileName: String) {
         if (imageBytes.isEmpty()) {
             throw IllegalArgumentException("Image bytes cannot be empty")

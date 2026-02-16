@@ -125,6 +125,11 @@ object AttendanceExportsTable : Table("attendance_exports") {
     val fileSize = long("file_size")
     val fileName = varchar("file_name", 255)
 
+    val unitName = varchar("unit_name", 255)
+    val unitCode = varchar("unit_code", 255)
+    val programmeName = varchar("programme_name", 255)
+    val academicTermName = varchar("academic_term_name", 255)
+
     val createdAt = datetime("created_at").clientDefault { now() }
     val expiresAt = datetime("expires_at").nullable() // Auto-cleanup
 

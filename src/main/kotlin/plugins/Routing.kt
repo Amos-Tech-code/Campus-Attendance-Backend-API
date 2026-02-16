@@ -10,6 +10,7 @@ import com.amos_tech_code.domain.services.AccountService
 import com.amos_tech_code.domain.services.AttendanceManagementService
 import com.amos_tech_code.routes.lecturerAcademicSetupRoutes
 import api.routes.studentEnrollmentRoutes
+import com.amos_tech_code.domain.services.AttendanceExportService
 import domain.services.AttendanceSessionService
 import com.amos_tech_code.services.AuthService
 import com.amos_tech_code.services.LecturerAcademicService
@@ -34,6 +35,7 @@ fun Application.configureRouting() {
     val liveAttendanceService by inject<LiveAttendanceService>()
     val attendanceManagementService by inject<AttendanceManagementService>()
     val accountService by inject<AccountService>()
+    val attendanceExportService by inject<AttendanceExportService>()
 
     routing {
 
@@ -62,7 +64,10 @@ fun Application.configureRouting() {
                 liveAttendanceService
             )
 
-            attendanceManagementRoutes(attendanceManagementService)
+            attendanceManagementRoutes(
+                attendanceManagementService,
+                attendanceExportService
+            )
 
             studentEnrollmentRoutes(studentEnrollmentService)
 

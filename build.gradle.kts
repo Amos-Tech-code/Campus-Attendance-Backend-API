@@ -50,6 +50,8 @@ dependencies {
     // Ktor client
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.cio)
+    // SSE
+    implementation("io.ktor:ktor-server-sse:3.3.0")
     // Jackson JSON serialization
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
     // QR Code generation
@@ -57,10 +59,10 @@ dependencies {
     implementation("com.google.zxing:javase:3.5.1")
     // Cloudinary SDK
     implementation("com.cloudinary:cloudinary-http44:1.36.0")
-    // Websockets
-    implementation("io.ktor:ktor-server-websockets:3.3.0")
-    // SSE
-    implementation("io.ktor:ktor-server-sse:3.3.0")
+    // PDF Generation
+    implementation("com.itextpdf:itext7-core:7.2.5")
+    // CSV Generation
+    implementation("com.opencsv:opencsv:5.8")
 
 }
 

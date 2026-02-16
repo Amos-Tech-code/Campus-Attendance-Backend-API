@@ -383,12 +383,12 @@ class AttendanceSessionRepository() {
             ?: throw NotFoundException("No active academic term for university")
     }
 
-    suspend fun autoExpireSessions() = exposedTransaction {
+    suspend fun autoEndSessions() = exposedTransaction {
         AttendanceSessionsTable.update({
             (AttendanceSessionsTable.status eq AttendanceSessionStatus.ACTIVE) and
                     (AttendanceSessionsTable.scheduledEndTime lessEq LocalDateTime.now())
         }) {
-            it[status] = AttendanceSessionStatus.EXPIRED
+            it[status] = AttendanceSessionStatus.ENDED
         }
     }
 
@@ -482,7 +482,7 @@ class AttendanceSessionRepository() {
         attendanceMethod: AttendanceMethod,
         isSuspicious: Boolean,
         suspiciousReason: String?
-    ): AttendanceRecord = exposedTransaction {
+    ): StudentAttendanceRecordInfo = exposedTransaction {
 
         val attendanceId = UUID.randomUUID()
         val attendedAt = LocalDateTime.now()
@@ -504,7 +504,7 @@ class AttendanceSessionRepository() {
             it[AttendanceRecordsTable.attendedAt] = attendedAt
         }
 
-        AttendanceRecord(
+        StudentAttendanceRecordInfo(
             id = attendanceId,
             attendedAt = attendedAt,
             isSuspicious = isSuspicious,
