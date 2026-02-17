@@ -96,6 +96,7 @@ class AttendanceExportServiceImpl(
                     yearOfStudy = request.yearOfStudy,
                     semester = request.semester,
                     universityName = unitWithDetails.universityName,
+                    schoolName = "",
                     departmentName = unitWithDetails.departmentName
                 )
                 ExportFormat.CSV -> csvGeneratorService.generateAttendanceReportCsv(
@@ -108,6 +109,7 @@ class AttendanceExportServiceImpl(
                     yearOfStudy = request.yearOfStudy,
                     semester = request.semester,
                     universityName = unitWithDetails.universityName,
+                    schoolName = "",
                     departmentName = unitWithDetails.departmentName
                 )
             }
@@ -116,13 +118,18 @@ class AttendanceExportServiceImpl(
             val timestamp = LocalDateTime.now().format(dateFormatter)
             val fileName = "attendance_${unitWithDetails.unitCode}_${request.weekRange.replace("-", "_")}_$timestamp.${request.exportFormat.name.lowercase()}"
 
-            // Upload to Cloudinary
+            // Upload to Cloudinary based on format
             val fileUrl = withContext(Dispatchers.IO) {
-                cloudStorage.uploadAttendanceReport(
-                    fileBytes = fileBytes,
-                    fileName = fileName,
-                    format = request.exportFormat
-                )
+                when (request.exportFormat) {
+                    ExportFormat.PDF -> cloudStorage.uploadPdfReport(
+                        fileBytes = fileBytes,
+                        fileName = fileName
+                    )
+                    ExportFormat.CSV -> cloudStorage.uploadCsvReport(
+                        fileBytes = fileBytes,
+                        fileName = fileName
+                    )
+                }
             }
 
             // Save export record

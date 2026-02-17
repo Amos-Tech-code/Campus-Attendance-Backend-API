@@ -40,7 +40,7 @@ class AttendanceExportRepository {
             ?: return@exposedTransaction emptyList()
 
         // Get all sessions for this teaching assignment within week range
-        val sessions = AttendanceSessionsTable
+        val allSessions = AttendanceSessionsTable
             .selectAll()
             .where {
                 (AttendanceSessionsTable.lecturerId eq teachingAssignment.lecturerId) and
@@ -66,7 +66,12 @@ class AttendanceExportRepository {
                 )
             }
 
-        if (sessions.isEmpty()) return@exposedTransaction emptyList()
+        if (allSessions.isEmpty()) return@exposedTransaction emptyList()
+
+        // Separate sessions by type
+        val regularSessions = allSessions.filter { it.sessionType == AttendanceSessionType.REGULAR }
+        val specialSessions = allSessions.filter { it.sessionType == AttendanceSessionType.SPECIAL }
+        val makeupSessions = allSessions.filter { it.sessionType == AttendanceSessionType.MAKEUP }
 
         // Get all enrolled students for this programme and year of study
         val students = StudentEnrollmentsTable
@@ -94,11 +99,14 @@ class AttendanceExportRepository {
 
         if (students.isEmpty()) return@exposedTransaction emptyList()
 
+        // Get all session IDs
+        val allSessionIds = allSessions.map { it.sessionId }
+
         // Get attendance records for these sessions and students
         val attendanceRecords = AttendanceRecordsTable
             .selectAll()
             .where {
-                (AttendanceRecordsTable.sessionId inList sessions.map { it.sessionId }) and
+                (AttendanceRecordsTable.sessionId inList allSessionIds) and
                         (AttendanceRecordsTable.studentId inList students.map { it.studentId })
             }
             .map { row ->
@@ -110,9 +118,13 @@ class AttendanceExportRepository {
             }
             .groupBy { it.sessionId }
 
-        // Build the report data
+        // Create a map of session ID to its type for quick lookup
+        val sessionTypeMap = allSessions.associate { it.sessionId to it.sessionType }
+
+        // Build the enhanced report data with session type information
         students.map { student ->
-            val weeklyAttendance = sessions.map { session ->
+            // Group attendance by session type
+            val regularAttendance = regularSessions.map { session ->
                 val attended = attendanceRecords[session.sessionId]
                     ?.any { it.studentId == student.studentId } ?: false
                 WeeklyAttendanceData(
@@ -121,19 +133,67 @@ class AttendanceExportRepository {
                     attended = attended,
                     attendedAt = attendanceRecords[session.sessionId]
                         ?.find { it.studentId == student.studentId }
-                        ?.attendedAt
+                        ?.attendedAt,
+                    sessionType = AttendanceSessionType.REGULAR
                 )
             }
+
+            val specialAttendance = specialSessions.map { session ->
+                val attended = attendanceRecords[session.sessionId]
+                    ?.any { it.studentId == student.studentId } ?: false
+                WeeklyAttendanceData(
+                    weekNumber = session.weekNumber,
+                    sessionNumber = session.sessionNumber,
+                    attended = attended,
+                    attendedAt = attendanceRecords[session.sessionId]
+                        ?.find { it.studentId == student.studentId }
+                        ?.attendedAt,
+                    sessionType = AttendanceSessionType.SPECIAL
+                )
+            }
+
+            val makeupAttendance = makeupSessions.map { session ->
+                val attended = attendanceRecords[session.sessionId]
+                    ?.any { it.studentId == student.studentId } ?: false
+                WeeklyAttendanceData(
+                    weekNumber = session.weekNumber,
+                    sessionNumber = session.sessionNumber,
+                    attended = attended,
+                    attendedAt = attendanceRecords[session.sessionId]
+                        ?.find { it.studentId == student.studentId }
+                        ?.attendedAt,
+                    sessionType = AttendanceSessionType.MAKEUP
+                )
+            }
+
+            // Combine all attendance records
+            val allAttendance = regularAttendance + specialAttendance + makeupAttendance
+
+            // Calculate totals by session type
+            val regularTotal = regularAttendance.count { it.attended }
+            val specialTotal = specialAttendance.count { it.attended }
+            val makeupTotal = makeupAttendance.count { it.attended }
+
+            // Overall attendance (all session types)
+            val totalAttended = allAttendance.count { it.attended }
+            val totalSessions = allSessions.size
+            val attendancePercentage = if (totalSessions > 0)
+                (totalAttended * 100.0 / totalSessions) else 0.0
 
             AttendanceReportData(
                 studentId = student.studentId,
                 regNo = student.regNo,
                 fullName = student.fullName,
-                weeklyAttendance = weeklyAttendance,
-                totalSessions = sessions.size,
-                attendedSessions = weeklyAttendance.count { it.attended },
-                attendancePercentage = if (sessions.isNotEmpty())
-                    (weeklyAttendance.count { it.attended } * 100.0 / sessions.size) else 0.0
+                weeklyAttendance = allAttendance,
+                regularAttendance = regularAttendance,
+                specialAttendance = specialAttendance,
+                makeupAttendance = makeupAttendance,
+                regularTotal = regularTotal,
+                specialTotal = specialTotal,
+                makeupTotal = makeupTotal,
+                totalSessions = totalSessions,
+                attendedSessions = totalAttended,
+                attendancePercentage = attendancePercentage
             )
         }
     }

@@ -5,7 +5,6 @@ import com.amos_tech_code.domain.services.CloudStorageService
 import com.amos_tech_code.utils.InternalServerException
 import com.cloudinary.Cloudinary
 import com.cloudinary.utils.ObjectUtils
-import domain.models.ExportFormat
 import org.slf4j.LoggerFactory
 
 class CloudStorageServiceImpl : CloudStorageService {
@@ -26,7 +25,7 @@ class CloudStorageServiceImpl : CloudStorageService {
     }
 
     override suspend fun uploadQRCode(imageBytes: ByteArray, fileName: String): String {
-        validateInput(imageBytes, fileName)
+        validateImageInput(imageBytes, fileName)
 
         return try {
             logger.debug("Uploading QR code to Cloudinary: $fileName (${imageBytes.size} bytes)")
@@ -93,58 +92,88 @@ class CloudStorageServiceImpl : CloudStorageService {
         }
     }
 
-    override suspend fun uploadAttendanceReport(
-        fileBytes: ByteArray,
-        fileName: String,
-        format: ExportFormat
-    ): String {
-        validateFileInput(fileBytes, fileName, format)
+    override suspend fun uploadPdfReport(fileBytes: ByteArray, fileName: String): String {
+        validateFileInput(fileBytes, fileName, "pdf")
 
         return try {
-            logger.debug("Uploading attendance report to Cloudinary: $fileName (${fileBytes.size} bytes)")
+            logger.debug("Uploading PDF report to Cloudinary: $fileName (${fileBytes.size} bytes)")
 
-            val resourceType = if (format == ExportFormat.PDF) "raw" else "raw"
-            val folder = when (format) {
-                ExportFormat.PDF -> "attendance_reports/pdf"
-                ExportFormat.CSV -> "attendance_reports/csv"
-            }
+            val baseName = fileName.substringBeforeLast(".")
 
             val uploadResult = cloudinary.uploader().upload(
                 fileBytes,
                 ObjectUtils.asMap(
-                    "public_id", getFileId(fileName),
-                    "folder", folder,
-                    "type", "upload",
+                    "public_id", baseName,
+                    "folder", "attendance_reports/pdf",
+                    "resource_type", "image",  // PDFs work best as image type
+                    "type", "upload",          // Public access
+                    "format", "pdf",           // Explicit format
                     "overwrite", false,
                     "invalidate", true
                 )
             )
 
-            val secureUrl = uploadResult["secure_url"] as? String
-                ?: throw InternalServerException("Cloudinary did not return secure URL")
+            // Construct public URL with proper format
+            val cloudName = AppConfig.CLOUD_NAME
+            val publicId = uploadResult["public_id"] as? String ?: "attendance_reports/pdf/$baseName"
+            val finalUrl = "https://res.cloudinary.com/$cloudName/image/upload/$publicId.pdf"
 
-            logger.info("Attendance report uploaded successfully: $secureUrl")
-            secureUrl
+            logger.info("PDF report uploaded successfully: $finalUrl")
+            finalUrl
 
         } catch (e: Exception) {
-            logger.error("Failed to upload attendance report to Cloudinary: ${e.message}")
-            throw InternalServerException("Failed to upload attendance report.")
+            logger.error("Failed to upload PDF report to Cloudinary: ${e.message}")
+            throw InternalServerException("Failed to upload PDF report.")
         }
     }
 
-    private fun validateFileInput(fileBytes: ByteArray, fileName: String, format: ExportFormat) {
+    override suspend fun uploadCsvReport(fileBytes: ByteArray, fileName: String): String {
+        validateFileInput(fileBytes, fileName, "csv")
+
+        return try {
+            logger.debug("Uploading CSV report to Cloudinary: $fileName (${fileBytes.size} bytes)")
+
+            val baseName = fileName.substringBeforeLast(".")
+
+            val uploadResult = cloudinary.uploader().upload(
+                fileBytes,
+                ObjectUtils.asMap(
+                    "public_id", baseName,
+                    "folder", "attendance_reports/csv",
+                    "resource_type", "raw",     // CSV as raw
+                    "type", "upload",            // Public access
+                    "format", "csv",             // Explicit format
+                    "overwrite", false,
+                    "invalidate", true
+                )
+            )
+
+            // Construct public URL with proper format
+            val cloudName = AppConfig.CLOUD_NAME
+            val publicId = uploadResult["public_id"] as? String ?: "attendance_reports/csv/$baseName"
+            val finalUrl = "https://res.cloudinary.com/$cloudName/raw/upload/$publicId"
+
+            logger.info("CSV report uploaded successfully: $finalUrl")
+            finalUrl
+
+        } catch (e: Exception) {
+            logger.error("Failed to upload CSV report to Cloudinary: ${e.message}")
+            throw InternalServerException("Failed to upload CSV report.")
+        }
+    }
+
+    private fun validateFileInput(fileBytes: ByteArray, fileName: String, expectedExtension: String) {
         if (fileBytes.isEmpty()) {
             throw IllegalArgumentException("File bytes cannot be empty")
         }
-        if (fileBytes.size > 50 * 1024 * 1024) { // 50MB limit for reports
+        if (fileBytes.size > 50 * 1024 * 1024) {
             throw IllegalArgumentException("File size too large: ${fileBytes.size} bytes")
         }
         if (fileName.isBlank()) {
             throw IllegalArgumentException("File name cannot be blank")
         }
-        val expectedExtension = ".${format.name.lowercase()}"
-        if (!fileName.endsWith(expectedExtension, ignoreCase = true)) {
-            throw IllegalArgumentException("File name must end with $expectedExtension")
+        if (!fileName.endsWith(".$expectedExtension", ignoreCase = true)) {
+            throw IllegalArgumentException("File name must end with .$expectedExtension")
         }
     }
 
@@ -183,7 +212,7 @@ class CloudStorageServiceImpl : CloudStorageService {
     }
 
     // Helper Functions
-    private fun validateInput(imageBytes: ByteArray, fileName: String) {
+    private fun validateImageInput(imageBytes: ByteArray, fileName: String) {
         if (imageBytes.isEmpty()) {
             throw IllegalArgumentException("Image bytes cannot be empty")
         }

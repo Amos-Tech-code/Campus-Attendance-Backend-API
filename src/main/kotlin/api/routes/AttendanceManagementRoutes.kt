@@ -10,8 +10,6 @@ import com.amos_tech_code.utils.respondBadRequest
 import com.amos_tech_code.utils.respondForbidden
 import domain.models.UserRole
 import io.ktor.http.HttpStatusCode
-import io.ktor.server.auth.jwt.JWTPrincipal
-import io.ktor.server.auth.principal
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route

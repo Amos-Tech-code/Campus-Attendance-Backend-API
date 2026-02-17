@@ -10,6 +10,12 @@ data class AttendanceReportData(
     val regNo: String,
     val fullName: String,
     val weeklyAttendance: List<WeeklyAttendanceData>,
+    val regularAttendance: List<WeeklyAttendanceData> = emptyList(),
+    val specialAttendance: List<WeeklyAttendanceData> = emptyList(),
+    val makeupAttendance: List<WeeklyAttendanceData> = emptyList(),
+    val regularTotal: Int = 0,
+    val specialTotal: Int = 0,
+    val makeupTotal: Int = 0,
     val totalSessions: Int,
     val attendedSessions: Int,
     val attendancePercentage: Double
@@ -19,9 +25,11 @@ data class WeeklyAttendanceData(
     val weekNumber: Int,
     val sessionNumber: Int,
     val attended: Boolean,
-    val attendedAt: LocalDateTime?
+    val attendedAt: LocalDateTime?,
+    val sessionType: AttendanceSessionType = AttendanceSessionType.REGULAR
 )
 
+// Rest of the models remain the same...
 data class SessionInfoData(
     val sessionId: UUID,
     val weekNumber: Int,
@@ -77,12 +85,10 @@ data class AttendanceExportRecord(
     val fileUrl: String,
     val fileSize: Long,
     val fileName: String,
-
     val unitName: String,
     val unitCode: String,
     val programmeName: String,
     val academicTermName: String,
-
     val createdAt: LocalDateTime,
     val expiresAt: LocalDateTime?
 )

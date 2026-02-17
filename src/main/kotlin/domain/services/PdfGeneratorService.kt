@@ -15,7 +15,7 @@ interface PdfGeneratorService {
         yearOfStudy: Int,
         semester: Int,
         universityName: String,
-        schoolName: String = "N/A",
+        schoolName: String,
         departmentName: String
     ): ByteArray
 

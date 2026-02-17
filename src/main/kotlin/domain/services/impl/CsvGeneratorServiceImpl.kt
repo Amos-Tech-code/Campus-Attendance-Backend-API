@@ -30,66 +30,100 @@ class CsvGeneratorServiceImpl : CsvGeneratorService {
         val writer = OutputStreamWriter(baos, StandardCharsets.UTF_8)
 
         try {
-            // Parse week range
             val (startWeek, endWeek) = parseWeekRange(weekRange)
             val weeks = (startWeek..endWeek).toList()
 
+            // Calculate total possible special and makeup sessions from the data
+            val totalSpecialSessions = reportData.firstOrNull()?.specialAttendance?.size ?: 0
+            val totalMakeupSessions = reportData.firstOrNull()?.makeupAttendance?.size ?: 0
+
             withContext(Dispatchers.IO) {
-                // Write institution header as comments
-                writer.write("# ${universityName.uppercase()}\n")
-                writer.write("# ${schoolName.uppercase()}\n")
-                writer.write("# ${departmentName.uppercase()}\n")
-                writer.write("#\n")
-
-                // Write course details
-                val semesterText = when (semester) {
-                    1 -> "SEMESTER 1"
-                    2 -> "SEMESTER 2"
-                    else -> "SEMESTER $semester"
-                }
-                writer.write("# $programmeName YEAR $yearOfStudy $academicTerm : $unitCode : $unitName\n")
-                writer.write("# $semesterText $academicTerm\n")
-                writer.write("# WEEKS $startWeek-$endWeek\n")
-                writer.write("# Generated: ${java.time.LocalDateTime.now()}\n")
-                writer.write("#\n")
-
-                // Write CSV headers
-                writer.write("NOS,REG NO,NAMES,Regular Class,Makeup Class")
+                // Write header row 1 - Column labels (matching PDF)
+                writer.write("NO,REG NO,NAME,SP,MK")
                 weeks.forEach { week ->
-                    writer.write(",WK$week")
+                    writer.write(",W$week")
                 }
                 writer.write(",% ATTE\n")
 
-                // Write ONLY actual student data - NO empty rows
+                // Write header row 2 - Totals in parentheses (matching PDF second header row)
+                writer.write(",,,") // Empty for first 3 columns
+                writer.write("($totalSpecialSessions),($totalMakeupSessions)") // SP and MK totals
+                weeks.forEach { _ ->
+                    writer.write(",") // Empty for week columns
+                }
+                writer.write("\n") // Empty for % ATTE column
+
+                // Write student data
                 if (reportData.isNotEmpty()) {
                     reportData.forEachIndexed { index, student ->
-                        // Create map for quick lookup
-                        val attendanceMap = student.weeklyAttendance.associateBy { it.weekNumber }
+                        val regularAttendanceMap = student.regularAttendance.associateBy { it.weekNumber }
 
                         writer.write("${index + 1},")
                         writer.write("\"${student.regNo}\",")
                         writer.write("\"${student.fullName}\",")
-                        writer.write(",") // Regular Class (empty)
-                        writer.write(",") // Makeup Class (empty)
+                        writer.write("${student.specialTotal},")  // SP count
+                        writer.write("${student.makeupTotal},")   // MK count
 
                         weeks.forEach { week ->
-                            val attended = attendanceMap[week]?.attended == true
-                            writer.write(",${if (attended) "✓" else ""}")
+                            val attended = regularAttendanceMap[week]?.attended == true
+                            writer.write("${if (attended) "✓" else ""},")
                         }
 
-                        writer.write(",${String.format("%.1f", student.attendancePercentage)}%\n")
+                        writer.write("${String.format("%.0f", student.attendancePercentage)}%\n")
                     }
-                } else {
-                    // If no students, add a comment
-                    writer.write("# No students enrolled for this unit\n")
                 }
 
-                // Add signature section as comments
-                writer.write("\n# SIGNATURE SECTION\n")
-                writer.write("# CLASS REP NAME: , SIGN: \n")
-                writer.write("# LECTURERS NAME: , SIGN: \n")
-                writer.write("# COD NAME: , SIGN: \n")
-                writer.write("# DATE: \n")
+                // Add empty row as separator (optional, can remove if you want continuous)
+                writer.write("\n")
+
+                // ===== SIGNATURE SECTION (matching PDF structure) =====
+
+                // CLASS REP row - First two columns merged conceptually for "CLASS REP NAME:"
+                writer.write("CLASS REP NAME:,")  // First column
+                writer.write(",")                  // Second column (empty for writing name)
+                writer.write("SIGN:,")             // Third column
+                writer.write(",")                   // SP signature
+                writer.write(",")                   // MK signature
+                weeks.forEach { _ ->
+                    writer.write(",")               // Week signatures
+                }
+                writer.write("\n")                   // % ATTE column
+
+                // LECTURER row
+                writer.write("LECTURER NAME:,")
+                writer.write(",")
+                writer.write("SIGN:,")
+                writer.write(",")
+                writer.write(",")
+                weeks.forEach { _ ->
+                    writer.write(",")
+                }
+                writer.write("\n")
+
+                // COD row
+                writer.write("COD NAME:,")
+                writer.write(",")
+                writer.write("SIGN:,")
+                writer.write(",")
+                writer.write(",")
+                weeks.forEach { _ ->
+                    writer.write(",")
+                }
+                writer.write("\n")
+
+                // DATE row - DATE in column 3, spanning rest
+                writer.write(",")  // First column empty
+                writer.write(",")  // Second column empty
+                writer.write("DATE,")  // Third column - DATE label
+                // Date field spanning remaining columns
+                writer.write("____________________")
+                weeks.forEach { _ ->
+                    writer.write(",")
+                }
+                writer.write("\n")
+
+                // Note at the bottom (without quotes, matching PDF)
+                writer.write("SP = Special Class Sessions, MK = Makeup Class Sessions\n")
 
                 writer.flush()
             }
@@ -104,7 +138,7 @@ class CsvGeneratorServiceImpl : CsvGeneratorService {
 
     private fun parseWeekRange(weekRange: String): Pair<Int, Int> {
         return if (weekRange.equals("ALL", ignoreCase = true)) {
-            1 to 13 // Default to 13 weeks for a semester
+            1 to 13
         } else {
             val parts = weekRange.split("-")
             require(parts.size == 2) { "Invalid week range format. Use 'start-end' or 'ALL'" }
