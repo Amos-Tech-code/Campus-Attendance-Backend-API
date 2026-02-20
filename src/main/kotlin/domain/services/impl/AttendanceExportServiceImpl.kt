@@ -155,6 +155,7 @@ class AttendanceExportServiceImpl(
                 fileUrl = fileUrl,
                 fileName = fileName,
                 fileSize = fileBytes.size.toLong(),
+                exportFormat = request.exportFormat,
                 expiresAt = LocalDateTime.now().plusDays(7).toString(),
                 message = "Attendance report generated successfully"
             )
