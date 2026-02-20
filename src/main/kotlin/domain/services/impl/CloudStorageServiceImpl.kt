@@ -105,7 +105,7 @@ class CloudStorageServiceImpl : CloudStorageService {
                 ObjectUtils.asMap(
                     "public_id", baseName,
                     "folder", "attendance_reports/pdf",
-                    "resource_type", "image",  // PDFs work best as image type
+                    "resource_type", "raw",  // Raw
                     "type", "upload",          // Public access
                     "format", "pdf",           // Explicit format
                     "overwrite", false,
@@ -116,7 +116,7 @@ class CloudStorageServiceImpl : CloudStorageService {
             // Construct public URL with proper format
             val cloudName = AppConfig.CLOUD_NAME
             val publicId = uploadResult["public_id"] as? String ?: "attendance_reports/pdf/$baseName"
-            val finalUrl = "https://res.cloudinary.com/$cloudName/image/upload/$publicId.pdf"
+            val finalUrl = "https://res.cloudinary.com/$cloudName/raw/upload/$publicId.pdf"
 
             logger.info("PDF report uploaded successfully: $finalUrl")
             finalUrl
