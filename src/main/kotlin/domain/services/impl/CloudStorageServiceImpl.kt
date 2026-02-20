@@ -116,7 +116,7 @@ class CloudStorageServiceImpl : CloudStorageService {
             // Construct public URL with proper format
             val cloudName = AppConfig.CLOUD_NAME
             val publicId = uploadResult["public_id"] as? String ?: "attendance_reports/pdf/$baseName"
-            val finalUrl = "https://res.cloudinary.com/$cloudName/raw/upload/$publicId.pdf"
+            val finalUrl = "https://res.cloudinary.com/$cloudName/raw/upload/$publicId"
 
             logger.info("PDF report uploaded successfully: $finalUrl")
             finalUrl
