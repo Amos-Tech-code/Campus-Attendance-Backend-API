@@ -1,5 +1,6 @@
 package com.amos_tech_code.api.dtos.response
 
+import domain.models.ExportFormat
 import kotlinx.serialization.Serializable
 
 
@@ -9,6 +10,7 @@ data class AttendanceExportResponseDto(
     val fileUrl: String,
     val fileName: String,
     val fileSize: Long,
+    val exportFormat: ExportFormat,
     val expiresAt: String?,
     val message: String
 )
