@@ -14,6 +14,7 @@ import domain.models.AttendanceSessionStatus
 import io.ktor.server.plugins.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.util.*
@@ -73,8 +74,8 @@ class AttendanceSessionRepository() {
                     radiusMeters = session[AttendanceSessionsTable.locationRadius]
                 ),
                 timeInfo = TimeInfo(
-                    startTime = session[AttendanceSessionsTable.scheduledStartTime].toString(),
-                    endTime = session[AttendanceSessionsTable.scheduledEndTime].toString(),
+                    startTime = session[AttendanceSessionsTable.scheduledStartTime].atOffset(ZoneOffset.UTC).toInstant().toString(),
+                    endTime = session[AttendanceSessionsTable.scheduledEndTime].atOffset(ZoneOffset.UTC).toInstant().toString(),
                     durationMinutes = session[AttendanceSessionsTable.durationMinutes]
                 ),
                 status = session[AttendanceSessionsTable.status],
@@ -233,8 +234,8 @@ class AttendanceSessionRepository() {
                         radiusMeters = session[AttendanceSessionsTable.locationRadius]
                     ),
                     timeInfo = TimeInfo(
-                        startTime = session[AttendanceSessionsTable.scheduledStartTime].toString(),
-                        endTime = session[AttendanceSessionsTable.scheduledEndTime].toString(),
+                        startTime = session[AttendanceSessionsTable.scheduledStartTime].atOffset(ZoneOffset.UTC).toInstant().toString(),
+                        endTime = session[AttendanceSessionsTable.scheduledEndTime].atOffset(ZoneOffset.UTC).toInstant().toString(),
                         durationMinutes = session[AttendanceSessionsTable.durationMinutes]
                     ),
                     status = session[AttendanceSessionsTable.status],
@@ -485,7 +486,13 @@ class AttendanceSessionRepository() {
     ): StudentAttendanceRecordInfo = exposedTransaction {
 
         val attendanceId = UUID.randomUUID()
-        val attendedAt = LocalDateTime.now()
+        // Instant (UTC)
+        val nowInstant = Instant.now()
+
+        // Convert to UTC LocalDateTime for DB storage
+        val attendedAtUtc = nowInstant
+            .atOffset(ZoneOffset.UTC)
+            .toLocalDateTime()
 
         // Insert attendance record
         AttendanceRecordsTable.insert {
@@ -501,12 +508,12 @@ class AttendanceSessionRepository() {
             it[AttendanceRecordsTable.isDeviceVerified] = isDeviceVerified
             it[AttendanceRecordsTable.isSuspicious] = isSuspicious
             it[AttendanceRecordsTable.suspiciousReason] = suspiciousReason
-            it[AttendanceRecordsTable.attendedAt] = attendedAt
+            it[AttendanceRecordsTable.attendedAt] = attendedAtUtc
         }
 
         StudentAttendanceRecordInfo(
             id = attendanceId,
-            attendedAt = attendedAt,
+            attendedAt = nowInstant.toString(),
             isSuspicious = isSuspicious,
             suspiciousReason = suspiciousReason
         )

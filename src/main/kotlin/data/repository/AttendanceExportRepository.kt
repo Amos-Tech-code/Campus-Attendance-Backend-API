@@ -7,7 +7,8 @@ import domain.models.AttendanceSessionStatus
 import domain.models.AttendanceSessionType
 import domain.models.ExportFormat
 import org.jetbrains.exposed.sql.*
-import java.time.LocalDateTime
+import java.time.Instant
+import java.time.ZoneOffset
 import java.util.*
 
 class AttendanceExportRepository {
@@ -203,7 +204,7 @@ class AttendanceExportRepository {
         teachingAssignmentId: UUID,
         exportType: ExportFormat,
         academicTermId: UUID,
-        weekRange: String?,
+        weekRange: String,
         fileUrl: String,
         fileSize: Long,
         fileName: String,
@@ -211,16 +212,16 @@ class AttendanceExportRepository {
         unitCode: String,
         programmeName: String,
         academicTermName: String,
+        expiryDays: Int
     ): UUID = exposedTransaction {
         val id = UUID.randomUUID()
-        val now = LocalDateTime.now()
+        val now = Instant.now()
 
         AttendanceExportsTable.insert {
             it[AttendanceExportsTable.id] = id
             it[AttendanceExportsTable.lecturerId] = lecturerId
             it[AttendanceExportsTable.teachingAssignmentId] = teachingAssignmentId
             it[AttendanceExportsTable.exportType] = exportType.name
-            it[AttendanceExportsTable.exportFormat] = "Weekly"
             it[AttendanceExportsTable.academicTermId] = academicTermId
             it[AttendanceExportsTable.weekRange] = weekRange
             it[AttendanceExportsTable.fileUrl] = fileUrl
@@ -230,8 +231,10 @@ class AttendanceExportRepository {
             it[AttendanceExportsTable.unitCode] = unitCode
             it[AttendanceExportsTable.programmeName] = programmeName
             it[AttendanceExportsTable.academicTermName] = academicTermName
-            it[AttendanceExportsTable.createdAt] = now
-            it[AttendanceExportsTable.expiresAt] = now.plusDays(7)
+            it[createdAt] = now.atOffset(ZoneOffset.UTC).toLocalDateTime()
+            it[expiresAt] = now.plusSeconds(expiryDays * 24L * 60 * 60)
+                .atOffset(ZoneOffset.UTC)
+                .toLocalDateTime()
         }
         id
     }
@@ -424,7 +427,6 @@ class AttendanceExportRepository {
             lecturerId = row[AttendanceExportsTable.lecturerId],
             teachingAssignmentId = row[AttendanceExportsTable.teachingAssignmentId],
             exportType = ExportFormat.valueOf(row[AttendanceExportsTable.exportType]),
-            exportFormat = row[AttendanceExportsTable.exportFormat],
             academicTermId = row[AttendanceExportsTable.academicTermId],
             weekRange = row[AttendanceExportsTable.weekRange],
             fileUrl = row[AttendanceExportsTable.fileUrl],

@@ -5,7 +5,6 @@ import data.database.entities.AcademicTermsTable
 import data.database.entities.AttendanceExportsTable
 import data.database.entities.AttendanceRecordsTable
 import data.database.entities.AttendanceSessionsTable
-import data.database.entities.AttendanceSummariesTable
 import data.database.entities.DepartmentsTable
 import data.database.entities.DevicesTable
 import data.database.entities.LecturerTeachingAssignmentsTable
@@ -77,7 +76,6 @@ object DatabaseFactory {
                     SessionProgrammesTable,
                     AttendanceRecordsTable,
                     AttendanceExportsTable,
-                    AttendanceSummariesTable
 
                 )
 

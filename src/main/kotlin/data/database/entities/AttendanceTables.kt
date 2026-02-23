@@ -116,10 +116,9 @@ object AttendanceExportsTable : Table("attendance_exports") {
         .references(LecturerTeachingAssignmentsTable.id, onDelete = ReferenceOption.CASCADE)
 
     val exportType = varchar("export_type", 20) // PDF, EXCEL, CSV
-    val exportFormat = varchar("export_format", 50) // "Weekly", "Semester", "Custom"
     val academicTermId = uuid("academic_term_id")
         .references(AcademicTermsTable.id, onDelete = ReferenceOption.CASCADE)
-    val weekRange = varchar("week_range", 50).nullable() // "Week 1-7"
+    val weekRange = varchar("week_range", 50)
 
     val fileUrl = text("file_url")
     val fileSize = long("file_size")
@@ -131,36 +130,11 @@ object AttendanceExportsTable : Table("attendance_exports") {
     val academicTermName = varchar("academic_term_name", 255)
 
     val createdAt = datetime("created_at").clientDefault { now() }
-    val expiresAt = datetime("expires_at").nullable() // Auto-cleanup
+    val expiresAt = datetime("expires_at") // Auto-cleanup
 
     override val primaryKey = PrimaryKey(id)
     init {
         index(false, lecturerId, createdAt)
         index(false, teachingAssignmentId, academicTermId)
-    }
-}
-
-object AttendanceSummariesTable : Table("attendance_summaries") {
-    val id = uuid("id").autoGenerate()
-    val teachingAssignmentId = uuid("teaching_assignment_id")
-        .references(LecturerTeachingAssignmentsTable.id, onDelete = ReferenceOption.CASCADE)
-    val studentId = uuid("student_id")
-        .references(StudentsTable.id, onDelete = ReferenceOption.CASCADE)
-    val academicTermId = uuid("academic_term_id")
-        .references(AcademicTermsTable.id, onDelete = ReferenceOption.CASCADE)
-
-    val totalSessions = integer("total_sessions").default(0)
-    val attendedSessions = integer("attended_sessions").default(0)
-    val attendancePercentage = double("attendance_percentage").default(0.0)
-
-    val lastCalculated = datetime("last_calculated").clientDefault { now() }
-    val createdAt = datetime("created_at").clientDefault { now() }
-    val updatedAt = datetime("updated_at").clientDefault { now() }
-
-    override val primaryKey = PrimaryKey(id)
-    init {
-        uniqueIndex("unique_student_teaching_summary",
-            studentId, teachingAssignmentId, academicTermId)
-        index(false, teachingAssignmentId, attendancePercentage)
     }
 }

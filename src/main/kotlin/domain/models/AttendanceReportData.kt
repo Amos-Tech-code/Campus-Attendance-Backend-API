@@ -79,9 +79,8 @@ data class AttendanceExportRecord(
     val lecturerId: UUID,
     val teachingAssignmentId: UUID,
     val exportType: ExportFormat,
-    val exportFormat: String,
     val academicTermId: UUID,
-    val weekRange: String?,
+    val weekRange: String,
     val fileUrl: String,
     val fileSize: Long,
     val fileName: String,
@@ -90,7 +89,7 @@ data class AttendanceExportRecord(
     val programmeName: String,
     val academicTermName: String,
     val createdAt: LocalDateTime,
-    val expiresAt: LocalDateTime?
+    val expiresAt: LocalDateTime
 )
 
 // Teaching Assignment domain model
