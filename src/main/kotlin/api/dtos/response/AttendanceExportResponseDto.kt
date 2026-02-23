@@ -11,7 +11,8 @@ data class AttendanceExportResponseDto(
     val fileName: String,
     val fileSize: Long,
     val exportFormat: ExportFormat,
-    val expiresAt: String?,
+    val createdAt: String,
+    val expiresAt: String,
     val message: String
 )
 
@@ -30,11 +31,12 @@ data class AttendanceExportRecordDto(
     val fileUrl: String,
     val fileSize: Long,
     val exportFormat: String,
-    val weekRange: String?,
+    val weekRange: String,
     val createdAt: String,
-    val expiresAt: String?,
-    val unitName: String?,
-    val unitCode: String?,
-    val programmeName: String?,
-    val academicTerm: String?
+    val expiresAt: String,
+    val unitName: String,
+    val unitCode: String,
+    val programmeName: String,
+    val academicTerm: String,
+    val universityId: String,
 )

@@ -114,7 +114,7 @@ class MarkAttendanceServiceImpl(
                     studentId = student.id.toString(),
                     regNo = student.registrationNumber,
                     name = student.fullName,
-                    attendedAt = record.attendedAt.toString(),
+                    attendedAt = record.attendedAt,
                     isSuspicious = record.isSuspicious,
                     suspiciousReason = record.suspiciousReason
                 )
@@ -222,7 +222,7 @@ class MarkAttendanceServiceImpl(
                     overallVerified = overallVerified
                 ),
                 flags = flags,
-                attendedAt = record.attendedAt.toString(),
+                attendedAt = record.attendedAt,
                 message = if (flags.isEmpty())
                     "Attendance marked successfully"
                 else
@@ -242,7 +242,7 @@ class MarkAttendanceServiceImpl(
                             studentId = student.id.toString(),
                             regNo = student.registrationNumber,
                             name = student.fullName,
-                            attendedAt = record.attendedAt.toString(),
+                            attendedAt = record.attendedAt,
                             isSuspicious = flags.isNotEmpty(),
                             suspiciousReason = flags.joinToString { it.type.name }.ifBlank { null }
                         )

@@ -1,11 +1,10 @@
 package com.amos_tech_code.domain.models
 
-import java.time.LocalDateTime
-import java.util.UUID
+import java.util.*
 
 data class StudentAttendanceRecordInfo(
     val id: UUID,
-    val attendedAt: LocalDateTime,
+    val attendedAt: String,
     val isSuspicious: Boolean = false,
     val suspiciousReason: String? = null
 )

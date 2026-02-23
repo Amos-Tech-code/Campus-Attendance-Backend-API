@@ -18,7 +18,9 @@ import domain.models.ExportFormat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
+import java.time.Instant
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
@@ -31,7 +33,7 @@ class AttendanceExportServiceImpl(
 
     private val logger = LoggerFactory.getLogger(AttendanceExportServiceImpl::class.java)
     private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm")
-    private val displayDateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+    val EXPORT_EXPIRATION_DAYS = 10
 
     override suspend fun generateAndExportAttendance(
         lecturerId: UUID,
@@ -145,10 +147,14 @@ class AttendanceExportServiceImpl(
                 unitName = unitWithDetails.unitName,
                 unitCode = unitWithDetails.unitCode,
                 programmeName = programmeWithDetails.programmeName,
-                academicTermName = academicTermString
+                academicTermName = academicTermString,
+                expiryDays = EXPORT_EXPIRATION_DAYS
             )
 
             logger.info("Attendance export generated successfully: $fileName")
+
+            val now = Instant.now()
+            val expiresAt = now.plusSeconds(EXPORT_EXPIRATION_DAYS * 24L * 60 * 60)
 
             return AttendanceExportResponseDto(
                 exportId = exportId.toString(),
@@ -156,7 +162,8 @@ class AttendanceExportServiceImpl(
                 fileName = fileName,
                 fileSize = fileBytes.size.toLong(),
                 exportFormat = request.exportFormat,
-                expiresAt = LocalDateTime.now().plusDays(7).toString(),
+                createdAt = now.toString(),        // Always ISO-8601 with Z
+                expiresAt = expiresAt.toString(),  // Always ISO-8601 with Z
                 message = "Attendance report generated successfully"
             )
         } catch (ex: Exception) {
@@ -187,13 +194,14 @@ class AttendanceExportServiceImpl(
                 fileUrl = export.fileUrl,
                 fileSize = export.fileSize,
                 exportFormat = export.exportType.name,
-                weekRange = export.weekRange ?: "All Weeks",
-                createdAt = export.createdAt.format(displayDateFormatter),
-                expiresAt = export.expiresAt?.format(displayDateFormatter),
+                weekRange = export.weekRange,
                 unitName = teachingAssignment?.unitName ?: export.unitName,
                 unitCode = teachingAssignment?.unitCode ?: export.unitCode,
                 programmeName = teachingAssignment?.programmeName ?: export.programmeName,
-                academicTerm = export.academicTermName
+                academicTerm = export.academicTermName,
+                universityId = teachingAssignment?.universityId.toString(),
+                createdAt = export.createdAt.atOffset(ZoneOffset.UTC).toInstant().toString(),
+                expiresAt = export.expiresAt.atOffset(ZoneOffset.UTC).toInstant().toString(),
             )
         } catch (ex: Exception) {
             logger.error("Error while fetching export by ID: $exportId", ex)
@@ -219,7 +227,9 @@ class AttendanceExportServiceImpl(
             val total = exportRepository.countExportsByLecturer(lecturerId)
 
             val exportDtos = exports.map { export ->
-                val teachingAssignment = exportRepository.getTeachingAssignmentDetails(export.teachingAssignmentId)
+                val teachingAssignment =
+                    exportRepository.getTeachingAssignmentDetails(export.teachingAssignmentId)
+                        ?: throw IllegalArgumentException("No teaching assignment found for this unit and term")
 
                 AttendanceExportRecordDto(
                     exportId = export.id.toString(),
@@ -227,13 +237,14 @@ class AttendanceExportServiceImpl(
                     fileUrl = export.fileUrl,
                     fileSize = export.fileSize,
                     exportFormat = export.exportType.name,
-                    weekRange = export.weekRange ?: "All Weeks",
-                    createdAt = export.createdAt.format(displayDateFormatter),
-                    expiresAt = export.expiresAt?.format(displayDateFormatter),
-                    unitName = teachingAssignment?.unitName ?: export.unitName,
-                    unitCode = teachingAssignment?.unitCode ?: export.unitCode,
-                    programmeName = teachingAssignment?.programmeName ?: export.programmeName,
-                    academicTerm = export.academicTermName
+                    weekRange = export.weekRange,
+                    unitName = teachingAssignment.unitName,
+                    unitCode = teachingAssignment.unitCode,
+                    programmeName = teachingAssignment.programmeName,
+                    academicTerm = export.academicTermName,
+                    universityId = teachingAssignment.universityId.toString(),
+                    createdAt = export.createdAt.atOffset(ZoneOffset.UTC).toInstant().toString(),
+                    expiresAt = export.expiresAt.atOffset(ZoneOffset.UTC).toInstant().toString(),
                 )
             }
 
@@ -245,7 +256,10 @@ class AttendanceExportServiceImpl(
             )
         } catch (ex: Exception) {
             logger.error("Error while fetching exports for lecturer: $lecturerId", ex)
-            throw InternalServerException("Error while fetching exports")
+            when(ex) {
+                is AppException -> throw ex
+                else -> throw InternalServerException("Error while fetching exports")
+            }
         }
     }
 
