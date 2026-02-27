@@ -3,6 +3,8 @@ package com.amos_tech_code.domain.models
 import api.dtos.response.AttendanceFlag
 import api.dtos.response.MarkAttendanceResponse
 import domain.models.AttendanceMethod
+import domain.models.AttendanceSessionStatus
+import domain.models.AttendanceSessionType
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -21,6 +23,9 @@ data class AttendanceSession(
     val unitName: String,
     val unitCode: String,
     val lecturerName: String,
+    val sessionStatus: AttendanceSessionStatus,
+    val sessionType: AttendanceSessionType,
+    val sessionTitle: String?,
     val scheduledStartTime: LocalDateTime,
     val scheduledEndTime: LocalDateTime
 )

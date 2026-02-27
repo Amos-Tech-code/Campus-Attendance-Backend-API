@@ -1,5 +1,8 @@
 package api.dtos.response
 
+import domain.models.AttendanceMethod
+import domain.models.AttendanceSessionStatus
+import domain.models.AttendanceSessionType
 import domain.models.FlagType
 import domain.models.SeverityLevel
 import kotlinx.serialization.Serializable
@@ -15,8 +18,19 @@ data class MarkAttendanceResponse(
     val flags: List<AttendanceFlag> = emptyList(),
     val requiresProgrammeSelection: Boolean = false,
     val availableProgrammes: List<ProgrammeInfoResponse> = emptyList(),
+    val sessionDetails: SessionDetailsResponse? = null,
     val attendedAt: String,
     val message: String? = null
+)
+
+@Serializable
+data class SessionDetailsResponse(
+    val sessionStatus: AttendanceSessionStatus,
+    val attendanceMethod: AttendanceMethod,
+    val sessionType: AttendanceSessionType,
+    val unitCode: String,
+    val unitName: String,
+    val sessionTitle: String? = null,
 )
 
 @Serializable
