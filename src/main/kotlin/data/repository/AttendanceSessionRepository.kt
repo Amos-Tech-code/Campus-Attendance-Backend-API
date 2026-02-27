@@ -19,7 +19,7 @@ import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.util.*
 
-class AttendanceSessionRepository() {
+class AttendanceSessionRepository {
 
     suspend fun existsByIdAndLecturerId(sessionId: UUID, lecturerId: UUID) : Boolean = exposedTransaction {
         AttendanceSessionsTable
@@ -448,6 +448,9 @@ class AttendanceSessionRepository() {
                         lecturerName = row[LecturersTable.fullName] ?: "Unknown",
                         academicTermId = row[AttendanceSessionsTable.academicTermId],
                         allowedMethod = row[AttendanceSessionsTable.allowedMethod],
+                        sessionStatus = row[AttendanceSessionsTable.status],
+                        sessionTitle = row[AttendanceSessionsTable.sessionTitle],
+                        sessionType = row[AttendanceSessionsTable.attendanceSessionType],
                         scheduledStartTime = row[AttendanceSessionsTable.scheduledStartTime],
                         scheduledEndTime = row[AttendanceSessionsTable.scheduledEndTime]
                     )

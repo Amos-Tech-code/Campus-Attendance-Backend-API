@@ -11,6 +11,7 @@ import api.dtos.response.LiveAttendanceEvent
 import api.dtos.response.LiveAttendanceStudentDto
 import api.dtos.response.MarkAttendanceResponse
 import api.dtos.response.ProgrammeInfoResponse
+import api.dtos.response.SessionDetailsResponse
 import api.dtos.response.VerificationResult
 import domain.models.AttendanceMethod
 import com.amos_tech_code.domain.models.AttendanceSession
@@ -222,6 +223,14 @@ class MarkAttendanceServiceImpl(
                     overallVerified = overallVerified
                 ),
                 flags = flags,
+                sessionDetails = SessionDetailsResponse(
+                    sessionStatus = session.sessionStatus,
+                    attendanceMethod = session.allowedMethod,
+                    sessionType = session.sessionType,
+                    sessionTitle = session.sessionTitle,
+                    unitCode = session.unitCode,
+                    unitName = session.unitName,
+                ),
                 attendedAt = record.attendedAt,
                 message = if (flags.isEmpty())
                     "Attendance marked successfully"
