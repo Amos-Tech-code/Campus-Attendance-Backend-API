@@ -13,8 +13,11 @@ import domain.models.AttendanceSessionStatus
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.countDistinct
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.innerJoin
+import org.jetbrains.exposed.sql.leftJoin
+import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -110,28 +113,17 @@ class AttendanceRecordRepository {
 
     // Get student attendance stats for current active term
     suspend fun getStudentAttendanceStats(studentId: UUID): AttendanceStatsResponse = exposedTransaction {
-        // 1. Find current active academic term
-        val currentTerm = AcademicTermsTable
-            .selectAll()
-            .where { AcademicTermsTable.isActive eq true }
-            .orderBy(AcademicTermsTable.academicYear to SortOrder.DESC)
-            .orderBy(AcademicTermsTable.semester to SortOrder.DESC)
-            .limit(1)
-            .singleOrNull()
-            ?: return@exposedTransaction AttendanceStatsResponse(
-                totalSessions = 0,
-                attendedSessions = 0,
-                currentStreak = 0,
-                lastUpdated = System.currentTimeMillis()
-            )
-
-        // 2. Get student's enrollment for current term
+        // 1. Get student's current active term enrollment (don't fetch all active terms)
         val enrollment = StudentEnrollmentsTable
+            .innerJoin(AcademicTermsTable,
+                onColumn = { StudentEnrollmentsTable.academicTermId },
+                otherColumn = { AcademicTermsTable.id }
+            )
             .selectAll()
             .where {
                 (StudentEnrollmentsTable.studentId eq studentId) and
-                        (StudentEnrollmentsTable.academicTermId eq currentTerm[AcademicTermsTable.id]) and
-                        (StudentEnrollmentsTable.isActive eq true)
+                        (StudentEnrollmentsTable.isActive eq true) and
+                        (AcademicTermsTable.isActive eq true)
             }
             .limit(1)
             .singleOrNull()
@@ -149,84 +141,88 @@ class AttendanceRecordRepository {
         val yearOfStudy = enrollment[StudentEnrollmentsTable.yearOfStudy]
         val termId = enrollment[StudentEnrollmentsTable.academicTermId]
 
-        // 3. Get all sessions for this programme and year in current term
-        val sessionIds = SessionProgrammesTable
+        // 2. Get session stats (total and attended) in a single query
+        val sessionStats = SessionProgrammesTable
             .innerJoin(
                 AttendanceSessionsTable,
                 onColumn = { SessionProgrammesTable.sessionId },
                 otherColumn = { AttendanceSessionsTable.id }
             )
-            .select(SessionProgrammesTable.sessionId)
+            .leftJoin(
+                AttendanceRecordsTable,
+                onColumn = { AttendanceSessionsTable.id },
+                otherColumn = { AttendanceRecordsTable.sessionId }
+            )
+            .select(
+                AttendanceSessionsTable.id.countDistinct(),
+                AttendanceRecordsTable.id.countDistinct()
+            )
             .where {
                 (SessionProgrammesTable.programmeId eq programmeId) and
                         (SessionProgrammesTable.yearOfStudy eq yearOfStudy) and
                         (AttendanceSessionsTable.academicTermId eq termId) and
-                        (AttendanceSessionsTable.status eq AttendanceSessionStatus.ENDED)
+                        (AttendanceSessionsTable.status inList listOf(
+                            AttendanceSessionStatus.ACTIVE,
+                            AttendanceSessionStatus.ENDED
+                        )) and
+                        (AttendanceRecordsTable.studentId eq studentId or (AttendanceRecordsTable.studentId.isNull())) and
+                        ((AttendanceRecordsTable.isSuspicious eq false) or (AttendanceRecordsTable.isSuspicious.isNull()))
             }
-            .withDistinct(true)
-            .map { it[SessionProgrammesTable.sessionId] }
+            .map { row ->
+                Pair(
+                    row[AttendanceSessionsTable.id.countDistinct()],
+                    row[AttendanceRecordsTable.id.countDistinct()]
+                )
+            }
+            .firstOrNull() ?: Pair(0L, 0L)
 
-        val totalSessions = sessionIds.size
+        val totalSessions = sessionStats.first.toInt()
+        val attendedSessions = sessionStats.second.toInt()
 
-        // 4. Count attended sessions
-        val attendedSessions = if (sessionIds.isNotEmpty()) {
-            AttendanceRecordsTable
-                .select(AttendanceRecordsTable.id)
-                .where {
-                    (AttendanceRecordsTable.studentId eq studentId) and
-                            (AttendanceRecordsTable.sessionId inList sessionIds)
-                }
-                .count()
-        } else 0
-
-        // 5. Calculate current streak
-        val streak = calculateCurrentStreak(studentId)
+        // 3. Calculate current streak (only for current term)
+        val streak = calculateCurrentStreakForTerm(studentId, termId)
 
         AttendanceStatsResponse(
             totalSessions = totalSessions,
-            attendedSessions = attendedSessions.toInt(),
+            attendedSessions = attendedSessions,
             currentStreak = streak,
             lastUpdated = System.currentTimeMillis()
         )
     }
 
-    // Helper method to calculate streak
-    private suspend fun calculateCurrentStreak(studentId: UUID): Int = exposedTransaction {
-        // Get recent attendance dates (last 30 days max)
-        val recentAttendances = AttendanceRecordsTable
+    // Helper method to calculate streak for specific term
+    private suspend fun calculateCurrentStreakForTerm(studentId: UUID, termId: UUID): Int = exposedTransaction {
+        // Get attendance dates for the current term
+        val attendanceDates = AttendanceRecordsTable
+            .innerJoin(
+                AttendanceSessionsTable,
+                onColumn = { AttendanceRecordsTable.sessionId },
+                otherColumn = { AttendanceSessionsTable.id }
+            )
             .select(AttendanceRecordsTable.attendedAt)
-            .where { AttendanceRecordsTable.studentId eq studentId }
+            .where {
+                (AttendanceRecordsTable.studentId eq studentId) and
+                        (AttendanceSessionsTable.academicTermId eq termId) and
+                        (AttendanceRecordsTable.isSuspicious eq false)
+            }
             .orderBy(AttendanceRecordsTable.attendedAt to SortOrder.DESC)
-            .limit(30)
-            .map { it[AttendanceRecordsTable.attendedAt] }
+            .map { it[AttendanceRecordsTable.attendedAt].toLocalDate() }
+            .distinct()
 
-        if (recentAttendances.isEmpty()) return@exposedTransaction 0
+        if (attendanceDates.isEmpty()) return@exposedTransaction 0
 
-        // Convert to LocalDate for date-only comparison using UTC
         val today = LocalDate.now(ZoneOffset.UTC)
 
-        // Group by date (ignoring time)
-        val attendanceDates = recentAttendances
-            .map { attendance ->
-                attendance.toLocalDate()
-            }
-            .distinct()
-            .sortedDescending()
-
         // Check if attended today
-        val attendedToday = attendanceDates.contains(today)
-        if (!attendedToday) return@exposedTransaction 0
+        if (!attendanceDates.contains(today)) return@exposedTransaction 0
 
+        // Count consecutive days backwards
         var streak = 1
         var expectedDate = today.minusDays(1)
 
-        for (date in attendanceDates.drop(1)) {
-            if (date == expectedDate) {
-                streak++
-                expectedDate = expectedDate.minusDays(1)
-            } else {
-                break
-            }
+        while (attendanceDates.contains(expectedDate)) {
+            streak++
+            expectedDate = expectedDate.minusDays(1)
         }
 
         return@exposedTransaction streak
