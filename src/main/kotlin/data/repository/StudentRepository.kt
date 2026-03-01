@@ -174,11 +174,33 @@ class StudentRepository {
         } > 0
     }
 
+     suspend fun updateFcmToken(studentId: UUID, fcmToken: String): Boolean = exposedTransaction {
+         DevicesTable.update(
+             { (DevicesTable.studentId eq studentId ) and
+                     ( DevicesTable.status eq DeviceStatus.ACTIVE)
+             },
+         ) {
+             it[DevicesTable.fcmToken] = fcmToken
+             it[updatedAt] = LocalDateTime.now()
+         } > 0
+     }
+
+
     suspend fun getPendingRequests(): List<Device> = exposedTransaction {
         DevicesTable
             .selectAll()
             .where { DevicesTable.status eq DeviceStatus.PENDING }
             .orderBy(DevicesTable.createdAt to SortOrder.DESC)
+            .map { it.toDevice() }
+    }
+
+    suspend fun getAllActiveDevices(): List<Device> = exposedTransaction {
+        DevicesTable
+            .selectAll()
+            .where {
+                (DevicesTable.fcmToken.isNotNull()) and
+                        (DevicesTable.status eq DeviceStatus.ACTIVE)
+            }
             .map { it.toDevice() }
     }
 

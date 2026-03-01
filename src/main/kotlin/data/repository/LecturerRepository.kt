@@ -4,6 +4,7 @@ import com.amos_tech_code.data.database.utils.exposedTransaction
 import com.amos_tech_code.domain.models.Lecturer
 import data.database.entities.LecturersTable
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
@@ -77,7 +78,24 @@ class LecturerRepository() {
         }
     }
 
+    suspend fun getAllWithFcmTokens(): List<Lecturer> = exposedTransaction {
+        LecturersTable
+            .selectAll()
+            .where {
+                (LecturersTable.fcmToken.isNotNull()) and
+                        (LecturersTable.isActive eq true)
+            }
+            .map { it.toLecturer() }
+    }
 
+    suspend fun updateFcmToken(lecturerId: UUID, fcmToken: String): Boolean = exposedTransaction {
+        LecturersTable.update({ LecturersTable.id eq lecturerId }) {
+            it[LecturersTable.fcmToken] = fcmToken
+            it[updatedAt] = LocalDateTime.now()
+        } > 0
+    }
+
+    // Helper functions
     fun ResultRow.toLecturer(): Lecturer {
         return Lecturer(
             id = this[LecturersTable.id],

@@ -9,6 +9,32 @@ object MigrationManager {
      */
     fun migrate() {
 
+        transaction {
+            try {
+                // Add fcm_token column to lecturers table if it doesn't exist
+                exec(
+                    """
+                    ALTER TABLE lecturers
+                    ADD COLUMN IF NOT EXISTS fcm_token VARCHAR(255);
+                """
+                )
+
+                // Create index for faster lookups (optional but recommended)
+                exec(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_lecturers_fcm_token 
+                    ON lecturers(fcm_token) 
+                    WHERE fcm_token IS NOT NULL;
+                """
+                )
+
+                println("✅ Added fcm_token column to lecturers table")
+
+            } catch (e: Exception) {
+                println("❌ Migration failed: ${e.message}")
+                throw e
+            }
+        }
         /*
         transaction {
 

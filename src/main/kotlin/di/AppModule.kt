@@ -1,5 +1,6 @@
 package di
 
+import com.amos_tech_code.data.repository.AdminRepository
 import com.amos_tech_code.data.repository.AttendanceExportRepository
 import com.amos_tech_code.data.repository.AttendanceRecordRepository
 import data.repository.AttendanceSessionRepository
@@ -21,6 +22,8 @@ import com.amos_tech_code.services.LecturerAcademicService
 import com.amos_tech_code.domain.services.LiveAttendanceService
 import com.amos_tech_code.domain.services.PdfGeneratorService
 import com.amos_tech_code.domain.services.impl.AccountServiceImpl
+import com.amos_tech_code.domain.services.impl.AdminAuthService
+import com.amos_tech_code.domain.services.impl.AdminDashboardService
 import com.amos_tech_code.domain.services.impl.AttendanceExportServiceImpl
 import com.amos_tech_code.domain.services.impl.AttendanceManagementServiceImpl
 import com.amos_tech_code.domain.services.impl.CsvGeneratorServiceImpl
@@ -119,5 +122,16 @@ val appModule = module {
     single { AttendanceRecordRepository() }
 
     single { AttendanceExportRepository() }
+
+
+    /*-----------------------------------
+    ADMIN SERVICES AND REPOSITORIES
+    ------------------------------------*/
+
+    single { AdminAuthService(get()) }
+
+    single { AdminDashboardService(get()) }
+
+    single { AdminRepository() }
 
 }

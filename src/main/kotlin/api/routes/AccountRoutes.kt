@@ -1,5 +1,6 @@
 package com.amos_tech_code.api.routes
 
+import com.amos_tech_code.api.dtos.requests.FcmTokenRequest
 import com.amos_tech_code.api.dtos.requests.UpdateLecturerProfileRequest
 import com.amos_tech_code.api.dtos.requests.UpdateStudentProfileRequest
 import com.amos_tech_code.domain.dtos.response.GenericResponseDto
@@ -14,6 +15,7 @@ import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.patch
+import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 
 fun Route.accountRoutes(
@@ -52,6 +54,31 @@ fun Route.accountRoutes(
                     HttpStatusCode.OK,
                     GenericResponseDto(HttpStatusCode.OK.value, "Profile updated successfully")
                 )
+            }
+        }
+
+        // FCM Token Update
+        route("/fcm-token") {
+
+            patch("/student") {
+                val studentId = call.getUserIdFromJWT() ?: return@patch call.respondForbidden("Student ID is required")
+                val request = call.receive<FcmTokenRequest>()
+
+                accountService.updateStudentFcmToken(studentId, request.fcmToken)
+
+                call.respond(HttpStatusCode.OK, mapOf("message" to "FCM token updated"))
+
+            }
+
+            patch("/lecturer") {
+                val lecturerId =
+                    call.getUserIdFromJWT() ?: return@patch call.respondBadRequest("Lecturer ID is required")
+                val request = call.receive<FcmTokenRequest>()
+
+                accountService.updateLecturerFcmToken(lecturerId, request.fcmToken)
+
+                call.respond(HttpStatusCode.OK, mapOf("message" to "FCM token updated"))
+
             }
         }
     }

@@ -1,6 +1,8 @@
 package com.amos_tech_code.data.database
 
 import com.amos_tech_code.config.AppConfig
+import com.amos_tech_code.data.database.entities.AdminRefreshTokensTable
+import com.amos_tech_code.data.database.entities.AdminsTable
 import data.database.entities.AcademicTermsTable
 import data.database.entities.AttendanceExportsTable
 import data.database.entities.AttendanceRecordsTable
@@ -56,6 +58,10 @@ object DatabaseFactory {
             transaction {
                 // Create tables if they don't exist
                 SchemaUtils.createMissingTablesAndColumns(
+                    // Admin Tables
+                    AdminsTable,
+                    AdminRefreshTokensTable,
+
                     // System Master Tables
                     UniversitiesTable,
                     AcademicTermsTable,
@@ -79,7 +85,6 @@ object DatabaseFactory {
                     SessionProgrammesTable,
                     AttendanceRecordsTable,
                     AttendanceExportsTable,
-
                 )
             }
     }

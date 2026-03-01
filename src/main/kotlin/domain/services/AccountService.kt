@@ -15,4 +15,8 @@ interface AccountService {
         lecturerId: UUID,
         request: UpdateLecturerProfileRequest
     )
+
+    suspend fun updateStudentFcmToken(studentId: UUID, fcmToken: String)
+
+    suspend fun updateLecturerFcmToken(lecturerId: UUID, fcmToken: String)
 }

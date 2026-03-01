@@ -2,9 +2,11 @@ package com.amos_tech_code.plugins
 
 import com.amos_tech_code.config.AppConfig
 import com.amos_tech_code.config.GoogleAuthConfig
+import com.amos_tech_code.config.JwtConfig
 import com.amos_tech_code.domain.dtos.response.GenericResponseDto
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
+import domain.models.UserRole
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.http.HttpStatusCode
@@ -41,6 +43,18 @@ fun Application.configureAuthentication() {
                     HttpStatusCode.Unauthorized,
                     GenericResponseDto(HttpStatusCode.Unauthorized.value, "Token is not valid or has expired")
                 )
+            }
+        }
+
+        jwt("admin-jwt") {
+            verifier(JwtConfig.verifier)
+            realm = "smart-attend"
+            validate { credential ->
+                if (credential.payload.getClaim("role").asString() == UserRole.ADMIN.name) {
+                    JWTPrincipal(credential.payload)
+                } else {
+                    null
+                }
             }
         }
 
