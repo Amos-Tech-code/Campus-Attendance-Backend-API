@@ -10,3 +10,22 @@ data class Admin(
     val lastLoginAt: String? = null,
     val isActive: Boolean = true
 )
+
+data class DashboardStats(
+    val totalStudents: Long,
+    val totalLecturers: Long,
+    val totalUniversities: Long,
+    val totalProgrammes: Long,
+    val totalSessions: Long,
+    val todaySessions: Long,
+    val totalAttendance: Long,
+    val recentActivities: List<ActivityLog>
+)
+
+data class ActivityLog(
+    val id: String,
+    val type: String,
+    val description: String,
+    val timestamp: String,
+    val performedBy: String
+)

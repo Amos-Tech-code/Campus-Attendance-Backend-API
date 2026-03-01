@@ -3,7 +3,9 @@ package com.amos_tech_code.data.repository
 import com.amos_tech_code.data.database.entities.AdminRefreshTokensTable
 import com.amos_tech_code.data.database.entities.AdminsTable
 import com.amos_tech_code.data.database.utils.exposedTransaction
+import com.amos_tech_code.domain.models.ActivityLog
 import com.amos_tech_code.domain.models.Admin
+import com.amos_tech_code.domain.models.DashboardStats
 import data.database.entities.*
 import org.jetbrains.exposed.sql.*
 import org.mindrot.jbcrypt.BCrypt
@@ -108,13 +110,15 @@ class AdminRepository {
             .orderBy(StudentsTable.lastLoginAt to SortOrder.DESC)
             .limit(5)
             .forEach {
-                recentActivities.add(ActivityLog(
-                    id = it[StudentsTable.id].toString(),
-                    type = "STUDENT_LOGIN",
-                    description = "Student ${it[StudentsTable.fullName]} logged in",
-                    timestamp = it[StudentsTable.lastLoginAt].toString(),
-                    performedBy = it[StudentsTable.fullName]
-                ))
+                recentActivities.add(
+                    ActivityLog(
+                        id = it[StudentsTable.id].toString(),
+                        type = "STUDENT_LOGIN",
+                        description = "Student ${it[StudentsTable.fullName]} logged in",
+                        timestamp = it[StudentsTable.lastLoginAt].toString(),
+                        performedBy = it[StudentsTable.fullName]
+                    )
+                )
             }
 
         DashboardStats(
@@ -138,22 +142,3 @@ class AdminRepository {
         isActive = this[AdminsTable.isActive]
     )
 }
-
-data class DashboardStats(
-    val totalStudents: Long,
-    val totalLecturers: Long,
-    val totalUniversities: Long,
-    val totalProgrammes: Long,
-    val totalSessions: Long,
-    val todaySessions: Long,
-    val totalAttendance: Long,
-    val recentActivities: List<ActivityLog>
-)
-
-data class ActivityLog(
-    val id: String,
-    val type: String,
-    val description: String,
-    val timestamp: String,
-    val performedBy: String
-)

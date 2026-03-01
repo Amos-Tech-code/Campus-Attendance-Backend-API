@@ -6,6 +6,7 @@ import com.amos_tech_code.data.repository.AttendanceRecordRepository
 import data.repository.AttendanceSessionRepository
 import com.amos_tech_code.data.repository.LecturerAcademicRepository
 import com.amos_tech_code.data.repository.LecturerRepository
+import com.amos_tech_code.data.repository.NotificationRepository
 import data.repository.StudentEnrollmentRepository
 import com.amos_tech_code.data.repository.StudentRepository
 import com.amos_tech_code.domain.services.AccountService
@@ -20,6 +21,7 @@ import com.amos_tech_code.domain.services.CsvGeneratorService
 import com.amos_tech_code.services.GoogleAuthService
 import com.amos_tech_code.services.LecturerAcademicService
 import com.amos_tech_code.domain.services.LiveAttendanceService
+import com.amos_tech_code.domain.services.NotificationService
 import com.amos_tech_code.domain.services.PdfGeneratorService
 import com.amos_tech_code.domain.services.impl.AccountServiceImpl
 import com.amos_tech_code.domain.services.impl.AdminAuthService
@@ -45,6 +47,7 @@ import domain.services.impl.StudentEnrollmentServiceImpl
 import com.amos_tech_code.utils.BackgroundTaskScope
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
+import org.koin.core.scope.get
 import org.koin.dsl.module
 
 val appModule = module {
@@ -103,6 +106,7 @@ val appModule = module {
 
     single<CsvGeneratorService> { CsvGeneratorServiceImpl() }
 
+    single { NotificationService(get(), get()) }
 
 
     /*-----------------------------------------
@@ -122,6 +126,8 @@ val appModule = module {
     single { AttendanceRecordRepository() }
 
     single { AttendanceExportRepository() }
+
+    single { NotificationRepository() }
 
 
     /*-----------------------------------

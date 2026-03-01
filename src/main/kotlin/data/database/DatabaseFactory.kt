@@ -3,6 +3,7 @@ package com.amos_tech_code.data.database
 import com.amos_tech_code.config.AppConfig
 import com.amos_tech_code.data.database.entities.AdminRefreshTokensTable
 import com.amos_tech_code.data.database.entities.AdminsTable
+import com.amos_tech_code.data.database.entities.NotificationsTable
 import data.database.entities.AcademicTermsTable
 import data.database.entities.AttendanceExportsTable
 import data.database.entities.AttendanceRecordsTable
@@ -85,6 +86,9 @@ object DatabaseFactory {
                     SessionProgrammesTable,
                     AttendanceRecordsTable,
                     AttendanceExportsTable,
+
+                    // Notification
+                    NotificationsTable
                 )
             }
     }

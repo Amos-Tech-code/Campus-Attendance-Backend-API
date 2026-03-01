@@ -1,5 +1,6 @@
 package com.amos_tech_code
 
+import com.amos_tech_code.domain.services.impl.FirebaseService
 import com.amos_tech_code.plugins.*
 import io.ktor.server.application.*
 import plugins.configureRouting
@@ -23,4 +24,5 @@ fun Application.module() {
     configureExceptionHandler()
     configureRouting()
     configureSSE()
+    FirebaseService // Initialize Firebase
 }

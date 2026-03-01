@@ -9,7 +9,7 @@ object MigrationManager {
      */
     fun migrate() {
 
-        transaction {
+        /*transaction {
             try {
                 // Add fcm_token column to lecturers table if it doesn't exist
                 exec(
@@ -35,6 +35,8 @@ object MigrationManager {
                 throw e
             }
         }
+
+         */
         /*
         transaction {
 
