@@ -1,21 +1,16 @@
 package com.amos_tech_code.data.repository
 
-import data.database.entities.DevicesTable
-import data.database.entities.StudentsTable
-import data.database.entities.SuspiciousLoginsTable
 import com.amos_tech_code.data.database.utils.exposedTransaction
-import com.amos_tech_code.domain.dtos.requests.DeviceInfo
 import com.amos_tech_code.domain.models.Device
 import com.amos_tech_code.domain.models.Student
-import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.update
+import data.database.entities.DevicesTable
+import data.database.entities.StudentsTable
+import domain.models.DeviceStatus
+import org.jetbrains.exposed.sql.*
 import java.time.LocalDateTime
-import java.util.UUID
+import java.util.*
 
-class StudentRepository() {
+class StudentRepository {
 
     suspend fun findByRegistrationNumber(regNo: String): Student? = exposedTransaction {
         StudentsTable
@@ -38,6 +33,8 @@ class StudentRepository() {
             .map {
                 Device(
                     id = it[DevicesTable.id],
+                    status = it[DevicesTable.status],
+                    studentId = it[DevicesTable.studentId],
                     deviceId = it[DevicesTable.deviceId],
                     model = it[DevicesTable.deviceModel],
                     os = it[DevicesTable.os],
@@ -73,32 +70,31 @@ class StudentRepository() {
     }
 
     suspend fun createStudentWithDevice(
-        student: Student,
+        student: Student
     ): Student = exposedTransaction {
-        // Insert student
+
         StudentsTable.insert {
             it[id] = student.id
             it[registrationNumber] = student.registrationNumber
             it[fullName] = student.fullName
-            it[createdAt] = LocalDateTime.now()
-            it[updatedAt] = LocalDateTime.now()
+            it[createdAt] = student.createdAt
+            it[updatedAt] = student.updatedAt ?: LocalDateTime.now()
+            it[lastLoginAt] = student.lastLogin
         }
 
-        // Insert device linked to student
-        student.device?.let {
+        student.device?.let { device ->
             DevicesTable.insert {
-                it[id] = student.device.id
-                it[DevicesTable.studentId] = student.id
-                it[deviceId] = student.device.deviceId
-                it[deviceModel] = student.device.model
-                it[os] = student.device.os
-                it[fcmToken] = student.device.fcmToken
-                it[lastSeen] = LocalDateTime.now()
-                it[createdAt] = LocalDateTime.now()
+                it[id] = device.id
+                it[studentId] = student.id
+                it[deviceId] = device.deviceId
+                it[deviceModel] = device.model
+                it[os] = device.os
+                it[fcmToken] = device.fcmToken
+                it[lastSeen] = device.lastSeen
+                it[createdAt] = device.createdAt
             }
         }
 
-        // Return student if all succeeded
         student
     }
 
@@ -133,18 +129,71 @@ class StudentRepository() {
         } > 0
     }
 
-    suspend fun flagSuspiciousLogin(studentId: UUID, device: DeviceInfo): Boolean = exposedTransaction {
-        SuspiciousLoginsTable.insert {
-            it[id] = UUID.randomUUID()
-            it[SuspiciousLoginsTable.studentId] = studentId
-            it[attemptedDeviceId] = device.deviceId
-            it[attemptedModel] = device.model
-            it[attemptedOs] = device.os
-            it[attemptedFcmToken] = device.fcmToken
-            it[createdAt] = LocalDateTime.now()
-        }
-        true
+    suspend fun findDeviceByDeviceId(deviceId: String): Device? = exposedTransaction {
+        DevicesTable
+            .selectAll()
+            .where { DevicesTable.deviceId eq deviceId }
+            .map { it.toDevice() }
+            .singleOrNull()
     }
+
+    suspend fun findActiveDeviceByDeviceId(deviceId: String): Device? = exposedTransaction {
+        DevicesTable
+            .selectAll()
+            .where {
+                (DevicesTable.deviceId eq deviceId) and
+                        (DevicesTable.status eq DeviceStatus.ACTIVE)
+            }
+            .map { it.toDevice() }
+            .singleOrNull()
+    }
+
+    suspend fun findDeviceByStudentIdAndDeviceId(studentId: UUID, deviceId: String): Device? = exposedTransaction {
+        DevicesTable
+            .selectAll()
+            .where {
+                (DevicesTable.studentId eq studentId) and
+                        (DevicesTable.deviceId eq deviceId)
+            }
+            .map { it.toDevice() }
+            .singleOrNull()
+    }
+
+    suspend fun updateDeviceStatus(deviceId: UUID, status: DeviceStatus): Boolean = exposedTransaction {
+        DevicesTable.update({ DevicesTable.id eq deviceId }) {
+            it[DevicesTable.status] = status
+            it[updatedAt] = LocalDateTime.now()
+        } > 0
+    }
+
+    suspend fun updateDeviceLastSeen(deviceId: UUID, lastSeen: LocalDateTime, fcmToken: String?): Boolean = exposedTransaction {
+        DevicesTable.update({ DevicesTable.id eq deviceId }) {
+            it[DevicesTable.lastSeen] = lastSeen
+            it[updatedAt] = lastSeen
+            fcmToken?.let { token -> it[DevicesTable.fcmToken] = token }
+        } > 0
+    }
+
+    suspend fun getPendingRequests(): List<Device> = exposedTransaction {
+        DevicesTable
+            .selectAll()
+            .where { DevicesTable.status eq DeviceStatus.PENDING }
+            .orderBy(DevicesTable.createdAt to SortOrder.DESC)
+            .map { it.toDevice() }
+    }
+
+    private fun ResultRow.toDevice(): Device = Device(
+        id = this[DevicesTable.id],
+        studentId = this[DevicesTable.studentId],
+        deviceId = this[DevicesTable.deviceId],
+        model = this[DevicesTable.deviceModel],
+        os = this[DevicesTable.os],
+        fcmToken = this[DevicesTable.fcmToken],
+        status = this[DevicesTable.status],
+        lastSeen = this[DevicesTable.lastSeen],
+        createdAt = this[DevicesTable.createdAt],
+        updatedAt = this[DevicesTable.updatedAt]
+    )
 
     // helpers
     private fun ResultRow.toStudent(): Student = Student(
@@ -152,25 +201,7 @@ class StudentRepository() {
         registrationNumber = this[StudentsTable.registrationNumber],
         fullName = this[StudentsTable.fullName],
         createdAt = this[StudentsTable.createdAt],
-        device = null,
-    )
-
-    private fun ResultRow.toStudentWithDevice(): Student = Student(
-        id = this[StudentsTable.id],
-        registrationNumber = this[StudentsTable.registrationNumber],
-        fullName = this[StudentsTable.fullName],
-        createdAt = this[StudentsTable.createdAt],
-        updatedAt = this[StudentsTable.updatedAt],
         lastLogin = this[StudentsTable.lastLoginAt],
-        device = Device(
-            id = this[DevicesTable.id],
-            deviceId = this[DevicesTable.deviceId],
-            model = this[DevicesTable.deviceModel],
-            os = this[DevicesTable.os],
-            fcmToken = this[DevicesTable.fcmToken],
-            lastSeen = this[DevicesTable.lastSeen],
-            createdAt = this[DevicesTable.createdAt],
-            updatedAt = this[DevicesTable.updatedAt]
-        )
+        device = null,
     )
 }

@@ -4,6 +4,12 @@ enum class UserRole {
     STUDENT, LECTURER, ADMIN // Admin for future impl
 }
 
+enum class DeviceStatus {
+    ACTIVE,           // Registered and approved device
+    PENDING,          // Waiting for approval
+    REJECTED         // Rejected device change
+}
+
 enum class AttendanceMethod {
     QR_CODE, // Qr Code scan
     MANUAL_CODE, // Manually entering session code if allowed

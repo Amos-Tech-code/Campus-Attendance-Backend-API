@@ -1,5 +1,6 @@
 package com.amos_tech_code.domain.models
 
+import domain.models.DeviceStatus
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -13,13 +14,16 @@ data class Student(
     val lastLogin: LocalDateTime? = null
 )
 
+
 data class Device(
     val id: UUID,
-    val deviceId: String, // Unique device identifier
+    val studentId: UUID,
+    val deviceId: String,
     val model: String,
     val os: String,
     val fcmToken: String? = null,
+    val status: DeviceStatus,
     val lastSeen: LocalDateTime,
     val createdAt: LocalDateTime,
-    val updatedAt: LocalDateTime? = null
+    val updatedAt: LocalDateTime
 )
