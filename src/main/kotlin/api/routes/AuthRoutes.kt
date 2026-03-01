@@ -4,7 +4,6 @@ import com.amos_tech_code.domain.dtos.requests.GoogleSignInRequest
 import com.amos_tech_code.domain.dtos.requests.StudentLoginRequest
 import com.amos_tech_code.domain.dtos.requests.StudentRegistrationRequest
 import com.amos_tech_code.domain.dtos.response.LecturerAuthResponse
-import api.dtos.response.StudentAuthResponse
 import com.amos_tech_code.services.AuthService
 import io.ktor.http.*
 import io.ktor.server.request.*
@@ -55,34 +54,26 @@ fun Route.authRoutes(authService: AuthService) {
         post("/students/register") {
             val request = call.receive<StudentRegistrationRequest>()
 
-            val result = authService.registerStudent(request)
+            val response = authService.registerStudent(request)
 
             call.respond(
                 HttpStatusCode.Created,
-                StudentAuthResponse(
-                token = result.token,
-                fullName = result.fullName,
-                regNumber = result.regNumber,
-                userType = result.userType,
-            ))
+                response
+            )
         }
 
         // Student Login
         post("/students/login") {
             val request = call.receive<StudentLoginRequest>()
-            val result = authService.loginStudent(
+            val response = authService.loginStudent(
                 request.registrationNumber,
                 request.deviceInfo
             )
 
             call.respond(
                 HttpStatusCode.OK,
-                StudentAuthResponse(
-                token = result.token,
-                fullName = result.fullName,
-                regNumber = result.regNumber,
-                userType = result.userType
-                ))
+                response
+            )
         }
     }
 }

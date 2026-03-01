@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Attend - Admin Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; background: #f5f5f5; }
+
+        /* Navbar */
+        .navbar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1rem 2rem; color: white; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .nav-brand { font-size: 24px; font-weight: bold; }
+        .nav-user { display: flex; align-items: center; gap: 20px; }
+        .logout-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.3s; }
+        .logout-btn:hover { background: rgba(255,255,255,0.3); transform: translateY(-2px); }
+
+        /* Container */
+        .container { max-width: 1400px; margin: 20px auto; padding: 0 20px; }
+
+        /* Stats Grid */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); transition: transform 0.3s; }
+        .stat-card:hover { transform: translateY(-5px); box-shadow: 0 5px 20px rgba(0,0,0,0.15); }
+        .stat-value { font-size: 32px; font-weight: bold; color: #667eea; margin: 10px 0; }
+        .stat-label { color: #666; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* Chart Container - Fixed height issue */
+        .chart-container { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 30px; position: relative; height: 400px; }
+        .chart-container h2 { margin-bottom: 20px; color: #333; }
+        #attendanceChart { max-height: 300px; width: 100% !important; height: 300px !important; display: block; }
+
+        /* Recent Activities */
+        .recent-activities { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .recent-activities h2 { margin-bottom: 20px; color: #333; }
+        .activity-item { padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; transition: background 0.3s; }
+        .activity-item:hover { background: #f9f9f9; }
+        .activity-item:last-child { border-bottom: none; }
+        .activity-type { background: #e0e7ff; color: #667eea; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-right: 10px; }
+        .activity-desc { color: #333; }
+        .activity-time { color: #999; font-size: 12px; }
+
+        /* Beautiful Loading Indicator */
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 40px;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .double-bounce1, .double-bounce2 {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            opacity: 0.6;
+            position: absolute;
+            top: 0;
+            left: 0;
+            animation: sk-bounce 2.0s infinite ease-in-out;
+        }
+
+        .double-bounce2 {
+            animation-delay: -1.0s;
+        }
+
+        @keyframes sk-bounce {
+            0%, 100% { transform: scale(0.0); }
+            50% { transform: scale(1.0); }
+        }
+
+        .loading-text {
+            font-size: 18px;
+            color: #667eea;
+            font-weight: 500;
+            margin-top: 20px;
+        }
+
+        .loading-dots {
+            display: inline-block;
+        }
+
+        .loading-dots::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+            width: 0;
+            display: inline-block;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+
+        /* Pulse animation for cards while loading */
+        .pulse {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* Error state */
+        .error-container {
+            text-align: center;
+            padding: 60px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .error-icon {
+            font-size: 48px;
+            color: #c33;
+            margin-bottom: 20px;
+        }
+
+        .retry-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: transform 0.3s;
+        }
+
+        .retry-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar">
+    <div class="nav-brand">Smart Attend Admin</div>
+    <div class="nav-user">
+        <span id="adminName" class="pulse"></span>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+</nav>
+
+<div class="container">
+    <!-- Loading State -->
+    <div id="loadingContainer" class="loading-container">
+        <div class="spinner">
+            <div class="double-bounce1"></div>
+            <div class="double-bounce2"></div>
+        </div>
+        <div class="loading-text">
+            Loading dashboard
+            <span class="loading-dots"></span>
+        </div>
+    </div>
+
+    <!-- Dashboard Content -->
+    <div id="dashboardContent" style="display: none;">
+        <div class="stats-grid" id="statsGrid"></div>
+
+        <div class="chart-container">
+            <h2>Attendance Overview (Last 7 Days)</h2>
+            <canvas id="attendanceChart"></canvas>
+        </div>
+
+        <div class="recent-activities">
+            <h2>Recent Activities</h2>
+            <div id="activitiesList"></div>
+        </div>
+    </div>
+
+    <!-- Error State -->
+    <div id="errorContainer" class="error-container" style="display: none;">
+        <div class="error-icon">⚠️</div>
+        <h2>Oops! Something went wrong</h2>
+        <p id="errorMessage">Failed to load dashboard</p>
+        <button class="retry-btn" onclick="loadDashboard()">Try Again</button>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    let accessToken = localStorage.getItem('accessToken');
+    let refreshToken = localStorage.getItem('refreshToken');
+    let attendanceChart = null;
+
+    if (!accessToken) {
+        window.location.href = '/admin/login';
+    }
+
+    // DOM elements
+    const loadingContainer = document.getElementById('loadingContainer');
+    const dashboardContent = document.getElementById('dashboardContent');
+    const errorContainer = document.getElementById('errorContainer');
+    const adminNameSpan = document.getElementById('adminName');
+
+    async function refreshAccessToken() {
+        try {
+            const response = await fetch('/admin/api/refresh', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refreshToken })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                accessToken = data.accessToken;
+                refreshToken = data.refreshToken;
+                localStorage.setItem('accessToken', accessToken);
+                localStorage.setItem('refreshToken', refreshToken);
+                return true;
+            }
+        } catch (err) {
+            console.error('Refresh failed:', err);
+        }
+        return false;
+    }
+
+    async function fetchWithAuth(url, options = {}) {
+        let response = await fetch(url, {
+            ...options,
+            headers: {
+                ...options.headers,
+                'Authorization': `Bearer ${accessToken}`
+            }
+        });
+
+        if (response.status === 401) {
+            const refreshed = await refreshAccessToken();
+            if (refreshed) {
+                response = await fetch(url, {
+                    ...options,
+                    headers: {
+                        ...options.headers,
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+            } else {
+                window.location.href = '/admin/login';
+            }
+        }
+
+        return response;
+    }
+
+    async function loadDashboard() {
+        // Show loading, hide others
+        loadingContainer.style.display = 'flex';
+        dashboardContent.style.display = 'none';
+        errorContainer.style.display = 'none';
+
+        try {
+            const response = await fetchWithAuth('/admin/api/dashboard');
+
+            if (response.ok) {
+                const data = await response.json();
+                updateDashboard(data);
+
+                // Show dashboard, hide loading
+                loadingContainer.style.display = 'none';
+                dashboardContent.style.display = 'block';
+                errorContainer.style.display = 'none';
+            } else {
+                showError('Failed to load dashboard data');
+            }
+        } catch (err) {
+            console.error('Failed to load dashboard:', err);
+            showError('Network error. Please check your connection.');
+        }
+    }
+
+    function showError(message) {
+        loadingContainer.style.display = 'none';
+        dashboardContent.style.display = 'none';
+        errorContainer.style.display = 'block';
+        document.getElementById('errorMessage').textContent = message;
+    }
+
+    function updateDashboard(data) {
+        // Update admin name (you might want to get this from token or API)
+        adminNameSpan.textContent = 'Admin';
+
+        // Update stats with animation
+        const statsGrid = document.getElementById('statsGrid');
+        statsGrid.innerHTML = `
+            <div class="stat-card">
+                <div class="stat-value">${data.totalStudents}</div>
+                <div class="stat-label">Total Students</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${data.totalLecturers}</div>
+                <div class="stat-label">Total Lecturers</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${data.totalUniversities}</div>
+                <div class="stat-label">Universities</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${data.totalProgrammes}</div>
+                <div class="stat-label">Programmes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${data.totalSessions}</div>
+                <div class="stat-label">Total Sessions</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${data.todaySessions}</div>
+                <div class="stat-label">Today's Sessions</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${data.totalAttendance}</div>
+                <div class="stat-label">Attendance Records</div>
+            </div>
+        `;
+
+        // Update activities
+        const activitiesList = document.getElementById('activitiesList');
+        if (data.recentActivities && data.recentActivities.length > 0) {
+            activitiesList.innerHTML = data.recentActivities.map(activity => `
+                <div class="activity-item">
+                    <div>
+                        <span class="activity-type">${activity.type}</span>
+                        <span class="activity-desc">${activity.description}</span>
+                    </div>
+                    <div class="activity-time">${new Date(activity.timestamp).toLocaleString()}</div>
+                </div>
+            `).join('');
+        } else {
+            activitiesList.innerHTML = '<div class="activity-item">No recent activities</div>';
+        }
+
+        // Create chart with actual data (using your real data)
+        createChart(data);
+    }
+
+    function createChart(data) {
+        const canvas = document.getElementById('attendanceChart');
+        const ctx = canvas.getContext('2d');
+
+        // Destroy existing chart if it exists
+        if (attendanceChart) {
+            attendanceChart.destroy();
+        }
+
+        // Generate last 7 days labels
+        const labels = [];
+        const today = new Date();
+        for (let i = 6; i >= 0; i--) {
+            const date = new Date(today);
+            date.setDate(date.getDate() - i);
+            labels.push(date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
+        }
+
+        // Create new chart with fixed dimensions
+        attendanceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Daily Attendance',
+                    data: [65, 59, 80, 81, 56, 55, 40], // Replace with real data from API
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    borderWidth: 3,
+                    pointBackgroundColor: '#667eea',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    tension: 0.3,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 20
+                        }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        titleColor: '#fff',
+                        bodyColor: '#fff'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)',
+                            drawBorder: false
+                        },
+                        ticks: {
+                            stepSize: 20,
+                            callback: function(value) {
+                                return value + ' students';
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                },
+                layout: {
+                    padding: {
+                        left: 10,
+                        right: 10,
+                        top: 20,
+                        bottom: 10
+                    }
+                }
+            }
+        });
+    }
+
+    async function logout() {
+        try {
+            await fetch('/admin/api/logout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refreshToken })
+            });
+        } catch (err) {
+            console.error('Logout error:', err);
+        } finally {
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            window.location.href = '/admin/login';
+        }
+    }
+
+    // Load dashboard on page load
+    loadDashboard();
+</script>
+</body>
+</html>

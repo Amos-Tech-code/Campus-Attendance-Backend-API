@@ -4,6 +4,12 @@ enum class UserRole {
     STUDENT, LECTURER, ADMIN // Admin for future impl
 }
 
+enum class DeviceStatus {
+    ACTIVE,           // Registered and approved device
+    PENDING,          // Waiting for approval
+    REJECTED         // Rejected device change
+}
+
 enum class AttendanceMethod {
     QR_CODE, // Qr Code scan
     MANUAL_CODE, // Manually entering session code if allowed
@@ -38,5 +44,19 @@ enum class LiveAttendanceEventType {
 
 enum class ExportFormat {
     PDF, CSV
+}
+
+enum class NotificationType {
+    ATTENDANCE_MARKED,
+    ATTENDANCE_REVOKED,
+    DEVICE_APPROVED,
+    DEVICE_REJECTED,
+    DEVICE_REQUEST,
+    SESSION_STARTED,
+    SESSION_ENDED,
+    SUSPICIOUS_ACTIVITY,
+    SUPPORT_RESPONSE,
+    SYSTEM_ALERT,
+    ADMIN_ALERT
 }
 

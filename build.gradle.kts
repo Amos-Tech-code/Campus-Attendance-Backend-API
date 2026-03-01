@@ -63,6 +63,8 @@ dependencies {
     implementation("com.itextpdf:itext7-core:7.2.5")
     // CSV Generation
     implementation("com.opencsv:opencsv:5.8")
+    // Firebase Admin SDK
+    implementation("com.google.firebase:firebase-admin:9.2.0")
 
 }
 

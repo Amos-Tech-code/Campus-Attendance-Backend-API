@@ -10,11 +10,14 @@ import com.amos_tech_code.domain.services.AccountService
 import com.amos_tech_code.domain.services.AttendanceManagementService
 import com.amos_tech_code.routes.lecturerAcademicSetupRoutes
 import api.routes.studentEnrollmentRoutes
+import com.amos_tech_code.api.routes.adminRoutes
 import com.amos_tech_code.domain.services.AttendanceExportService
 import domain.services.AttendanceSessionService
 import com.amos_tech_code.services.AuthService
 import com.amos_tech_code.services.LecturerAcademicService
 import com.amos_tech_code.domain.services.LiveAttendanceService
+import com.amos_tech_code.domain.services.impl.AdminAuthService
+import com.amos_tech_code.domain.services.impl.AdminDashboardService
 import com.amos_tech_code.services.MarkAttendanceService
 import com.amos_tech_code.services.StudentEnrollmentService
 import io.ktor.http.HttpStatusCode
@@ -36,6 +39,8 @@ fun Application.configureRouting() {
     val attendanceManagementService by inject<AttendanceManagementService>()
     val accountService by inject<AccountService>()
     val attendanceExportService by inject<AttendanceExportService>()
+    val adminAuthService by inject<AdminAuthService>()
+    val adminDashboardService by inject<AdminDashboardService>()
 
     routing {
 
@@ -72,6 +77,12 @@ fun Application.configureRouting() {
             studentEnrollmentRoutes(studentEnrollmentService)
 
         }
+
+
+        adminRoutes(
+            adminAuthService,
+            adminDashboardService,
+        )
 
     }
 }

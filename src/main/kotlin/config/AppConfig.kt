@@ -47,4 +47,7 @@ object AppConfig {
     val CLOUD_NAME: String = getEnv("CLOUDINARY_NAME")!!
     val API_KEY: String = getEnv("CLOUDINARY_API_KEY")!!
     val API_SECRET: String = getEnv("CLOUDINARY_API_SECRET")!!
+
+    // ------------- Firebase Configuration ---------------
+    val FIREBASE_CONFIG = getEnv("FIREBASE_CONFIG")
 }

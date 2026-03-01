@@ -19,7 +19,9 @@ import com.amos_tech_code.utils.ConflictException
 import com.amos_tech_code.utils.InternalServerException
 import com.amos_tech_code.utils.ResourceNotFoundException
 import com.amos_tech_code.utils.ValidationException
+import domain.models.DeviceStatus
 import org.slf4j.LoggerFactory
+import utils.toIsoStringOrNull
 import java.time.LocalDateTime
 import java.util.*
 
@@ -121,50 +123,62 @@ class AuthServiceImpl(
         try {
             request.validate()
             request.deviceInfo.validate()
+
             // Check if student already exists
             if (studentRepository.findByRegistrationNumber(request.registrationNumber) != null) {
-                throw ConflictException(
-                    "Student with registration number ${request.registrationNumber} already exists."
-                )
+                throw ConflictException("Student already exists")
             }
 
-            // Create student with device
-            val studentId = generateUUID()
+            // CRITICAL: Device must be completely unused
+            val existingDevice = studentRepository.findDeviceByDeviceId(request.deviceInfo.deviceId)
+            if (existingDevice != null) {
+                throw ConflictException("This device is already registered to another student")
+            }
+
             val now = LocalDateTime.now()
-            // Add device
+            val studentId = generateUUID()
+
+            // Create student with ACTIVE device
             val device = Device(
                 id = generateUUID(),
+                studentId = studentId,
                 deviceId = request.deviceInfo.deviceId,
                 model = request.deviceInfo.model,
                 os = request.deviceInfo.os,
                 fcmToken = request.deviceInfo.fcmToken,
+                status = DeviceStatus.ACTIVE,
                 lastSeen = now,
-                createdAt = now
+                createdAt = now,
+                updatedAt = now
             )
-            val newStudent = Student(
+
+            val student = Student(
                 id = studentId,
                 registrationNumber = request.registrationNumber,
                 fullName = request.fullName,
                 createdAt = now,
-                device = device,
+                updatedAt = now,
+                lastLogin = now,
+                device = device
             )
 
-            val savedStudent = studentRepository.createStudentWithDevice(newStudent)
+            val savedStudent = studentRepository.createStudentWithDevice(student)
 
             return StudentAuthResponse(
-                token = JwtConfig.generateToken(savedStudent.id.toString(), UserRole.STUDENT),
-                userType = UserRole.STUDENT,
+                token = JwtConfig.generateToken(studentId.toString(), UserRole.STUDENT),
                 fullName = savedStudent.fullName,
                 regNumber = savedStudent.registrationNumber,
+                deviceStatus = device.status,
+                lastLoginAt = savedStudent.lastLogin.toIsoStringOrNull(),
+                message = "Registration successful."
             )
+
         } catch (ex: Exception) {
-            logger.error("Student registration failed: $ex")
-            when(ex) {
-                is AppException -> throw ex
-                else -> throw InternalServerException("An error occurred during student registration.")
+            logger.error("Registration failed: $ex")
+            when(ex) { is AppException -> throw ex
+                else -> throw InternalServerException("Registration failed")
             }
         }
-
     }
 
     override suspend fun loginStudent(
@@ -172,41 +186,93 @@ class AuthServiceImpl(
         deviceInfo: DeviceInfo
     ): StudentAuthResponse {
         try {
-            if (registrationNumber.isBlank()) throw ValidationException("Registration number is required.")
+            if (registrationNumber.isBlank()) throw ValidationException("Registration number required")
             deviceInfo.validate()
 
             val student = studentRepository.findByRegistrationNumber(registrationNumber)
-                ?: throw ResourceNotFoundException(
-                    "Student with registration number $registrationNumber not found. Please check your registration number or register first."
-                )
+                ?: throw ResourceNotFoundException("Student not found")
 
-            val registeredDevice = studentRepository.findDeviceByStudentId(student.id)
-                ?: // Student exists but device record missing — this should not normally happen.
-                throw IllegalStateException("No device registered for student: ${student.registrationNumber}")
+            val now = LocalDateTime.now()
+            studentRepository.updateLastLogin(student.id, now)
 
-            if (registeredDevice.deviceId == deviceInfo.deviceId) {
-                // Correct device → update lastSeen
-                studentRepository.updateDeviceLastSeen(registeredDevice.deviceId, LocalDateTime.now())
-            } else {
-                // Different device → flag suspicious
-                studentRepository.flagSuspiciousLogin(student.id, deviceInfo)
+            // Find device for this student
+            val device = studentRepository.findDeviceByStudentIdAndDeviceId(student.id, deviceInfo.deviceId)
+
+            return when {
+                // Case 1: Device exists and is ACTIVE
+                device != null && device.status == DeviceStatus.ACTIVE -> {
+                    studentRepository.updateDeviceLastSeen(device.id, now, deviceInfo.fcmToken)
+
+                    StudentAuthResponse(
+                        token = JwtConfig.generateToken(student.id.toString(), UserRole.STUDENT),
+                        fullName = student.fullName,
+                        regNumber = student.registrationNumber,
+                        deviceStatus = DeviceStatus.ACTIVE,
+                        message = "Login successful",
+                        lastLoginAt = student.lastLogin.toIsoStringOrNull()
+                    )
+                }
+
+                // Case 2: Device exists but is PENDING
+                device != null && device.status == DeviceStatus.PENDING -> {
+                    studentRepository.updateDeviceLastSeen(device.id, now, deviceInfo.fcmToken)
+
+                    StudentAuthResponse(
+                        token = JwtConfig.generateToken(student.id.toString(), UserRole.STUDENT),
+                        fullName = student.fullName,
+                        regNumber = student.registrationNumber,
+                        deviceStatus = DeviceStatus.PENDING,
+                        message = "Device change requested. Waiting for approval.",
+                        lastLoginAt = student.lastLogin.toIsoStringOrNull()
+                    )
+                }
+
+                // Case 3: Device exists but was REJECTED
+                device != null && device.status == DeviceStatus.REJECTED -> {
+                    StudentAuthResponse(
+                        token = JwtConfig.generateToken(student.id.toString(), UserRole.STUDENT),
+                        fullName = student.fullName,
+                        regNumber = student.registrationNumber,
+                        deviceStatus = DeviceStatus.REJECTED,
+                        message = "Device change was rejected. Contact admin or one of your Lecturer.",
+                        lastLoginAt = student.lastLogin.toIsoStringOrNull()
+                    )
+                }
+
+                // Case 4: New device - Check if used elsewhere
+                else -> {
+                    // First check if this device is used by another student
+                    val deviceInUse = studentRepository.findActiveDeviceByDeviceId(deviceInfo.deviceId)
+
+                    if (deviceInUse != null) {
+                        // Device belongs to someone else
+                        StudentAuthResponse(
+                            token = JwtConfig.generateToken(student.id.toString(), UserRole.STUDENT),
+                            fullName = student.fullName,
+                            regNumber = student.registrationNumber,
+                            deviceStatus = DeviceStatus.REJECTED,
+                            message = "This device is registered by another student",
+                            lastLoginAt = student.lastLogin.toIsoStringOrNull()
+                        )
+                    } else {
+                        // New device - Does not belong to someone else
+                        StudentAuthResponse(
+                            token = JwtConfig.generateToken(student.id.toString(), UserRole.STUDENT),
+                            fullName = student.fullName,
+                            regNumber = student.registrationNumber,
+                            deviceStatus = DeviceStatus.PENDING,
+                            message = "New device detected. Request a device change request",
+                            lastLoginAt = student.lastLogin.toIsoStringOrNull()
+                        )
+                    }
+                }
             }
 
-            // Always update last login timestamp
-            studentRepository.updateLastLogin(student.id, LocalDateTime.now())
-
-            return StudentAuthResponse(
-                token = JwtConfig.generateToken(student.id.toString(), UserRole.STUDENT),
-                userType = UserRole.STUDENT,
-                fullName = student.fullName,
-                regNumber = student.registrationNumber
-            )
-
         } catch (ex: Exception) {
-            logger.error("Student login failed: $ex")
+            logger.error("Login failed: $ex")
             when(ex) {
                 is AppException -> throw ex
-                else -> throw InternalServerException("An error occurred during student login. Please try again.")
+                else -> throw InternalServerException("Login failed")
             }
         }
     }

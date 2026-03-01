@@ -1,6 +1,9 @@
 package com.amos_tech_code.data.database
 
 import com.amos_tech_code.config.AppConfig
+import com.amos_tech_code.data.database.entities.AdminRefreshTokensTable
+import com.amos_tech_code.data.database.entities.AdminsTable
+import com.amos_tech_code.data.database.entities.NotificationsTable
 import data.database.entities.AcademicTermsTable
 import data.database.entities.AttendanceExportsTable
 import data.database.entities.AttendanceRecordsTable
@@ -15,7 +18,6 @@ import data.database.entities.ProgrammesTable
 import data.database.entities.SessionProgrammesTable
 import data.database.entities.StudentEnrollmentsTable
 import data.database.entities.StudentsTable
-import data.database.entities.SuspiciousLoginsTable
 import data.database.entities.UnitsTable
 import data.database.entities.UniversitiesTable
 import com.zaxxer.hikari.HikariConfig
@@ -44,14 +46,23 @@ object DatabaseFactory {
         isAutoCommit = false  // Let's data.repository layer manage transactions
     }
 
-    fun init() {
-        try {
+    fun connect() {
+        val dataSource = HikariDataSource(config)
+        Database.connect(dataSource)
+    }
+
+    fun createSchema() {
+
             val dataSource = HikariDataSource(config)
             Database.connect(dataSource)
 
             transaction {
                 // Create tables if they don't exist
                 SchemaUtils.createMissingTablesAndColumns(
+                    // Admin Tables
+                    AdminsTable,
+                    AdminRefreshTokensTable,
+
                     // System Master Tables
                     UniversitiesTable,
                     AcademicTermsTable,
@@ -63,7 +74,6 @@ object DatabaseFactory {
                     // Students
                     StudentsTable,
                     DevicesTable,
-                    SuspiciousLoginsTable,
                     StudentEnrollmentsTable,
 
                     // Lecturers
@@ -77,70 +87,10 @@ object DatabaseFactory {
                     AttendanceRecordsTable,
                     AttendanceExportsTable,
 
+                    // Notification
+                    NotificationsTable
                 )
-
-                // updateAdminPassword()
             }
-        } catch (e: Exception) {
-            println("Database initialization failed: ${e.message}")
-            throw e
-        }
-    }
-
-}
-
-
-fun Application.migrateDatabase() {
-    // This function can be used for future database migrations
-
-}
-
-fun Application.seedDatabase() {
-    environment.monitor.subscribe(ApplicationStarted) {
-        transaction {
-            // Seed admin user if none exist
-            // Check if any lecturer exists
-            val existingLecturer = LecturersTable
-                .select(LecturersTable.id)
-                .any()
-
-            val existingStudent = StudentsTable
-                .select(StudentsTable.id)
-                .any()
-
-            if (!existingLecturer) {
-                println("Seeding default lecturer...")
-
-                LecturersTable.insert {
-                    it[email] = "lecturer@example.com"
-                    it[fullName] = "Default Lecturer"
-                    it[isProfileComplete] = false
-                    it[isActive] = true
-                    it[lastLoginAt] = null
-                    it[createdAt] = now()
-                    it[updatedAt] = now()
-                }
-                println("Default lecturer seeded successfully.")
-            } else {
-                println("Lecturer already exist, skipping seeding.")
-            }
-
-            if (!existingStudent) {
-                println("Seeding default student...")
-
-                StudentsTable.insert {
-                    it[registrationNumber] = "SC211/0483/2022"
-                    it[fullName] = "Amos Njega Kamau"
-                    it[isActive] = true
-                    it[lastLoginAt] = null
-                    it[createdAt] = now()
-                    it[updatedAt] = now()
-                }
-                println("Default student seeded successfully.")
-            } else {
-                println("Student already exist, skipping seeding.")
-            }
-        }
     }
 
 }

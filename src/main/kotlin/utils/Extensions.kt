@@ -1,15 +1,33 @@
 package utils
 
 import api.dtos.response.AttendanceMarkedEventDto
-import api.dtos.response.LiveAttendanceEvent
 import api.dtos.response.LiveAttendanceSnapshot
-import api.dtos.response.LiveAttendanceStudentDto
 import com.amos_tech_code.utils.ValidationException
 import domain.models.LiveAttendanceEventType
 import kotlinx.serialization.json.Json
 import java.io.Writer
 import java.time.LocalDateTime
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
+/**
+ * Convert LocalDateTime to ISO String
+ */
+fun LocalDateTime.toIsoString(): String =
+    this.atOffset(ZoneOffset.UTC)
+        .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+
+/**
+ * Convert nullable LocalDateTime to ISO String
+ */
+fun LocalDateTime?.toIsoStringOrNull(): String? =
+    this?.atOffset(ZoneOffset.UTC)
+        ?.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+
+/**
+ * Converts String to LocalDateTime
+ * @throws ValidationException
+ */
 fun String.toLocalDateTimeOrThrow(): LocalDateTime =
     try {
         LocalDateTime.parse(this)

@@ -10,9 +10,9 @@ object JwtConfig {
 
     private val secret = AppConfig.JWT_SECRET
     private val validityInMs = AppConfig.JWT_EXPIRATION
-    val issuer = AppConfig.JWT_ISSUER.toString()
-    val audience = AppConfig.JWT_AUDIENCE.toString()
-    val realm = AppConfig.JWT_REALM.toString()
+    val issuer = AppConfig.JWT_ISSUER
+    val audience = AppConfig.JWT_AUDIENCE
+    val realm = AppConfig.JWT_REALM
 
     private val algorithm = Algorithm.HMAC256(secret)
 
@@ -26,6 +26,6 @@ object JwtConfig {
         .withAudience(audience)
         .withClaim("userId", userId)
         .withClaim("role", role.name)
-        .withExpiresAt(Date(System.currentTimeMillis() + validityInMs!!))
+        .withExpiresAt(Date(System.currentTimeMillis() + validityInMs))
         .sign(algorithm)
 }

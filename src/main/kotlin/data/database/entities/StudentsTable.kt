@@ -1,5 +1,6 @@
 package data.database.entities
 
+import domain.models.DeviceStatus
 import domain.models.StudentEnrollmentSource
 import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.Table
@@ -27,25 +28,22 @@ object DevicesTable : Table("student_devices") {
     val deviceModel = varchar("model", 100)
     val os = varchar("os", 50)
     val fcmToken = varchar("fcm_token", 255).nullable()
+
+    // Device status
+    val status = enumerationByName<DeviceStatus>("status", 20).default(DeviceStatus.ACTIVE)
+
+    // Timestamps
     val lastSeen = datetime("last_seen").clientDefault { now() }
     val createdAt = datetime("created_at").clientDefault { now() }
     val updatedAt = datetime("updated_at").clientDefault { now() }
 
     override val primaryKey = PrimaryKey(id)
-    init { uniqueIndex("unique_student_device", studentId, deviceId) }
-}
 
-
-object SuspiciousLoginsTable : Table("suspicious_logins") {
-    val id = uuid("id").autoGenerate()
-    val studentId = uuid("student_id").references(StudentsTable.id, onDelete = ReferenceOption.CASCADE)
-    val attemptedDeviceId = varchar("attempted_device_id", 255)
-    val attemptedModel = varchar("attempted_model", 255)
-    val attemptedOs = varchar("attempted_os", 255)
-    val attemptedFcmToken = varchar("attempted_fcm_token", 255).nullable()
-    val createdAt = datetime("created_at").clientDefault { now() }
-
-    override val primaryKey = PrimaryKey(id)
+    init {
+        uniqueIndex("unique_student_device", studentId, deviceId)
+        index(false, studentId, status)
+        index(false, deviceId)
+    }
 }
 
 

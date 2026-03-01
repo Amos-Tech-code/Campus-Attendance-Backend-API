@@ -81,4 +81,34 @@ class AccountServiceImpl(
             }
         }
     }
+
+    override suspend fun updateStudentFcmToken(studentId: UUID, fcmToken: String) {
+        try {
+            val result = studentRepository.updateFcmToken(studentId, fcmToken)
+            if (!result) throw ValidationException("Failed to update fcm token")
+
+        } catch (ex: Exception) {
+            logger.error("Failed to update fcm token: $ex")
+            when (ex) {
+                is AppException -> throw ex
+                else -> throw InternalServerException("Failed to update fcm token")
+            }
+        }
+    }
+
+    override suspend fun updateLecturerFcmToken(lecturerId: UUID, fcmToken: String) {
+        try {
+            val result = lecturerRepository.updateFcmToken(lecturerId, fcmToken)
+            if (!result) throw ValidationException("Failed to update fcm token")
+
+        } catch (ex: Exception) {
+            logger.error("Failed to update fcm token: $ex")
+            when (ex) {
+                is AppException -> throw ex
+                else -> throw InternalServerException("Failed to update fcm token")
+            }
+        }
+    }
+
+
 }

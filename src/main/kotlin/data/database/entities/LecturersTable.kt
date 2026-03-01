@@ -10,6 +10,7 @@ object LecturersTable : Table("lecturers") {
     val id = uuid("id").autoGenerate()
     val email = varchar("email", 255).uniqueIndex()
     val fullName = varchar("full_name", 255).nullable()
+    val fcmToken = varchar("fcm_token", 255).nullable() // New
     val isProfileComplete = bool("is_profile_complete").default(false)
     val lastLoginAt = datetime("last_login_at").nullable()
     val isActive = bool("is_active").default(true)
