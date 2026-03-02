@@ -47,7 +47,6 @@ import domain.services.impl.StudentEnrollmentServiceImpl
 import com.amos_tech_code.utils.BackgroundTaskScope
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
-import org.koin.core.scope.get
 import org.koin.dsl.module
 
 val appModule = module {
@@ -74,7 +73,8 @@ val appModule = module {
 
     single<AttendanceSessionService> {
         AttendanceSessionServiceImpl(
-            get(), get(), get(), get(), get()
+            get(), get(), get(),
+            get(), get(), get(), get()
         )
     }
 
@@ -89,7 +89,8 @@ val appModule = module {
         studentRepository = get(),
         studentEnrollmentRepository = get(),
         attendanceEventBus = get(),
-        backgroundTaskScope = get()
+        backgroundTaskScope = get(),
+        notificationService = get()
     )}
 
     single<StudentEnrollmentService> { StudentEnrollmentServiceImpl(get()) }
@@ -98,7 +99,7 @@ val appModule = module {
 
     single<AttendanceEventBus> { AttendanceEventBusImpl() }
 
-    single<AttendanceManagementService> { AttendanceManagementServiceImpl(get(), get()) }
+    single<AttendanceManagementService> { AttendanceManagementServiceImpl(get(), get(), get(), get()) }
 
     single<AttendanceExportService> { AttendanceExportServiceImpl(get(), get(), get(), get()) }
 
@@ -106,7 +107,7 @@ val appModule = module {
 
     single<CsvGeneratorService> { CsvGeneratorServiceImpl() }
 
-    single { NotificationService(get(), get()) }
+    single { NotificationService(get(), get(), get()) }
 
 
     /*-----------------------------------------
