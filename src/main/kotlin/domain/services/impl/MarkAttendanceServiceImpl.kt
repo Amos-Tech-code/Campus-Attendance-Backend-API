@@ -22,6 +22,7 @@ import domain.models.SeverityLevel
 import domain.models.StudentEnrollmentSource
 import com.amos_tech_code.domain.models.VerificationOutcome
 import com.amos_tech_code.domain.services.AttendanceEventBus
+import com.amos_tech_code.domain.services.NotificationService
 import com.amos_tech_code.services.MarkAttendanceService
 import com.amos_tech_code.utils.AppException
 import com.amos_tech_code.utils.BackgroundTaskScope
@@ -41,7 +42,7 @@ class MarkAttendanceServiceImpl(
     private val attendanceSessionRepository: AttendanceSessionRepository,
     private val studentRepository: StudentRepository,
     private val studentEnrollmentRepository: StudentEnrollmentRepository,
-   // private val attendanceEventPublisher: AttendanceEventPublisher,
+    private val notificationService: NotificationService,
     private val attendanceEventBus: AttendanceEventBus,
     private val backgroundTaskScope: BackgroundTaskScope
 ) : MarkAttendanceService {
@@ -123,12 +124,22 @@ class MarkAttendanceServiceImpl(
 
             backgroundTaskScope.scope.launch {
                 try {
-                    //attendanceEventPublisher.publishAttendanceMarked(event)
-                    attendanceEventBus.publish(
-                        LiveAttendanceEvent.AttendanceMarked(data = event)                    )
+                    // 1. AttendanceEventPublisher.publishAttendanceMarked(event)
+                    attendanceEventBus.publish(LiveAttendanceEvent.AttendanceMarked(data = event))
+
+                    // 2. Send notification to student (fire-and-forget)
+                    val session = attendanceSessionRepository.getSessionDetails(sessionId)
+                    if (session != null) {
+                        notificationService.notifyStudentAttendanceMarked(
+                            studentId = student.id,
+                            sessionTitle = session.title ?: "No session title",
+                            unitCode = session.unit.code,
+                        )
+                    }
+
                 } catch (e: Exception) {
                     // NEVER propagate
-                    logger.error("Failed to publish attendance event: $event", e)
+                    logger.error("Background processing failed for lecturer attendance marking", e)
                 }
             }
 
@@ -260,9 +271,29 @@ class MarkAttendanceServiceImpl(
                     attendanceEventBus.publish(
                         LiveAttendanceEvent.AttendanceMarked(data = event)
                     )
+
+                    // 2. Send confirmation notification to student
+                    notificationService.notifyStudentAttendanceMarked(
+                        studentId = studentId,
+                        sessionTitle = session.sessionTitle ?: "No session title",
+                        unitCode = session.unitCode
+                    )
+
+                    // 3. If suspicious, notify lecturer
+                    if (flags.isNotEmpty()) {
+                        notificationService.notifyLecturerSuspiciousActivity(
+                            lecturerId = session.lecturerId,
+                            sessionTitle = session.sessionTitle ?: "No session title",
+                            unitCode = session.unitCode,
+                            studentName = student.fullName,
+                            reason = flags.joinToString { it.type.name }
+                        )
+                    }
+
+
                 } catch (e: Exception) {
                     // NEVER propagate
-                    logger.error("Failed to publish attendance event:", e)
+                    logger.error("Background processing failed for attendance marking", e)
                 }
             }
 

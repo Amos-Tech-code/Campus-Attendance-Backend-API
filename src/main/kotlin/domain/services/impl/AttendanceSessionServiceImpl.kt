@@ -16,9 +16,11 @@ import com.amos_tech_code.domain.models.CreateSessionData
 import com.amos_tech_code.domain.models.UpdateSessionData
 import domain.services.AttendanceSessionService
 import com.amos_tech_code.domain.services.CloudStorageService
+import com.amos_tech_code.domain.services.NotificationService
 import com.amos_tech_code.services.QRCodeService
 import com.amos_tech_code.services.SessionCodeGenerator
 import com.amos_tech_code.utils.*
+import kotlinx.coroutines.launch
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.slf4j.LoggerFactory
 import utils.toLocalDateTimeOrThrow
@@ -31,7 +33,9 @@ class AttendanceSessionServiceImpl(
     private val studentEnrollmentRepository: StudentEnrollmentRepository,
     private val qrCodeService: QRCodeService,
     private val sessionCodeGenerator: SessionCodeGenerator,
-    private val cloudStorageService: CloudStorageService
+    private val cloudStorageService: CloudStorageService,
+    private val notificationService: NotificationService,
+    private val backgroundTaskScope: BackgroundTaskScope
 ) : AttendanceSessionService {
 
     private val logger = LoggerFactory.getLogger(AttendanceSessionServiceImpl::class.java)
@@ -99,12 +103,28 @@ class AttendanceSessionServiceImpl(
                 )
             }
 
-            // Return the created session
-            if (sessionId != null) {
-                return attendanceSessionRepository.getSessionDetails(sessionId) ?: throw InternalServerException("Failed to retrieve created session")
-            } else {
-                throw IllegalStateException("Failed to start attendance session")
+            // Get session details for response
+            val sessionResponse = sessionId?.let {
+                attendanceSessionRepository.getSessionDetails(it)
+            } ?: throw InternalServerException("Failed to retrieve created session")
+
+
+            // Fire notification in background (fire-and-forget)
+            backgroundTaskScope.scope.launch {
+                try {
+                    notificationService.notifyLecturerSessionStarted(
+                        lecturerId = lecturerId,
+                        sessionTitle = sessionResponse.title ?: "No title",
+                        unitCode = unitCode,
+                        sessionCode = sessionCode
+                    )
+                } catch (e: Exception) {
+                    logger.error("Failed to send session started notification", e)
+                }
             }
+
+            // Return the created session
+            return sessionResponse
 
         } catch (ex: Exception) {
             logger.error("Failed to start attendance session: $ex")
@@ -165,15 +185,30 @@ class AttendanceSessionServiceImpl(
 
             val sessionUUID = UUID.fromString(sessionId)
 
-            // Get QR code URL before ending session to delete from cloud storage
-            val qrCodeUrl = attendanceSessionRepository.getSessionQrCodeUrl(sessionUUID)
+            // Get session details before ending
+            val session = attendanceSessionRepository.getSessionDetails(sessionUUID)
+                ?: throw ResourceNotFoundException("Session not found")
 
             // End the session
             val success = attendanceSessionRepository.endSession(lecturerId, sessionUUID)
 
             // Delete QR code from cloud storage if session was ended successfully
-            if (success && qrCodeUrl != null) {
-                cloudStorageService.deleteQRCode(qrCodeUrl)
+            if (success && session.qrCodeUrl != null) {
+                cloudStorageService.deleteQRCode(session.qrCodeUrl)
+            }
+
+            backgroundTaskScope.scope.launch {
+                try {
+                    val attendanceCount = attendanceSessionRepository.getAttendanceCount(sessionUUID)
+                    notificationService.notifyLecturerSessionEnded(
+                        lecturerId = lecturerId,
+                        sessionTitle = session.title ?: "No session title",
+                        unitCode = session.unit.code,
+                        attendanceCount = attendanceCount
+                    )
+                } catch (e: Exception) {
+                    logger.error("Failed to send session ended notification", e)
+                }
             }
 
             return success

@@ -692,5 +692,15 @@ class AttendanceSessionRepository {
             }
     }
 
+    /**
+     * Get total number of attendance records for a session
+     */
+    suspend fun getAttendanceCount(sessionId: UUID): Int = exposedTransaction {
+        AttendanceRecordsTable
+            .select(AttendanceRecordsTable.id)
+            .where { AttendanceRecordsTable.sessionId eq sessionId }
+            .count().toInt()
+    }
+
 
 }
