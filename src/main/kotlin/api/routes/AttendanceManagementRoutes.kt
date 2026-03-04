@@ -1,9 +1,10 @@
 package com.amos_tech_code.api.routes
 
+import api.dtos.response.GenericResponseDto
 import com.amos_tech_code.api.dtos.requests.AttendanceExportRequest
 import com.amos_tech_code.api.dtos.requests.RemoveAttendanceRequest
 import com.amos_tech_code.domain.services.AttendanceExportService
-import com.amos_tech_code.domain.services.AttendanceManagementService
+import domain.services.AttendanceManagementService
 import com.amos_tech_code.utils.getUserIdFromJWT
 import com.amos_tech_code.utils.getUserRoleFromJWT
 import com.amos_tech_code.utils.respondBadRequest
@@ -17,6 +18,7 @@ import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
+import org.apache.http.HttpStatus
 
 fun Route.attendanceManagementRoutes(
     attendanceManagementService: AttendanceManagementService,
@@ -30,12 +32,29 @@ fun Route.attendanceManagementRoutes(
 
             val request = call.receive<RemoveAttendanceRequest>()
 
-            attendanceManagementService.removeStudentAttendance(
+            val deleted = attendanceManagementService.removeStudentAttendance(
                 lecturerId = lecturerId,
                 request = request
             )
 
-            call.respond(HttpStatusCode.NoContent)
+            if (deleted) {
+                call.respond(
+                    HttpStatusCode.OK,
+                    GenericResponseDto(
+                        statusCode = HttpStatusCode.OK.value,
+                        message = "Successfully removed the student attendance"
+                    )
+                )
+            } else {
+                // This case might happen if rowsDeleted == 0 but no exception was thrown
+                call.respond(
+                    HttpStatusCode.NotFound,
+                    GenericResponseDto(
+                        statusCode = HttpStatusCode.NotFound.value,
+                        message = "Attendance record could not be deleted or was already removed"
+                    )
+                )
+            }
 
         }
 

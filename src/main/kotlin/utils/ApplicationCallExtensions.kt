@@ -1,6 +1,6 @@
 package com.amos_tech_code.utils
 
-import com.amos_tech_code.domain.dtos.response.GenericResponseDto
+import api.dtos.response.GenericResponseDto
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.auth.jwt.JWTPrincipal

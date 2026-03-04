@@ -1,6 +1,6 @@
 package com.amos_tech_code.plugins
 
-import com.amos_tech_code.domain.dtos.response.GenericResponseDto
+import api.dtos.response.GenericResponseDto
 import com.amos_tech_code.utils.*
 import io.ktor.http.*
 import io.ktor.server.application.*

@@ -1,10 +1,10 @@
-package com.amos_tech_code.domain.services.impl
+package domain.services.impl
 
 import com.amos_tech_code.api.dtos.requests.RemoveAttendanceRequest
 import com.amos_tech_code.api.dtos.response.AttendanceStatsResponse
 import com.amos_tech_code.api.dtos.response.StudentAttendanceHistoryResponse
 import com.amos_tech_code.data.repository.AttendanceRecordRepository
-import com.amos_tech_code.domain.services.AttendanceManagementService
+import domain.services.AttendanceManagementService
 import com.amos_tech_code.domain.services.NotificationService
 import com.amos_tech_code.utils.*
 import data.repository.AttendanceSessionRepository
@@ -24,7 +24,7 @@ class AttendanceManagementServiceImpl(
     override suspend fun removeStudentAttendance(
         lecturerId: UUID,
         request: RemoveAttendanceRequest
-    ) {
+    ) : Boolean {
         try {
             request.validate()
 
@@ -47,22 +47,28 @@ class AttendanceManagementServiceImpl(
                 attendanceRecordRepository.findBySessionAndStudent(sessionId, studentId)
                     ?: throw ResourceNotFoundException("Attendance record not found")
 
-            // 4. Delete attendance
-            attendanceRecordRepository.deleteById(attendanceId)
+            // 4. Delete attendance and check if successful
+            val rowsDeleted = attendanceRecordRepository.deleteById(attendanceId)
+            val deleted = rowsDeleted > 0
 
-            // 5. Fire notification in background (fire-and-forget)
-            backgroundTaskScope.scope.launch {
-                try {
-                    notificationService.notifyStudentAttendanceRevoked(
-                        studentId = studentId,
-                        sessionTitle = session.title ?: "No session title",
-                        unitCode = session.unit.code,
-                        reason = "Your attendance was flagged"
-                    )
-                } catch (e: Exception) {
-                    logger.error("Failed to send attendance revoked notification", e)
+            if (deleted) {
+                // 5. Fire notification in background (fire-and-forget)
+                backgroundTaskScope.scope.launch {
+                    try {
+                        notificationService.notifyStudentAttendanceRevoked(
+                            studentId = studentId,
+                            sessionTitle = session.title ?: "No session title",
+                            unitCode = session.unit.code,
+                            reason = "Your attendance was flagged"
+                        )
+                    } catch (e: Exception) {
+                        logger.error("Failed to send attendance revoked notification", e)
+                    }
                 }
             }
+
+            return deleted
+
         } catch (ex: Exception) {
             logger.error("Failed to remove attendance record", ex)
             when (ex) {

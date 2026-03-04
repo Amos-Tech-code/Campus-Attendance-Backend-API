@@ -110,7 +110,6 @@ class AttendanceRecordRepository {
             .any()
     }
 
-
     // Get student attendance stats for current active term
     suspend fun getStudentAttendanceStats(studentId: UUID): AttendanceStatsResponse = exposedTransaction {
         // 1. Get student's current active term enrollment (don't fetch all active terms)

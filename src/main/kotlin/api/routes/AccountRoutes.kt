@@ -3,7 +3,7 @@ package com.amos_tech_code.api.routes
 import com.amos_tech_code.api.dtos.requests.FcmTokenRequest
 import com.amos_tech_code.api.dtos.requests.UpdateLecturerProfileRequest
 import com.amos_tech_code.api.dtos.requests.UpdateStudentProfileRequest
-import com.amos_tech_code.domain.dtos.response.GenericResponseDto
+import api.dtos.response.GenericResponseDto
 import com.amos_tech_code.domain.services.AccountService
 import com.amos_tech_code.utils.getUserIdFromJWT
 import com.amos_tech_code.utils.getUserRoleFromJWT
@@ -15,7 +15,6 @@ import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.patch
-import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 
 fun Route.accountRoutes(
