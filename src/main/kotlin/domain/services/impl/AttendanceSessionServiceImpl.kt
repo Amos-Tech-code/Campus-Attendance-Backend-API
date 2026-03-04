@@ -57,6 +57,22 @@ class AttendanceSessionServiceImpl(
             // Validate lecturer authorization
             attendanceSessionRepository.validateLecturerAuthorization(lecturerId, universityId, academicTermId, unitId, programmeIds)
 
+            // Check for duplicate session
+            val hasDuplicate = attendanceSessionRepository.validateNoDuplicateSession(
+                lecturerId = lecturerId,
+                unitId = unitId,
+                academicTermId = academicTermId,
+                weekNumber = request.weekNumber,
+                sessionType = AttendanceSessionType.valueOf(request.attendanceSessionType.name),
+                programmeIds = programmeIds
+            )
+
+            if (hasDuplicate) {
+                throw ValidationException(
+                    "A session already exists for this lecturer, unit, academic term, week ${request.weekNumber}, " +
+                            "and session type with one or more of the same programmes. Cannot create duplicate session."
+                )
+            }
             // Generate unique session code
             val sessionCode = generateUniqueSessionCode()
             val unitCode = attendanceSessionRepository.findUnitCodeById(unitId)

@@ -1,4 +1,4 @@
-package com.amos_tech_code.domain.services
+package domain.services
 
 import com.amos_tech_code.api.dtos.requests.RemoveAttendanceRequest
 import com.amos_tech_code.api.dtos.response.AttendanceStatsResponse
@@ -10,7 +10,7 @@ interface AttendanceManagementService {
     suspend fun removeStudentAttendance(
         lecturerId: UUID,
         request: RemoveAttendanceRequest
-    )
+    ) : Boolean
 
     suspend fun getStudentAttendanceHistory(
         studentId: UUID,

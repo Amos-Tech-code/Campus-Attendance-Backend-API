@@ -12,7 +12,7 @@ import com.amos_tech_code.data.repository.StudentRepository
 import com.amos_tech_code.domain.services.AccountService
 import com.amos_tech_code.domain.services.AttendanceEventBus
 import com.amos_tech_code.domain.services.AttendanceExportService
-import com.amos_tech_code.domain.services.AttendanceManagementService
+import domain.services.AttendanceManagementService
 import com.amos_tech_code.services.MarkAttendanceService
 import domain.services.AttendanceSessionService
 import com.amos_tech_code.services.AuthService
@@ -27,7 +27,7 @@ import com.amos_tech_code.domain.services.impl.AccountServiceImpl
 import com.amos_tech_code.domain.services.impl.AdminAuthService
 import com.amos_tech_code.domain.services.impl.AdminDashboardService
 import com.amos_tech_code.domain.services.impl.AttendanceExportServiceImpl
-import com.amos_tech_code.domain.services.impl.AttendanceManagementServiceImpl
+import domain.services.impl.AttendanceManagementServiceImpl
 import com.amos_tech_code.domain.services.impl.CsvGeneratorServiceImpl
 import com.amos_tech_code.domain.services.impl.PdfGeneratorServiceImpl
 import domain.services.impl.AttendanceEventBusImpl

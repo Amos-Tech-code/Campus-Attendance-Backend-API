@@ -101,6 +101,7 @@ class LecturerRepository() {
             id = this[LecturersTable.id],
             email = this[LecturersTable.email],
             name = this[LecturersTable.fullName],
+            fcmToken = this[LecturersTable.fcmToken],
             isProfileComplete = this[LecturersTable.isProfileComplete],
             lastLoginAt = this[LecturersTable.lastLoginAt],
             createdAt = this[LecturersTable.createdAt],

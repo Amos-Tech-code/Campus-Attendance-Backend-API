@@ -69,9 +69,11 @@ class NotificationService(
             val student = studentRepository.findById(studentId) ?: return@withContext
             val device = studentRepository.findDeviceByStudentId(studentId)
 
-            device?.fcmToken?.let { token ->
+            if (device?.fcmToken == null) {
+                logger.warn("No FCM token found for student $studentId")
+            } else {
                 FirebaseService.sendNotification(
-                    token = token,
+                    token = device.fcmToken,
                     title = "⚠️ Attendance Revoked",
                     body = "Your attendance for $unitCode - $sessionTitle has been revoked. Reason: $reason",
                     data = mapOf(

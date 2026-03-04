@@ -3,7 +3,7 @@ package com.amos_tech_code.plugins
 import com.amos_tech_code.config.AppConfig
 import com.amos_tech_code.config.GoogleAuthConfig
 import com.amos_tech_code.config.JwtConfig
-import com.amos_tech_code.domain.dtos.response.GenericResponseDto
+import api.dtos.response.GenericResponseDto
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 import domain.models.UserRole

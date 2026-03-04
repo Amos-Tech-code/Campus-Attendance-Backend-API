@@ -11,6 +11,7 @@ import com.amos_tech_code.utils.AuthorizationException
 import data.database.entities.*
 import domain.models.AttendanceMethod
 import domain.models.AttendanceSessionStatus
+import domain.models.AttendanceSessionType
 import io.ktor.server.plugins.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -180,6 +181,46 @@ class AttendanceSessionRepository {
             }
 
         }
+
+    suspend fun validateNoDuplicateSession(
+        lecturerId: UUID,
+        unitId: UUID,
+        academicTermId: UUID,
+        weekNumber: Int,
+        sessionType: AttendanceSessionType,
+        programmeIds: List<UUID>,
+        sessionId: UUID? = null // Optional for updates
+    ): Boolean = exposedTransaction {
+        // First, check if there's any session with the same lecturer, unit, term, week, and type
+        val existingSessions = AttendanceSessionsTable
+            .select(AttendanceSessionsTable.id)
+            .where {
+                (AttendanceSessionsTable.lecturerId eq lecturerId) and
+                        (AttendanceSessionsTable.unitId eq unitId) and
+                        (AttendanceSessionsTable.academicTermId eq academicTermId) and
+                        (AttendanceSessionsTable.weekNumber eq weekNumber) and
+                        (AttendanceSessionsTable.attendanceSessionType eq sessionType) and
+                        (AttendanceSessionsTable.status neq AttendanceSessionStatus.CANCELLED) // Only active/scheduled sessions
+            }
+            .toList()
+
+        if (existingSessions.isEmpty()) return@exposedTransaction false
+
+        // If there are existing sessions, check if they share any of the same programmes
+        val existingSessionIds = existingSessions.map { it[AttendanceSessionsTable.id] }
+
+        val overlappingProgrammes = SessionProgrammesTable
+            .select(SessionProgrammesTable.programmeId)
+            .where {
+                (SessionProgrammesTable.sessionId inList existingSessionIds) and
+                        (SessionProgrammesTable.programmeId inList programmeIds)
+            }
+            .toList()
+            .map { it[SessionProgrammesTable.programmeId] }
+            .toSet()
+
+        return@exposedTransaction overlappingProgrammes.isNotEmpty()
+    }
 
     suspend fun findUnitCodeById(unitId: UUID) : String = exposedTransaction {
         UnitsTable
@@ -379,8 +420,10 @@ class AttendanceSessionRepository {
                 (AcademicTermsTable.universityId eq universityId) and
                         (AcademicTermsTable.isActive eq true)
             }
-            .singleOrNull()
-            ?.get(AcademicTermsTable.id)
+            .orderBy(AcademicTermsTable.createdAt to SortOrder.DESC) // or use startDate/endDate
+            .limit(1)
+            .map { it[AcademicTermsTable.id] }
+            .firstOrNull()
             ?: throw NotFoundException("No active academic term for university")
     }
 

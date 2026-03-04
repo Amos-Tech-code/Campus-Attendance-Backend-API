@@ -2,7 +2,7 @@ package api.routes
 
 import api.dtos.response.LiveAttendanceEvent
 import com.amos_tech_code.domain.dtos.requests.*
-import com.amos_tech_code.domain.dtos.response.GenericResponseDto
+import api.dtos.response.GenericResponseDto
 import com.amos_tech_code.domain.services.LiveAttendanceService
 import com.amos_tech_code.services.MarkAttendanceService
 import com.amos_tech_code.utils.*

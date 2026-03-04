@@ -38,6 +38,7 @@ class StudentRepository {
                     deviceId = it[DevicesTable.deviceId],
                     model = it[DevicesTable.deviceModel],
                     os = it[DevicesTable.os],
+                    fcmToken = it[DevicesTable.fcmToken],
                     lastSeen = it[DevicesTable.lastSeen],
                     createdAt = it[DevicesTable.createdAt],
                     updatedAt = it[DevicesTable.updatedAt]
