@@ -6,6 +6,9 @@ import com.amos_tech_code.domain.models.Notification
 import domain.models.NotificationType
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
@@ -49,7 +52,8 @@ class NotificationRepository {
         NotificationsTable
             .selectAll()
             .where {
-                NotificationsTable.recipientId eq recipientId
+                (NotificationsTable.recipientId eq recipientId) and
+                        (NotificationsTable.isRead eq false)
             }
             .orderBy(NotificationsTable.createdAt to SortOrder.DESC)
             .limit(limit)
@@ -78,6 +82,41 @@ class NotificationRepository {
             .where { NotificationsTable.id eq id }
             .map { it.toNotification() }
             .singleOrNull()
+    }
+
+    suspend fun markAllAsRead(recipientId: UUID): Int = exposedTransaction {
+        NotificationsTable.update(
+            where = {
+                (NotificationsTable.recipientId eq recipientId) and
+                        (NotificationsTable.isRead eq false)
+            }
+        ) {
+            it[isRead] = true
+            it[updatedAt] = LocalDateTime.now()
+        }
+    }
+
+    suspend fun delete(id: UUID): Boolean = exposedTransaction {
+        NotificationsTable.deleteWhere { NotificationsTable.id eq id } > 0
+    }
+
+    suspend fun getTotalCount(recipientId: UUID): Int = exposedTransaction {
+        NotificationsTable
+            .selectAll()
+            .where { NotificationsTable.recipientId eq recipientId }
+            .count()
+            .toInt()
+    }
+
+    suspend fun getUnreadCount(recipientId: UUID): Int = exposedTransaction {
+        NotificationsTable
+            .selectAll()
+            .where {
+                (NotificationsTable.recipientId eq recipientId) and
+                        (NotificationsTable.isRead eq false)
+            }
+            .count()
+            .toInt()
     }
 
     private fun ResultRow.toNotification(): Notification = Notification(

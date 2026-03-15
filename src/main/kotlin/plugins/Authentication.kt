@@ -1,11 +1,9 @@
 package com.amos_tech_code.plugins
 
-import com.amos_tech_code.config.AppConfig
 import com.amos_tech_code.config.GoogleAuthConfig
 import com.amos_tech_code.config.JwtConfig
 import api.dtos.response.GenericResponseDto
-import com.auth0.jwt.JWT
-import com.auth0.jwt.algorithms.Algorithm
+import com.amos_tech_code.config.AdminJwtConfig
 import domain.models.UserRole
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
@@ -17,28 +15,17 @@ import io.ktor.server.response.respond
 
 fun Application.configureAuthentication() {
 
-    val jwtAudience = AppConfig.JWT_AUDIENCE
-    val jwtIssuer = AppConfig.JWT_ISSUER
-    val jwtRealm = AppConfig.JWT_REALM
-    val jwtSecret = AppConfig.JWT_SECRET
-
     install(Authentication) {
 
         jwt("jwt-auth") {
-            realm = jwtRealm
-            verifier(
-                JWT
-                    .require(Algorithm.HMAC256(jwtSecret))
-                    .withAudience(jwtAudience)
-                    .withIssuer(jwtIssuer)
-                    .build()
-            )
+            verifier(JwtConfig.verifier)
+            realm = JwtConfig.realm
             validate { credential ->
-                if (credential.payload.audience.contains(jwtAudience))
+                if (credential.payload.audience.contains(JwtConfig.audience))
                     JWTPrincipal(credential.payload)
                 else null
             }
-            challenge { defaultScheme, realm ->
+            challenge { _, _ ->
                 call.respond(
                     HttpStatusCode.Unauthorized,
                     GenericResponseDto(HttpStatusCode.Unauthorized.value, "Token is not valid or has expired")
@@ -47,14 +34,26 @@ fun Application.configureAuthentication() {
         }
 
         jwt("admin-jwt") {
-            verifier(JwtConfig.verifier)
-            realm = "smart-attend"
+            verifier(AdminJwtConfig.verifier)
+            realm = JwtConfig.realm
             validate { credential ->
-                if (credential.payload.getClaim("role").asString() == UserRole.ADMIN.name) {
+                val userId = credential.payload.getClaim("userId").asString()
+                val role = credential.payload.getClaim("role").asString()
+
+                if (!userId.isNullOrBlank() && role == UserRole.ADMIN.name) {
                     JWTPrincipal(credential.payload)
                 } else {
                     null
                 }
+            }
+            challenge { _, _ ->
+                call.respond(
+                    HttpStatusCode.Unauthorized,
+                    GenericResponseDto(
+                        HttpStatusCode.Unauthorized.value,
+                        "Token is not valid or has expired"
+                    )
+                )
             }
         }
 

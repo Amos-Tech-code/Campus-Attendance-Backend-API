@@ -11,11 +11,13 @@ import domain.services.AttendanceManagementService
 import com.amos_tech_code.routes.lecturerAcademicSetupRoutes
 import api.routes.studentEnrollmentRoutes
 import com.amos_tech_code.api.routes.adminRoutes
+import com.amos_tech_code.api.routes.notificationRoutes
 import com.amos_tech_code.domain.services.AttendanceExportService
 import domain.services.AttendanceSessionService
 import com.amos_tech_code.services.AuthService
 import com.amos_tech_code.services.LecturerAcademicService
 import com.amos_tech_code.domain.services.LiveAttendanceService
+import com.amos_tech_code.domain.services.NotificationService
 import com.amos_tech_code.domain.services.impl.AdminAuthService
 import com.amos_tech_code.domain.services.impl.AdminDashboardService
 import com.amos_tech_code.services.MarkAttendanceService
@@ -41,6 +43,7 @@ fun Application.configureRouting() {
     val attendanceExportService by inject<AttendanceExportService>()
     val adminAuthService by inject<AdminAuthService>()
     val adminDashboardService by inject<AdminDashboardService>()
+    val notificationService by inject<NotificationService>()
 
     routing {
 
@@ -78,6 +81,9 @@ fun Application.configureRouting() {
 
         }
 
+        authenticate("jwt-auth", "admin-jwt") {
+            notificationRoutes(notificationService)
+        }
 
         adminRoutes(
             adminAuthService,

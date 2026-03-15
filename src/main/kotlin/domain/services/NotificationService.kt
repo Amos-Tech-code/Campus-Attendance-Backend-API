@@ -1,20 +1,27 @@
 package com.amos_tech_code.domain.services
 
+import com.amos_tech_code.api.dtos.response.NotificationCountsDto
+import com.amos_tech_code.api.dtos.response.NotificationDto
 import com.amos_tech_code.data.repository.LecturerRepository
 import com.amos_tech_code.data.repository.NotificationRepository
 import com.amos_tech_code.data.repository.StudentRepository
+import com.amos_tech_code.domain.models.Notification
 import com.amos_tech_code.domain.services.impl.FirebaseService
+import com.amos_tech_code.utils.AppException
+import com.amos_tech_code.utils.AuthorizationException
+import com.amos_tech_code.utils.InternalServerException
+import com.amos_tech_code.utils.ResourceNotFoundException
 import domain.models.NotificationType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.time.ZoneOffset
 import java.util.*
 
 class NotificationService(
     private val studentRepository: StudentRepository,
     private val lecturerRepository: LecturerRepository,
     private val notificationRepository: NotificationRepository
-)
-{
+) {
 
     private val logger = org.slf4j.LoggerFactory.getLogger(NotificationService::class.java)
 
@@ -27,6 +34,142 @@ class NotificationService(
             NotificationType.SUPPORT_RESPONSE,
             NotificationType.SYSTEM_ALERT,
             NotificationType.ADMIN_ALERT
+        )
+    }
+
+    suspend fun getUnreadNotifications(recipientId: UUID, limit: Int): List<NotificationDto> {
+        try {
+            val unreadNotifications = notificationRepository.getUnreadNotifications(recipientId, limit)
+
+            return unreadNotifications.map {
+                it.toDto()
+            }
+
+        } catch (e: Exception) {
+            logger.error("Failed to get unread notifications from $recipientId", e)
+            when (e) {
+                is AppException -> throw e
+                else -> throw InternalServerException("Failed to get unread notifications from $recipientId")
+            }
+        }
+    }
+
+    suspend fun getNotificationHistory(recipientId: UUID, page: Int, pageSize: Int): List<NotificationDto> {
+        try {
+            val notifications = notificationRepository.getNotificationHistory(recipientId, page, pageSize)
+            return notifications.map { it.toDto() }
+
+        } catch (e: Exception) {
+            logger.error("Failed to get notification history from $recipientId", e)
+            when (e) {
+                is AppException -> throw e
+                else -> throw InternalServerException("Failed to get notification history from $recipientId")
+            }
+        }
+    }
+
+    suspend fun getNotificationById(notificationId: UUID, recipientId: UUID): NotificationDto {
+        try {
+            val notification = notificationRepository.findById(notificationId) ?:
+            throw ResourceNotFoundException("Notification with id $notificationId does not exist")
+
+            // Verify the notification belongs to this recipient
+            if (notification.recipientId != recipientId) {
+                throw ResourceNotFoundException("Notification not found")
+            }
+
+            return notification.toDto()
+
+        } catch (e: Exception) {
+            logger.error("Failed to get notification from $notificationId", e)
+            when (e) {
+                is AppException -> throw e
+                else -> throw InternalServerException("Failed to get notification from $notificationId")
+            }
+        }
+    }
+
+    suspend fun markNotificationAsRead(notificationId: UUID, recipientId: UUID): Boolean {
+        try {
+            val notification = notificationRepository.findById(notificationId) ?:
+            throw ResourceNotFoundException("Notification with id $notificationId not found")
+
+            // Verify ownership
+            if (notification.recipientId != recipientId) {
+                throw AuthorizationException()
+            }
+
+            return notificationRepository.markAsRead(notificationId)
+        } catch (e: Exception) {
+            logger.error("Failed to mark notification from $notificationId", e)
+            when (e) {
+                is AppException -> throw e
+                else -> throw InternalServerException("Failed to mark notification from $notificationId")
+            }
+        }
+    }
+
+    suspend fun markAllNotificationsAsRead(recipientId: UUID): Int {
+        try {
+            return notificationRepository.markAllAsRead(recipientId)
+        } catch (e: Exception) {
+            logger.error("Failed to mark notification from $recipientId")
+            when (e) {
+                is AppException -> throw e
+                else -> throw InternalServerException("Failed to mark notification from $recipientId")
+            }
+        }
+    }
+
+    suspend fun deleteNotification(notificationId: UUID, recipientId: UUID): Boolean {
+        try {
+            val notification = notificationRepository.findById(notificationId) ?:
+            throw ResourceNotFoundException("Notification not found")
+
+            // Verify ownership
+            if (notification.recipientId != recipientId) {
+                throw AuthorizationException("You don't have permission to access this resource.")
+            }
+
+            return notificationRepository.delete(notificationId)
+
+        } catch (e: Exception) {
+            logger.error("Failed to delete notification from $notificationId")
+            when (e) {
+                is AppException -> throw e
+                else -> throw InternalServerException("Failed to delete notification from $notificationId")
+            }
+        }
+    }
+
+    suspend fun getNotificationCounts(recipientId: UUID): NotificationCountsDto {
+        try {
+            val total = notificationRepository.getTotalCount(recipientId)
+            val unread = notificationRepository.getUnreadCount(recipientId)
+
+            return NotificationCountsDto(
+                total = total,
+                unread = unread,
+            )
+        } catch (e: Exception) {
+            logger.error("Failed to get notification count from $recipientId")
+            when (e) {
+                is AppException -> throw e
+                else -> throw InternalServerException("Failed to get notification count from $recipientId")
+            }
+        }
+    }
+
+    fun Notification.toDto(): NotificationDto {
+        return NotificationDto(
+            id = id.toString(),
+            recipientId = recipientId.toString(),
+            title = title,
+            message = body,
+            type = type.name,
+            isRead = isRead,
+            createdAt = createdAt.atOffset(ZoneOffset.UTC).toInstant().toString(),
+            updatedAt = updatedAt.atOffset(ZoneOffset.UTC).toInstant().toString()
         )
     }
 

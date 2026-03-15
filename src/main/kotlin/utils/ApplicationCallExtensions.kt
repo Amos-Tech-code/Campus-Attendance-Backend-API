@@ -22,6 +22,13 @@ suspend fun ApplicationCall.respondNotFound() {
     )
 }
 
+suspend fun ApplicationCall.respondUnauthorized() {
+    respond(
+        HttpStatusCode.Unauthorized,
+        GenericResponseDto(HttpStatusCode.Unauthorized.value, message = "Unauthorized")
+    )
+}
+
 suspend fun ApplicationCall.respondBadRequest(message: String) {
     respond(
         HttpStatusCode.BadRequest,
