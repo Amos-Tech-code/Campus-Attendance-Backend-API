@@ -1,5 +1,6 @@
 package api.routes
 
+import api.dtos.requests.LecturerMarkAttendanceRequest
 import api.dtos.response.LiveAttendanceEvent
 import com.amos_tech_code.domain.dtos.requests.*
 import api.dtos.response.GenericResponseDto

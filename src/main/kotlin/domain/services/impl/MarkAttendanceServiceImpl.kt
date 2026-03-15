@@ -3,7 +3,7 @@ package domain.services.impl
 import data.repository.AttendanceSessionRepository
 import data.repository.StudentEnrollmentRepository
 import com.amos_tech_code.data.repository.StudentRepository
-import com.amos_tech_code.domain.dtos.requests.LecturerMarkAttendanceRequest
+import api.dtos.requests.LecturerMarkAttendanceRequest
 import com.amos_tech_code.domain.dtos.requests.MarkAttendanceRequest
 import api.dtos.response.AttendanceFlag
 import api.dtos.response.AttendanceMarkedEventDto
@@ -58,8 +58,15 @@ class MarkAttendanceServiceImpl(
             // Request validation
             request.validate()
 
-            val sessionId = UUID.fromString(request.sessionId)
-            // 1. Verify session exists
+            // 1. Resolve sessionId from sessionCode and unitCode
+            val session = attendanceSessionRepository.getSessionBySessionCodeAndUnitCode(
+                sessionCode = request.sessionCode,
+                unitCode = request.unitCode
+            ) ?: throw ValidationException("No active session found with the provided session code and unit code")
+
+            val sessionId = session.id
+
+            // 2. Verify lecturer owns this session
             if (!attendanceSessionRepository.existsByIdAndLecturerId(sessionId, lecturerId))
                 throw ValidationException("You do not own this session")
 
@@ -93,7 +100,7 @@ class MarkAttendanceServiceImpl(
                 )
             }
 
-            // 6. Create attendance (OVERRIDE)
+            // 6. Create attendance (OVERRIDE) - Allow even if session ended
             val record = attendanceSessionRepository.createAttendanceRecord(
                 studentId = student.id,
                 sessionId = sessionId,
@@ -547,8 +554,11 @@ class MarkAttendanceServiceImpl(
     }
 
     private fun LecturerMarkAttendanceRequest.validate() {
-        require(sessionId.isNotBlank()) {
-            throw ValidationException("Session Id is required")
+        require(sessionCode.isNotBlank()) {
+            throw ValidationException("Session code is required")
+        }
+        require(unitCode.isNotBlank()) {
+            throw ValidationException("Unit code is required")
         }
         require(studentRegNo.isNotBlank()) {
             throw ValidationException("Student Registration Number is required.")
