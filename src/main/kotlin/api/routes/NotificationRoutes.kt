@@ -13,7 +13,7 @@ import java.util.*
 fun Route.notificationRoutes(
     notificationService: NotificationService
 ) {
-    route("/notifications") {
+    route("api/v1/notifications") {
 
         // Get unread notifications
         get("/unread") {
