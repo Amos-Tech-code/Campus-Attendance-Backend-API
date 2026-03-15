@@ -1,10 +1,11 @@
-package com.amos_tech_code.domain.dtos.requests
+package api.dtos.requests
 
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class LecturerMarkAttendanceRequest(
-    val sessionId: String,
+    val sessionCode: String,
+    val unitCode: String,
     val studentRegNo: String,
     
 )

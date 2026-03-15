@@ -1,6 +1,6 @@
 package com.amos_tech_code.services
 
-import com.amos_tech_code.domain.dtos.requests.LecturerMarkAttendanceRequest
+import api.dtos.requests.LecturerMarkAttendanceRequest
 import com.amos_tech_code.domain.dtos.requests.MarkAttendanceRequest
 import api.dtos.response.MarkAttendanceResponse
 import java.util.UUID

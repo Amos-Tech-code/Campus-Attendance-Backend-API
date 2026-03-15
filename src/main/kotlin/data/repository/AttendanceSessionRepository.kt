@@ -501,6 +501,46 @@ class AttendanceSessionRepository {
                 .singleOrNull()
         }
 
+    suspend fun getSessionBySessionCodeAndUnitCode(
+        sessionCode: String,
+        unitCode: String
+    ): AttendanceSession? = exposedTransaction {
+        AttendanceSessionsTable
+            .join(UnitsTable, JoinType.INNER, AttendanceSessionsTable.unitId, UnitsTable.id)
+            .join(LecturersTable, JoinType.INNER, AttendanceSessionsTable.lecturerId, LecturersTable.id)
+            .selectAll()
+            .where {
+                (AttendanceSessionsTable.sessionCode eq sessionCode) and
+                        (UnitsTable.code eq unitCode)
+            }
+            .orderBy(AttendanceSessionsTable.createdAt to SortOrder.DESC)
+            .limit(1)
+            .map { row ->
+                AttendanceSession(
+                    id = row[AttendanceSessionsTable.id],
+                    sessionCode = row[AttendanceSessionsTable.sessionCode],
+                    unitId = row[AttendanceSessionsTable.unitId],
+                    universityId = row[AttendanceSessionsTable.universityId],
+                    lecturerId = row[AttendanceSessionsTable.lecturerId],
+                    isLocationRequired = row[AttendanceSessionsTable.isLocationRequired],
+                    lecturerLatitude = row[AttendanceSessionsTable.lecturerLatitude],
+                    lecturerLongitude = row[AttendanceSessionsTable.lecturerLongitude],
+                    locationRadius = row[AttendanceSessionsTable.locationRadius],
+                    unitName = row[UnitsTable.name],
+                    unitCode = row[UnitsTable.code],
+                    lecturerName = row[LecturersTable.fullName] ?: "Unknown",
+                    academicTermId = row[AttendanceSessionsTable.academicTermId],
+                    allowedMethod = row[AttendanceSessionsTable.allowedMethod],
+                    sessionStatus = row[AttendanceSessionsTable.status],
+                    sessionTitle = row[AttendanceSessionsTable.sessionTitle],
+                    sessionType = row[AttendanceSessionsTable.attendanceSessionType],
+                    scheduledStartTime = row[AttendanceSessionsTable.scheduledStartTime],
+                    scheduledEndTime = row[AttendanceSessionsTable.scheduledEndTime]
+                )
+            }
+            .singleOrNull()
+    }
+
     suspend fun getSessionProgrammes(sessionId: UUID): List<SessionProgramme> = exposedTransaction {
         SessionProgrammesTable
             .join(ProgrammesTable, JoinType.INNER, SessionProgrammesTable.programmeId, ProgrammesTable.id)
