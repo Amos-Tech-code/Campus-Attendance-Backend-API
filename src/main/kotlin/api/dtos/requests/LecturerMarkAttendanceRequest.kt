@@ -6,4 +6,5 @@ import kotlinx.serialization.Serializable
 data class LecturerMarkAttendanceRequest(
     val sessionId: String,
     val studentRegNo: String,
+    
 )
