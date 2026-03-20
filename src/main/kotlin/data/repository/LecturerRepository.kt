@@ -88,6 +88,19 @@ class LecturerRepository() {
             .map { it.toLecturer() }
     }
 
+    suspend fun getLecturersWithFcmTokens(
+        lecturerIds: List<UUID>,
+    ): List<Lecturer> = exposedTransaction {
+        LecturersTable
+            .selectAll()
+            .where {
+                (LecturersTable.id inList lecturerIds) and
+                (LecturersTable.fcmToken.isNotNull()) and
+                        (LecturersTable.isActive eq true)
+            }
+            .map { it.toLecturer() }
+    }
+
     suspend fun updateFcmToken(lecturerId: UUID, fcmToken: String): Boolean = exposedTransaction {
         LecturersTable.update({ LecturersTable.id eq lecturerId }) {
             it[LecturersTable.fcmToken] = fcmToken

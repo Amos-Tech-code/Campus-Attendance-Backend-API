@@ -2,7 +2,7 @@ package domain.services.impl
 
 import data.repository.AttendanceSessionRepository
 import data.repository.StudentEnrollmentRepository
-import com.amos_tech_code.data.repository.StudentRepository
+import data.repository.StudentRepository
 import api.dtos.requests.LecturerMarkAttendanceRequest
 import com.amos_tech_code.domain.dtos.requests.MarkAttendanceRequest
 import api.dtos.response.AttendanceFlag

@@ -5,6 +5,7 @@ import com.amos_tech_code.data.database.utils.exposedTransaction
 import com.amos_tech_code.domain.dtos.response.*
 import com.amos_tech_code.domain.models.ActiveEnrollmentInfo
 import com.amos_tech_code.domain.models.ExistingEnrollment
+import com.amos_tech_code.domain.models.Lecturer
 import com.amos_tech_code.domain.models.StudentEnrollmentInfo
 import domain.models.StudentEnrollmentSource
 import com.amos_tech_code.domain.models.TeachingAssignmentInfo
@@ -328,6 +329,36 @@ class StudentEnrollmentRepository {
             ?: throw ValidationException("Enrollment not found")
 
         return row.toEnrollmentResponse()
+    }
+
+    suspend fun getLecturersForStudent(studentId: UUID): List<Lecturer> = exposedTransaction {
+        StudentEnrollmentsTable
+            .innerJoin(LecturerTeachingAssignmentsTable) {
+                (StudentEnrollmentsTable.programmeId eq LecturerTeachingAssignmentsTable.programmeId) and
+                        (StudentEnrollmentsTable.yearOfStudy eq LecturerTeachingAssignmentsTable.yearOfStudy) and
+                        (StudentEnrollmentsTable.academicTermId eq LecturerTeachingAssignmentsTable.academicTermId)
+            }
+            .innerJoin(LecturersTable) {
+                LecturerTeachingAssignmentsTable.lecturerId eq LecturersTable.id
+            }
+            .select(LecturersTable.columns)
+            .where {
+                (StudentEnrollmentsTable.studentId eq studentId) and
+                        (StudentEnrollmentsTable.isActive eq true) and
+                        (LecturerTeachingAssignmentsTable.isActive eq true)
+            }
+            .map { row ->
+                Lecturer(
+                    id = row[LecturersTable.id],
+                    email = row[LecturersTable.email],
+                    name = row[LecturersTable.fullName],
+                    fcmToken = row[LecturersTable.fcmToken],
+                    isProfileComplete = row[LecturersTable.isProfileComplete],
+                    createdAt = row[LecturersTable.createdAt],
+                    updatedAt = row[LecturersTable.updatedAt]
+                )
+            }
+            .distinctBy { it.id }
     }
 
     private fun ResultRow.toEnrollmentResponse(): StudentEnrollmentResponse =

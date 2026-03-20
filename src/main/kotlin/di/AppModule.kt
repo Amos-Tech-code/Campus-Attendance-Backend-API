@@ -8,7 +8,7 @@ import com.amos_tech_code.data.repository.LecturerAcademicRepository
 import com.amos_tech_code.data.repository.LecturerRepository
 import com.amos_tech_code.data.repository.NotificationRepository
 import data.repository.StudentEnrollmentRepository
-import com.amos_tech_code.data.repository.StudentRepository
+import data.repository.StudentRepository
 import com.amos_tech_code.domain.services.AccountService
 import com.amos_tech_code.domain.services.AttendanceEventBus
 import com.amos_tech_code.domain.services.AttendanceExportService

@@ -1,4 +1,4 @@
-package com.amos_tech_code.data.repository
+package data.repository
 
 import com.amos_tech_code.data.database.utils.exposedTransaction
 import com.amos_tech_code.domain.models.Device

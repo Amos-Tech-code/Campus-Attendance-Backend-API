@@ -2,7 +2,7 @@ package domain.services.impl
 
 import com.amos_tech_code.config.JwtConfig
 import com.amos_tech_code.data.repository.LecturerRepository
-import com.amos_tech_code.data.repository.StudentRepository
+import data.repository.StudentRepository
 import com.amos_tech_code.domain.dtos.requests.DeviceInfo
 import com.amos_tech_code.domain.dtos.requests.StudentRegistrationRequest
 import com.amos_tech_code.domain.dtos.response.LecturerAuthResponse

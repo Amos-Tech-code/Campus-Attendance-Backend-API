@@ -22,6 +22,7 @@ import data.database.entities.UnitsTable
 import data.database.entities.UniversitiesTable
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
+import data.database.entities.DeviceChangeRequestsTable
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStarted
 import org.jetbrains.exposed.sql.Database
@@ -74,6 +75,7 @@ object DatabaseFactory {
                     // Students
                     StudentsTable,
                     DevicesTable,
+                    DeviceChangeRequestsTable,
                     StudentEnrollmentsTable,
 
                     // Lecturers

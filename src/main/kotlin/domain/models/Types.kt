@@ -7,7 +7,14 @@ enum class UserRole {
 enum class DeviceStatus {
     ACTIVE,           // Registered and approved device
     PENDING,          // Waiting for approval
-    REJECTED         // Rejected device change
+    REJECTED,         // Rejected device change
+    OLD_DEVICE        // Old device
+}
+
+enum class DeviceChangeStatus {
+    PENDING,
+    APPROVED,
+    REJECTED
 }
 
 enum class AttendanceMethod {
