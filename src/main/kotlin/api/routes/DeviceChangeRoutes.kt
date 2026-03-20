@@ -13,63 +13,66 @@ import io.ktor.server.routing.*
 
 fun Route.deviceChangeRoutes(deviceChangeService: DeviceChangeService) {
 
-    route("/student/device") {
+    route("api/v1/device-change") {
 
-        // Student requests device change
-        post("/change-request") {
+        route("/student") {
 
-            val userId = call.getUserIdFromJWT() ?: return@post call.respondUnauthorized()
-            val request = call.receive<StudentDeviceChangeRequest>()
+            // Student requests device change
+            post("/change-request") {
 
-            val response = deviceChangeService.requestDeviceChange(
-                studentId = userId,
-                request = request
-            )
+                val userId = call.getUserIdFromJWT() ?: return@post call.respondUnauthorized()
+                val request = call.receive<StudentDeviceChangeRequest>()
 
-            call.respond(HttpStatusCode.OK, response)
+                val response = deviceChangeService.requestDeviceChange(
+                    studentId = userId,
+                    request = request
+                )
+
+                call.respond(HttpStatusCode.OK, response)
+            }
+
+            // Get student's device change history
+            get("/history") {
+
+                val userId = call.getUserIdFromJWT() ?: return@get call.respondUnauthorized()
+
+                val history = deviceChangeService.getStudentDeviceHistory(
+                    studentId = userId
+                )
+
+                call.respond(HttpStatusCode.OK, history)
+            }
         }
 
-        // Get student's device change history
-        get("/history") {
+        route("/lecturer") {
 
-            val userId = call.getUserIdFromJWT() ?: return@get call.respondUnauthorized()
+            // Get all pending device change requests for this lecturer
+            get("/pending") {
 
-            val history = deviceChangeService.getStudentDeviceHistory(
-                studentId = userId
-            )
+                val userId = call.getUserIdFromJWT() ?: return@get call.respondUnauthorized()
 
-            call.respond(HttpStatusCode.OK,history)
-        }
-    }
+                val pendingRequests = deviceChangeService.getPendingRequests(
+                    lecturerId = userId
+                )
 
-    route("/lecturer/device-requests") {
+                call.respond(
+                    HttpStatusCode.OK,
+                    pendingRequests
+                )
+            }
 
-        // Get all pending device change requests for this lecturer
-        get("/pending") {
+            // Approve or reject a device change request
+            post("/review") {
+                val userId = call.getUserIdFromJWT() ?: return@post call.respondUnauthorized()
+                val request = call.receive<DeviceChangeApprovalRequest>()
 
-            val userId = call.getUserIdFromJWT() ?: return@get call.respondUnauthorized()
+                val response = deviceChangeService.reviewDeviceRequest(
+                    lecturerId = userId,
+                    request = request
+                )
 
-            val pendingRequests = deviceChangeService.getPendingRequests(
-                lecturerId = userId
-            )
-
-            call.respond(
-                HttpStatusCode.OK,
-                pendingRequests
-            )
-        }
-
-        // Approve or reject a device change request
-        post("/review") {
-            val userId = call.getUserIdFromJWT() ?: return@post call.respondUnauthorized()
-            val request = call.receive<DeviceChangeApprovalRequest>()
-
-            val response = deviceChangeService.reviewDeviceRequest(
-                lecturerId = userId,
-                request = request
-            )
-
-            call.respond(HttpStatusCode.OK,response)
+                call.respond(HttpStatusCode.OK, response)
+            }
         }
     }
 }
