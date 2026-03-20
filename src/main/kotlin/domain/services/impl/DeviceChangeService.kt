@@ -104,7 +104,7 @@ class DeviceChangeService(
 
             DeviceChangeRequestResponse(
                 requestId = changeRequest.id.toString(),
-                status = "PENDING",
+                status = DeviceChangeStatus.PENDING,
                 message = "Device change request submitted successfully. Waiting for lecturer approval.",
                 requestedAt = changeRequest.requestedAt.toString()
             )
@@ -220,7 +220,7 @@ class DeviceChangeService(
 
                 DeviceChangeRequestResponse(
                     requestId = requestId.toString(),
-                    status = "APPROVED",
+                    status = DeviceChangeStatus.APPROVED,
                     message = "Device change request approved successfully",
                     requestedAt = changeRequest.requestedAt.toString()
                 )
@@ -256,7 +256,7 @@ class DeviceChangeService(
 
                 DeviceChangeRequestResponse(
                     requestId = requestId.toString(),
-                    status = "REJECTED",
+                    status = DeviceChangeStatus.REJECTED,
                     message = "Device change request rejected",
                     requestedAt = changeRequest.requestedAt.toString()
                 )
@@ -280,7 +280,7 @@ class DeviceChangeService(
             requests.map { request ->
                 DeviceChangeHistoryDto(
                     requestId = request.id.toString(),
-                    status = request.status.name,
+                    status = request.status,
                     oldDeviceId = request.oldDeviceId,
                     newDeviceInfo = DeviceInfoDto(
                         deviceId = request.newDeviceId,
