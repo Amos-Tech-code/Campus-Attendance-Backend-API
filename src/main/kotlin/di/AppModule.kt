@@ -45,6 +45,8 @@ import domain.services.impl.QRCodeServiceImpl
 import domain.services.impl.SessionCodeGeneratorImpl
 import domain.services.impl.StudentEnrollmentServiceImpl
 import com.amos_tech_code.utils.BackgroundTaskScope
+import data.repository.DeviceChangeRequestRepository
+import domain.services.impl.DeviceChangeService
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import org.koin.dsl.module
@@ -64,7 +66,13 @@ val appModule = module {
     single<GoogleAuthService> { GoogleAuthServiceImpl(get()) }
 
     single<AuthService> {
-        AuthServiceImpl(get(), get(), get())
+        AuthServiceImpl(
+            get(),
+            get(),
+            get(),
+            get(),
+            get()
+        )
     }
 
     single<AccountService> { AccountServiceImpl(get(), get()) }
@@ -109,6 +117,17 @@ val appModule = module {
 
     single { NotificationService(get(), get(), get()) }
 
+    single {
+        DeviceChangeService(
+        get(),
+        get(),
+        get(),
+        get(),
+        get(),
+        get()
+        )
+    }
+
 
     /*-----------------------------------------
           REPOSITORY
@@ -129,6 +148,8 @@ val appModule = module {
     single { AttendanceExportRepository() }
 
     single { NotificationRepository() }
+
+    single { DeviceChangeRequestRepository() }
 
 
     /*-----------------------------------

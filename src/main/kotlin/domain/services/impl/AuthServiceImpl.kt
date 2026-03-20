@@ -15,11 +15,16 @@ import com.amos_tech_code.services.AuthService
 import com.amos_tech_code.services.GoogleAuthService
 import com.amos_tech_code.utils.AppException
 import com.amos_tech_code.utils.AuthenticationException
+import com.amos_tech_code.utils.BackgroundTaskScope
 import com.amos_tech_code.utils.ConflictException
 import com.amos_tech_code.utils.InternalServerException
 import com.amos_tech_code.utils.ResourceNotFoundException
 import com.amos_tech_code.utils.ValidationException
+import data.repository.DeviceChangeRequestRepository
+import domain.models.DeviceChangeDomainRequest
+import domain.models.DeviceChangeStatus
 import domain.models.DeviceStatus
+import kotlinx.coroutines.launch
 import org.slf4j.LoggerFactory
 import utils.toIsoStringOrNull
 import java.time.LocalDateTime
@@ -29,6 +34,8 @@ class AuthServiceImpl(
     private val lecturerRepository: LecturerRepository,
     private val studentRepository: StudentRepository,
     private val googleAuthService: GoogleAuthService,
+    private val deviceChangeRequestRepository: DeviceChangeRequestRepository,
+    private val backgroundTaskScope: BackgroundTaskScope
 ) : AuthService {
 
     private val logger = LoggerFactory.getLogger(AuthServiceImpl::class.java)
@@ -181,6 +188,7 @@ class AuthServiceImpl(
         }
     }
 
+    /*
     override suspend fun loginStudent(
         registrationNumber: String,
         deviceInfo: DeviceInfo
@@ -275,6 +283,174 @@ class AuthServiceImpl(
                 else -> throw InternalServerException("Login failed")
             }
         }
+    }
+
+     */
+    override suspend fun loginStudent(
+        registrationNumber: String,
+        deviceInfo: DeviceInfo
+    ): StudentAuthResponse {
+        try {
+            if (registrationNumber.isBlank()) throw ValidationException("Registration number required")
+            deviceInfo.validate()
+
+            val student = studentRepository.findByRegistrationNumber(registrationNumber)
+                ?: throw ResourceNotFoundException("Student not found")
+
+            val now = LocalDateTime.now()
+            studentRepository.updateLastLogin(student.id, now)
+
+            // Find device for this student
+            val device = studentRepository.findDeviceByStudentIdAndDeviceId(student.id, deviceInfo.deviceId)
+
+            return when {
+                // Case 1: Device exists and is ACTIVE
+                device != null && device.status == DeviceStatus.ACTIVE -> {
+                    studentRepository.updateDeviceLastSeen(device.id, now, deviceInfo.fcmToken)
+
+                    StudentAuthResponse(
+                        token = JwtConfig.generateToken(student.id.toString(), UserRole.STUDENT),
+                        fullName = student.fullName,
+                        regNumber = student.registrationNumber,
+                        deviceStatus = DeviceStatus.ACTIVE,
+                        message = "Login successful",
+                        lastLoginAt = student.lastLogin.toIsoStringOrNull()
+                    )
+                }
+
+                // Case 2: Device exists but is PENDING
+                device != null && device.status == DeviceStatus.PENDING -> {
+                    studentRepository.updateDeviceLastSeen(device.id, now, deviceInfo.fcmToken)
+
+                    StudentAuthResponse(
+                        token = JwtConfig.generateToken(student.id.toString(), UserRole.STUDENT),
+                        fullName = student.fullName,
+                        regNumber = student.registrationNumber,
+                        deviceStatus = DeviceStatus.PENDING,
+                        message = "Your device change request is pending approval. You can still browse but attendance features are limited.",
+                        lastLoginAt = student.lastLogin.toIsoStringOrNull()
+                    )
+                }
+
+                // Case 3: Device exists but was REJECTED
+                device != null && device.status == DeviceStatus.REJECTED -> {
+                    studentRepository.updateDeviceLastSeen(device.id, now, deviceInfo.fcmToken)
+
+                    StudentAuthResponse(
+                        token = JwtConfig.generateToken(student.id.toString(), UserRole.STUDENT),
+                        fullName = student.fullName,
+                        regNumber = student.registrationNumber,
+                        deviceStatus = DeviceStatus.REJECTED,
+                        message = "Your previous device change was rejected. You can request a new device change.",
+                        lastLoginAt = student.lastLogin.toIsoStringOrNull()
+                    )
+                }
+
+                // Case 4: New device - Check if used elsewhere
+                else -> {
+                    // First check if this device is used by another student
+                    val deviceInUse = studentRepository.findActiveDeviceByDeviceId(deviceInfo.deviceId)
+
+                    if (deviceInUse != null && deviceInUse.studentId != student.id) {
+                        // Device belongs to someone else - This is suspicious!
+                        // Log for security but DON'T block login
+                        logger.warn("Student ${student.id} trying to use device registered to ${deviceInUse.studentId}")
+
+                        // Create device with REJECTED status but allow login
+                        val newDevice = Device(
+                            id = UUID.randomUUID(),
+                            studentId = student.id,
+                            deviceId = deviceInfo.deviceId,
+                            model = deviceInfo.model,
+                            os = deviceInfo.os,
+                            fcmToken = deviceInfo.fcmToken,
+                            status = DeviceStatus.REJECTED, // Mark as rejected immediately
+                            lastSeen = now,
+                            createdAt = now,
+                            updatedAt = now
+                        )
+                        studentRepository.updateDevice(student.id, newDevice)
+
+                        StudentAuthResponse(
+                            token = JwtConfig.generateToken(student.id.toString(), UserRole.STUDENT),
+                            fullName = student.fullName,
+                            regNumber = student.registrationNumber,
+                            deviceStatus = DeviceStatus.REJECTED,
+                            message = "This device is registered to another student. Please use your registered device.",
+                            lastLoginAt = student.lastLogin.toIsoStringOrNull()
+                        )
+                    } else {
+                        // New device - Create with PENDING status and AUTO-CREATE change request
+                        val newDevice = Device(
+                            id = UUID.randomUUID(),
+                            studentId = student.id,
+                            deviceId = deviceInfo.deviceId,
+                            model = deviceInfo.model,
+                            os = deviceInfo.os,
+                            fcmToken = deviceInfo.fcmToken,
+                            status = DeviceStatus.PENDING,
+                            lastSeen = now,
+                            createdAt = now,
+                            updatedAt = now
+                        )
+                        studentRepository.updateDevice(student.id, newDevice)
+
+                        // AUTO-CREATE device change request in background (non-blocking)
+                        backgroundTaskScope.scope.launch {
+                            try {
+                                createAutomaticDeviceChangeRequest(student.id, deviceInfo)
+                            } catch (e: Exception) {
+                                logger.error("Failed to auto-create device change request", e)
+                            }
+                        }
+
+                        StudentAuthResponse(
+                            token = JwtConfig.generateToken(student.id.toString(), UserRole.STUDENT),
+                            fullName = student.fullName,
+                            regNumber = student.registrationNumber,
+                            deviceStatus = DeviceStatus.PENDING,
+                            message = "New device detected. An approval request has been sent to your lecturers.",
+                            lastLoginAt = student.lastLogin.toIsoStringOrNull()
+                        )
+                    }
+                }
+            }
+
+        } catch (ex: Exception) {
+            logger.error("Login failed: $ex")
+            when(ex) {
+                is AppException -> throw ex
+                else -> throw InternalServerException("Login failed")
+            }
+        }
+    }
+
+    /**
+     * Automatically create a device change request when student logs in with new device
+     */
+    private suspend fun createAutomaticDeviceChangeRequest(
+        studentId: UUID,
+        deviceInfo: DeviceInfo
+    ) {
+        // Get current device (if any)
+        val currentDevice = studentRepository.findDeviceByStudentId(studentId)
+
+        // Create device change request
+        val changeRequest = DeviceChangeDomainRequest(
+            id = UUID.randomUUID(),
+            studentId = studentId,
+            oldDeviceId = currentDevice?.deviceId ?: "NONE",
+            newDeviceId = deviceInfo.deviceId,
+            newDeviceModel = deviceInfo.model,
+            newDeviceOS = deviceInfo.os,
+            newFcmToken = deviceInfo.fcmToken,
+            reason = "Automatic request from new device login",
+            status = DeviceChangeStatus.PENDING,
+            requestedAt = LocalDateTime.now()
+        )
+
+        deviceChangeRequestRepository.create(changeRequest)
+
     }
 
     fun generateUUID() : UUID {
