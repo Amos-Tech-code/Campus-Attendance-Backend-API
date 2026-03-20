@@ -1,5 +1,6 @@
 package api.dtos.requests
 
+import domain.models.DeviceChangeStatus
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -19,7 +20,7 @@ data class DeviceInfoDto(
 @Serializable
 data class DeviceChangeRequestResponse(
     val requestId: String,
-    val status: String,
+    val status: DeviceChangeStatus,
     val message: String,
     val requestedAt: String
 )
@@ -46,7 +47,7 @@ data class PendingDeviceChangeDto(
 @Serializable
 data class DeviceChangeHistoryDto(
     val requestId: String,
-    val status: String,
+    val status: DeviceChangeStatus,
     val oldDeviceId: String,
     val newDeviceInfo: DeviceInfoDto,
     val reason: String?,

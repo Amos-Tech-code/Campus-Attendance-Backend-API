@@ -14,7 +14,8 @@ enum class DeviceStatus {
 enum class DeviceChangeStatus {
     PENDING,
     APPROVED,
-    REJECTED
+    REJECTED,
+    CANCELLED
 }
 
 enum class AttendanceMethod {
