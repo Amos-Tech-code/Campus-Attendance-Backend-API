@@ -3,7 +3,7 @@ package com.amos_tech_code.domain.services.impl
 import com.amos_tech_code.api.dtos.requests.UpdateLecturerProfileRequest
 import com.amos_tech_code.api.dtos.requests.UpdateStudentProfileRequest
 import com.amos_tech_code.data.repository.LecturerRepository
-import com.amos_tech_code.data.repository.StudentRepository
+import data.repository.StudentRepository
 import com.amos_tech_code.domain.services.AccountService
 import com.amos_tech_code.utils.AppException
 import com.amos_tech_code.utils.ConflictException

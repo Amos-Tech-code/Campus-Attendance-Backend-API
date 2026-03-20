@@ -3,6 +3,7 @@ package plugins
 import api.routes.attendanceRoutes
 import api.dtos.response.GenericResponseDto
 import api.routes.authRoutes
+import api.routes.deviceChangeRoutes
 import api.routes.sessionRoutes
 import com.amos_tech_code.api.routes.accountRoutes
 import com.amos_tech_code.api.routes.attendanceManagementRoutes
@@ -22,6 +23,7 @@ import com.amos_tech_code.domain.services.impl.AdminAuthService
 import com.amos_tech_code.domain.services.impl.AdminDashboardService
 import com.amos_tech_code.services.MarkAttendanceService
 import com.amos_tech_code.services.StudentEnrollmentService
+import domain.services.impl.DeviceChangeService
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.*
 import io.ktor.server.auth.authenticate
@@ -44,6 +46,7 @@ fun Application.configureRouting() {
     val adminAuthService by inject<AdminAuthService>()
     val adminDashboardService by inject<AdminDashboardService>()
     val notificationService by inject<NotificationService>()
+    val deviceChangeService by inject<DeviceChangeService>()
 
     routing {
 
@@ -78,6 +81,8 @@ fun Application.configureRouting() {
             )
 
             studentEnrollmentRoutes(studentEnrollmentService)
+
+            deviceChangeRoutes(deviceChangeService)
 
         }
 

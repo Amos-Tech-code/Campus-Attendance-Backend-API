@@ -1,5 +1,6 @@
 package data.database.entities
 
+import domain.models.DeviceChangeStatus
 import domain.models.DeviceStatus
 import domain.models.StudentEnrollmentSource
 import org.jetbrains.exposed.sql.ReferenceOption
@@ -46,6 +47,33 @@ object DevicesTable : Table("student_devices") {
     }
 }
 
+object DeviceChangeRequestsTable : Table("device_change_requests") {
+    val id = uuid("id").autoGenerate()
+    val studentId = uuid("student_id")
+        .references(StudentsTable.id, onDelete = ReferenceOption.CASCADE)
+    val oldDeviceId = varchar("old_device_id", 255)
+    val newDeviceId = varchar("new_device_id", 255)
+    val newDeviceModel = varchar("new_device_model", 100)
+    val newDeviceOS = varchar("new_device_os", 50)
+    val newFcmToken = varchar("new_fcm_token", 255).nullable()
+    val reason = text("reason").nullable()
+
+    val status = enumerationByName<DeviceChangeStatus>("status", 20)
+        .default(DeviceChangeStatus.PENDING)
+
+    val requestedAt = datetime("requested_at").clientDefault { now() }
+    val reviewedBy = uuid("reviewed_by").references(LecturersTable.id).nullable()
+    val reviewedAt = datetime("reviewed_at").nullable()
+    val rejectionReason = text("rejection_reason").nullable()
+
+    override val primaryKey = PrimaryKey(id)
+
+    init {
+        index(false, studentId, status)
+        index(false, reviewedBy, status)
+        index(false, requestedAt)
+    }
+}
 
 object StudentEnrollmentsTable : Table("student_enrollments") {
     val id = uuid("id").autoGenerate()

@@ -4,7 +4,7 @@ import com.amos_tech_code.api.dtos.response.NotificationCountsDto
 import com.amos_tech_code.api.dtos.response.NotificationDto
 import com.amos_tech_code.data.repository.LecturerRepository
 import com.amos_tech_code.data.repository.NotificationRepository
-import com.amos_tech_code.data.repository.StudentRepository
+import data.repository.StudentRepository
 import com.amos_tech_code.domain.models.Notification
 import com.amos_tech_code.domain.services.impl.FirebaseService
 import com.amos_tech_code.utils.AppException
@@ -463,37 +463,45 @@ class NotificationService(
         }
     }
 
-    suspend fun notifyAdminAlert(
-        adminId: UUID,
-        alertTitle: String,
-        alertMessage: String
+    // =========== BULK NOTIFICATIONS ===========
+
+    suspend fun notifyLecturers(
+        lecturerIds: List<UUID>,
+        title: String,
+        body: String,
+        data: Map<String, String> = emptyMap(),
+        persist: Boolean = false  // Control persistence for bulk notifications
     ) {
         withContext(Dispatchers.IO) {
-            val admin = lecturerRepository.findById(adminId) // Assuming admin is a lecturer type
+            val devices = lecturerRepository.getLecturersWithFcmTokens(lecturerIds)
+            val tokens = devices.mapNotNull { it.fcmToken }
 
-            admin?.fcmToken?.let { token ->
-                FirebaseService.sendNotification(
-                    token = token,
-                    title = alertTitle,
-                    body = alertMessage,
-                    data = mapOf(
-                        "type" to NotificationType.ADMIN_ALERT.name,
-                        "adminId" to adminId.toString()
-                    )
+            if (tokens.isNotEmpty()) {
+                FirebaseService.sendMulticast(
+                    tokens = tokens,
+                    title = title,
+                    body = body,
+                    data = data
                 )
             }
 
-            // ✅ PERSISTED - important notification
-            persistNotification(
-                recipientId = adminId,
-                title = alertTitle,
-                body = alertMessage,
-                type = NotificationType.ADMIN_ALERT
-            )
+            if (persist) {
+                val type = data["type"]?.let {
+                    try { NotificationType.valueOf(it) }
+                    catch (e: Exception) { null }
+                } ?: NotificationType.SYSTEM_ALERT
+
+                devices.forEach { device ->
+                    persistNotification(
+                        recipientId = device.id,
+                        title = title,
+                        body = body,
+                        type = type
+                    )
+                }
+            }
         }
     }
-
-    // =========== BULK NOTIFICATIONS ===========
 
     suspend fun notifyAllStudents(
         title: String,
