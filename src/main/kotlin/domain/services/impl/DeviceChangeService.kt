@@ -1,6 +1,8 @@
 package domain.services.impl
 
 import api.dtos.requests.*
+import api.dtos.response.StudentAuthResponse
+import com.amos_tech_code.config.JwtConfig
 import com.amos_tech_code.data.repository.LecturerRepository
 import com.amos_tech_code.domain.models.Device
 import com.amos_tech_code.domain.services.NotificationService
@@ -12,10 +14,12 @@ import domain.models.DeviceChangeDomainRequest
 import domain.models.DeviceChangeStatus
 import domain.models.DeviceStatus
 import domain.models.NotificationType
+import domain.models.UserRole
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
+import utils.toIsoStringOrNull
 import java.time.LocalDateTime
 import java.util.*
 
@@ -196,41 +200,40 @@ class DeviceChangeService(
             }
 
             if (request.approve) {
-                // APPROVE - Update DevicesTable with the new device
 
+                // First check if this device is used by another student
+                val deviceInUse = studentRepository.findActiveDeviceByDeviceId(changeRequest.newDeviceId)
+
+                if (deviceInUse != null && deviceInUse.studentId != changeRequest.studentId) {
+                    // Device belongs to someone else but DON'T block login
+                    logger.warn("Lecturer try to approve device for Student ${changeRequest.studentId} which has already been registered to ${deviceInUse.studentId}")
+                    deviceChangeRequestRepository.systemRejectRequest(
+                        changeRequest.id,
+                        "This device is registered to another student. But was not registered when request was made."
+                    )
+                    // Notify Lecturer to this request has been rejected
+                    throw ConflictException("This request has been ${DeviceChangeStatus.REJECTED.name}. This device is registered to another student.")
+                }
+
+                // APPROVE - Update DevicesTable with the new device
                 // 1. Update request status
                 deviceChangeRequestRepository.approveRequest(requestId, lecturerId)
 
-                // 2. Find the pending device in DevicesTable
-                val pendingDevice = studentRepository.findDeviceByStudentIdAndDeviceId(
-                    changeRequest.studentId, changeRequest.newDeviceId
+                // 2. Update in registered Devices table
+                val newDevice = Device(
+                    id = UUID.randomUUID(),
+                    studentId = changeRequest.studentId,
+                    deviceId = changeRequest.newDeviceId,
+                    model = changeRequest.newDeviceModel,
+                    os = changeRequest.newDeviceOS,
+                    fcmToken = changeRequest.newFcmToken,
+                    status = DeviceStatus.ACTIVE,
+                    lastSeen = LocalDateTime.now(),
+                    createdAt = LocalDateTime.now(),
+                    updatedAt = LocalDateTime.now()
                 )
 
-                if (pendingDevice != null) {
-                    // 3. Mark old active device as INACTIVE/REJECTED
-                    val oldActiveDevice = studentRepository.findActiveDeviceByStudentId(changeRequest.studentId)
-                    oldActiveDevice?.let { device ->
-                        studentRepository.updateDeviceStatus(device.id, DeviceStatus.REJECTED)
-                    }
-
-                    // 4. Update the pending device to ACTIVE
-                    studentRepository.updateDeviceStatus(pendingDevice.id, DeviceStatus.ACTIVE)
-                } else {
-                    // If device doesn't exist in DevicesTable yet (shouldn't happen), create it
-                    val newDevice = Device(
-                        id = UUID.randomUUID(),
-                        studentId = changeRequest.studentId,
-                        deviceId = changeRequest.newDeviceId,
-                        model = changeRequest.newDeviceModel,
-                        os = changeRequest.newDeviceOS,
-                        fcmToken = changeRequest.newFcmToken,
-                        status = DeviceStatus.ACTIVE,
-                        lastSeen = LocalDateTime.now(),
-                        createdAt = LocalDateTime.now(),
-                        updatedAt = LocalDateTime.now()
-                    )
-                    studentRepository.createDevice(newDevice)
-                }
+                studentRepository.updateDevice(newDevice)
 
                 // Send notification in background
                 backgroundTaskScope.scope.launch {
@@ -258,14 +261,6 @@ class DeviceChangeService(
                 deviceChangeRequestRepository.rejectRequest(
                     requestId, lecturerId, rejectionReason
                 )
-
-                // 2. Update the pending device status to REJECTED in DevicesTable
-                val pendingDevice = studentRepository.findDeviceByStudentIdAndDeviceId(
-                    changeRequest.studentId, changeRequest.newDeviceId
-                )
-                pendingDevice?.let { device ->
-                    studentRepository.updateDeviceStatus(device.id, DeviceStatus.REJECTED)
-                }
 
                 // Send notification in background
                 backgroundTaskScope.scope.launch {
@@ -349,7 +344,7 @@ class DeviceChangeService(
                 lecturerIds = lecturers.map { it.id },
                 persist = true,
                 title = "New Device Change Request",
-                body = "Student requested to change device. Review in dashboard.",
+                body = "Student requested to change device. Review in device change screen.",
                 data = mapOf(
                     "type" to NotificationType.DEVICE_REQUEST.name,
                     "studentId" to studentId.toString()
