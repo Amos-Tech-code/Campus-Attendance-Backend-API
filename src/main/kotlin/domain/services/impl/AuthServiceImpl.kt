@@ -284,8 +284,8 @@ class AuthServiceImpl(
             }
         }
     }
-
      */
+
     override suspend fun loginStudent(
         registrationNumber: String,
         deviceInfo: DeviceInfo
@@ -352,25 +352,10 @@ class AuthServiceImpl(
                     val deviceInUse = studentRepository.findActiveDeviceByDeviceId(deviceInfo.deviceId)
 
                     if (deviceInUse != null && deviceInUse.studentId != student.id) {
-                        // Device belongs to someone else - This is suspicious!
-                        // Log for security but DON'T block login
+                        // Device belongs to someone else but DON'T block login
                         logger.warn("Student ${student.id} trying to use device registered to ${deviceInUse.studentId}")
 
-                        // Create device with REJECTED status but allow login
-                        val newDevice = Device(
-                            id = UUID.randomUUID(),
-                            studentId = student.id,
-                            deviceId = deviceInfo.deviceId,
-                            model = deviceInfo.model,
-                            os = deviceInfo.os,
-                            fcmToken = deviceInfo.fcmToken,
-                            status = DeviceStatus.REJECTED, // Mark as rejected immediately
-                            lastSeen = now,
-                            createdAt = now,
-                            updatedAt = now
-                        )
-                        studentRepository.updateDevice(student.id, newDevice)
-
+                        // Notify student device is with REJECTED status but allow login
                         StudentAuthResponse(
                             token = JwtConfig.generateToken(student.id.toString(), UserRole.STUDENT),
                             fullName = student.fullName,
@@ -380,7 +365,9 @@ class AuthServiceImpl(
                             lastLoginAt = student.lastLogin.toIsoStringOrNull()
                         )
                     } else {
-                        // New device - Create with PENDING status and AUTO-CREATE change request
+                        // New device - Create pending device entry and auto-create change request
+
+                        // 1. Create device entry with PENDING status in DevicesTable
                         val newDevice = Device(
                             id = UUID.randomUUID(),
                             studentId = student.id,
@@ -393,9 +380,10 @@ class AuthServiceImpl(
                             createdAt = now,
                             updatedAt = now
                         )
-                        studentRepository.updateDevice(student.id, newDevice)
 
-                        // AUTO-CREATE device change request in background (non-blocking)
+                        studentRepository.createDevice(newDevice)
+
+                        // 2. AUTO-CREATE device change request in background (non-blocking)
                         backgroundTaskScope.scope.launch {
                             try {
                                 createAutomaticDeviceChangeRequest(student.id, deviceInfo)

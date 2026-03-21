@@ -2,11 +2,14 @@ package data.repository
 
 import com.amos_tech_code.data.database.utils.exposedTransaction
 import data.database.entities.DeviceChangeRequestsTable
+import data.database.entities.DevicesTable
 import data.database.entities.StudentEnrollmentsTable
 import data.database.entities.LecturerTeachingAssignmentsTable
 import domain.models.DeviceChangeDomainRequest
 import domain.models.DeviceChangeStatus
+import domain.models.DeviceStatus
 import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import java.time.LocalDateTime
 import java.util.*
 
@@ -64,6 +67,42 @@ class DeviceChangeRequestRepository {
             .where { DeviceChangeRequestsTable.studentId eq studentId }
             .orderBy(DeviceChangeRequestsTable.requestedAt to SortOrder.DESC)
             .map { it.toDeviceChangeRequest() }
+    }
+
+    suspend fun cancelRequest(
+        requestId: UUID,
+        studentId: UUID
+    ): Boolean = exposedTransaction {
+        // Verify the request belongs to the student and is still pending
+        val request = DeviceChangeRequestsTable
+            .selectAll()
+            .where {
+                (DeviceChangeRequestsTable.id eq requestId) and
+                        (DeviceChangeRequestsTable.studentId eq studentId) and
+                        (DeviceChangeRequestsTable.status eq DeviceChangeStatus.PENDING)
+            }
+            .singleOrNull()
+
+        if (request == null) {
+            return@exposedTransaction false
+        }
+
+        // Update request status to CANCELLED
+        val updated = DeviceChangeRequestsTable.update(
+            where = { DeviceChangeRequestsTable.id eq requestId }
+        ) {
+            it[status] = DeviceChangeStatus.CANCELLED
+            it[reviewedAt] = LocalDateTime.now()
+            it[rejectionReason] = "Cancelled by student"
+        } > 0
+
+        // Also delete in DevicesTable if only it was a new device
+        if (updated) {
+            val newDeviceId = request[DeviceChangeRequestsTable.newDeviceId]
+            DevicesTable.deleteWhere { DevicesTable.deviceId eq newDeviceId }
+        }
+
+        updated
     }
 
     suspend fun approveRequest(
