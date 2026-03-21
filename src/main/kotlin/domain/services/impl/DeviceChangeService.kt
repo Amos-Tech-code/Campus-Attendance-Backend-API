@@ -2,6 +2,7 @@ package domain.services.impl
 
 import api.dtos.requests.*
 import com.amos_tech_code.data.repository.LecturerRepository
+import com.amos_tech_code.domain.models.Device
 import com.amos_tech_code.domain.services.NotificationService
 import com.amos_tech_code.utils.*
 import data.repository.DeviceChangeRequestRepository
@@ -37,7 +38,7 @@ class DeviceChangeService(
     ): DeviceChangeRequestResponse = withContext(Dispatchers.IO) {
         try {
             // Validate student exists
-            val student = studentRepository.findById(studentId)
+            studentRepository.findById(studentId)
                 ?: throw ResourceNotFoundException("Student not found")
 
             // Validate student has active enrollment
@@ -77,26 +78,10 @@ class DeviceChangeService(
 
             deviceChangeRequestRepository.create(changeRequest)
 
-            // Update the new device with PENDING status
-            /*val newDevice = Device(
-                id = UUID.randomUUID(),
-                studentId = studentId,
-                deviceId = request.deviceInfo.deviceId,
-                model = request.deviceInfo.model,
-                os = request.deviceInfo.os,
-                fcmToken = request.deviceInfo.fcmToken,
-                status = DeviceStatus.PENDING,
-                lastSeen = LocalDateTime.now(),
-                createdAt = LocalDateTime.now(),
-                updatedAt = LocalDateTime.now()
-            )
-            studentRepository.updateDevice(studentId, newDevice)
-
-             */
             // Notify lecturers in background
             backgroundTaskScope.scope.launch {
                 try {
-                    notifyLecturersAboutDeviceRequest(studentId, changeRequest)
+                    notifyLecturersAboutDeviceRequest(studentId)
                 } catch (e: Exception) {
                     logger.error("Failed to notify lecturers about device request", e)
                 }
@@ -118,23 +103,17 @@ class DeviceChangeService(
         }
     }
 
+
     /**
-     * Get pending device change requests for a lecturer
+     * Get device change history for a student
      */
-    suspend fun getPendingRequests(lecturerId: UUID): List<PendingDeviceChangeDto> = withContext(Dispatchers.IO) {
+    suspend fun getStudentDeviceHistory(studentId: UUID): List<DeviceChangeHistoryDto> = withContext(Dispatchers.IO) {
         try {
-            val lecturer = lecturerRepository.findById(lecturerId)
-                ?: throw ResourceNotFoundException("Lecturer not found")
-
-            val pendingRequests = deviceChangeRequestRepository.findPendingRequestsForLecturer(lecturerId)
-
-            pendingRequests.map { request ->
-                val student = studentRepository.findById(request.studentId)
-                PendingDeviceChangeDto(
+            val requests = deviceChangeRequestRepository.findRequestsByStudent(studentId)
+            requests.map { request ->
+                DeviceChangeHistoryDto(
                     requestId = request.id.toString(),
-                    studentId = request.studentId.toString(),
-                    studentName = student?.fullName ?: "Unknown",
-                    studentRegNo = student?.registrationNumber ?: "Unknown",
+                    status = request.status,
                     oldDeviceId = request.oldDeviceId,
                     newDeviceInfo = DeviceInfoDto(
                         deviceId = request.newDeviceId,
@@ -143,17 +122,51 @@ class DeviceChangeService(
                         fcmToken = request.newFcmToken
                     ),
                     reason = request.reason,
-                    requestedAt = request.requestedAt.toString()
+                    requestedAt = request.requestedAt.toString(),
+                    reviewedBy = request.reviewedBy?.toString(),
+                    reviewedAt = request.reviewedAt?.toString(),
+                    rejectionReason = request.rejectionReason
                 )
             }
         } catch (e: Exception) {
-            logger.error("Failed to get pending requests", e)
+            logger.error("Failed to get device history")
+            emptyList()
+        }
+    }
+
+
+    /**
+     * Student cancels their pending device change request
+     */
+    suspend fun cancelDeviceChangeRequest(
+        studentId: UUID,
+        requestId: String
+    ): Boolean {
+        try {
+            val requestUUID = UUID.fromString(requestId)
+
+            // Verify student exists
+            studentRepository.findById(studentId)
+                ?: throw ResourceNotFoundException("Student not found")
+
+            // Cancel the request
+            val cancelled = deviceChangeRequestRepository.cancelRequest(requestUUID, studentId)
+
+            if (!cancelled) {
+                throw ValidationException("Request not found or already processed")
+            }
+
+            return true
+
+        } catch (e: Exception) {
+            logger.error("Failed to cancel device change request", e)
             when (e) {
                 is AppException -> throw e
-                else -> throw InternalServerException("Failed to get pending requests")
+                else -> throw InternalServerException("Failed to cancel device change request")
             }
         }
     }
+
 
     /**
      * Lecturer approves or rejects a device change request
@@ -182,28 +195,41 @@ class DeviceChangeService(
                 throw ConflictException("This request has already been ${changeRequest.status.name.lowercase()}")
             }
 
-            val student = studentRepository.findById(changeRequest.studentId)
-                ?: throw ResourceNotFoundException("Student not found")
-
             if (request.approve) {
-                // APPROVE
+                // APPROVE - Update DevicesTable with the new device
+
                 // 1. Update request status
                 deviceChangeRequestRepository.approveRequest(requestId, lecturerId)
 
-                // 2. Update the new device to ACTIVE
-                val newDevice = studentRepository.findDeviceByStudentIdAndDeviceId(
+                // 2. Find the pending device in DevicesTable
+                val pendingDevice = studentRepository.findDeviceByStudentIdAndDeviceId(
                     changeRequest.studentId, changeRequest.newDeviceId
                 )
-                newDevice?.let { device ->
-                    studentRepository.updateDeviceStatus(device.id, DeviceStatus.ACTIVE)
-                }
 
-                // 3. Mark old device as REJECTED (or delete it)
-                val oldDevice = studentRepository.findDeviceByStudentIdAndDeviceId(
-                    changeRequest.studentId, changeRequest.oldDeviceId
-                )
-                oldDevice?.let { device ->
-                    studentRepository.updateDeviceStatus(device.id, DeviceStatus.REJECTED)
+                if (pendingDevice != null) {
+                    // 3. Mark old active device as INACTIVE/REJECTED
+                    val oldActiveDevice = studentRepository.findActiveDeviceByStudentId(changeRequest.studentId)
+                    oldActiveDevice?.let { device ->
+                        studentRepository.updateDeviceStatus(device.id, DeviceStatus.REJECTED)
+                    }
+
+                    // 4. Update the pending device to ACTIVE
+                    studentRepository.updateDeviceStatus(pendingDevice.id, DeviceStatus.ACTIVE)
+                } else {
+                    // If device doesn't exist in DevicesTable yet (shouldn't happen), create it
+                    val newDevice = Device(
+                        id = UUID.randomUUID(),
+                        studentId = changeRequest.studentId,
+                        deviceId = changeRequest.newDeviceId,
+                        model = changeRequest.newDeviceModel,
+                        os = changeRequest.newDeviceOS,
+                        fcmToken = changeRequest.newFcmToken,
+                        status = DeviceStatus.ACTIVE,
+                        lastSeen = LocalDateTime.now(),
+                        createdAt = LocalDateTime.now(),
+                        updatedAt = LocalDateTime.now()
+                    )
+                    studentRepository.createDevice(newDevice)
                 }
 
                 // Send notification in background
@@ -225,7 +251,7 @@ class DeviceChangeService(
                     requestedAt = changeRequest.requestedAt.toString()
                 )
             } else {
-                // REJECT
+                // REJECT - Just update request and device status, don't touch active device
                 val rejectionReason = request.rejectionReason ?: "No reason provided"
 
                 // 1. Update request status
@@ -233,11 +259,11 @@ class DeviceChangeService(
                     requestId, lecturerId, rejectionReason
                 )
 
-                // 2. Remove or reject the new device
-                val newDevice = studentRepository.findDeviceByStudentIdAndDeviceId(
+                // 2. Update the pending device status to REJECTED in DevicesTable
+                val pendingDevice = studentRepository.findDeviceByStudentIdAndDeviceId(
                     changeRequest.studentId, changeRequest.newDeviceId
                 )
-                newDevice?.let { device ->
+                pendingDevice?.let { device ->
                     studentRepository.updateDeviceStatus(device.id, DeviceStatus.REJECTED)
                 }
 
@@ -272,15 +298,22 @@ class DeviceChangeService(
     }
 
     /**
-     * Get device change history for a student
+     * Get pending device change requests for a lecturer
      */
-    suspend fun getStudentDeviceHistory(studentId: UUID): List<DeviceChangeHistoryDto> = withContext(Dispatchers.IO) {
+    suspend fun getPendingRequests(lecturerId: UUID): List<PendingDeviceChangeDto> = withContext(Dispatchers.IO) {
         try {
-            val requests = deviceChangeRequestRepository.findRequestsByStudent(studentId)
-            requests.map { request ->
-                DeviceChangeHistoryDto(
+            lecturerRepository.findById(lecturerId)
+                ?: throw ResourceNotFoundException("Lecturer not found")
+
+            val pendingRequests = deviceChangeRequestRepository.findPendingRequestsForLecturer(lecturerId)
+
+            pendingRequests.map { request ->
+                val student = studentRepository.findById(request.studentId)
+                PendingDeviceChangeDto(
                     requestId = request.id.toString(),
-                    status = request.status,
+                    studentId = request.studentId.toString(),
+                    studentName = student?.fullName ?: "Unknown",
+                    studentRegNo = student?.registrationNumber ?: "Unknown",
                     oldDeviceId = request.oldDeviceId,
                     newDeviceInfo = DeviceInfoDto(
                         deviceId = request.newDeviceId,
@@ -289,29 +322,29 @@ class DeviceChangeService(
                         fcmToken = request.newFcmToken
                     ),
                     reason = request.reason,
-                    requestedAt = request.requestedAt.toString(),
-                    reviewedBy = request.reviewedBy?.toString(),
-                    reviewedAt = request.reviewedAt?.toString(),
-                    rejectionReason = request.rejectionReason
+                    requestedAt = request.requestedAt.toString()
                 )
             }
         } catch (e: Exception) {
-            logger.error("Failed to get device history")
-            emptyList()
+            logger.error("Failed to get pending requests", e)
+            when (e) {
+                is AppException -> throw e
+                else -> throw InternalServerException("Failed to get pending requests")
+            }
         }
     }
+
 
     /**
      * Notify all eligible lecturers about a device change request
      */
     private suspend fun notifyLecturersAboutDeviceRequest(
-        studentId: UUID,
-        request: DeviceChangeDomainRequest
+        studentId: UUID
     ) {
         // Get all lecturers who teach this student
         val lecturers = studentEnrollmentRepository.getLecturersForStudent(studentId)
 
-        lecturers.forEach { lecturer ->
+        lecturers.forEach { _ ->
             notificationService.notifyLecturers(
                 lecturerIds = lecturers.map { it.id },
                 persist = true,

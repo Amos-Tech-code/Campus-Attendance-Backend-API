@@ -47,6 +47,39 @@ class StudentRepository {
             .singleOrNull()
     }
 
+    /**
+     * Create a new device entry (with any status)
+     */
+    suspend fun createDevice(device: Device): Boolean = exposedTransaction {
+        DevicesTable.insert {
+            it[id] = device.id
+            it[studentId] = device.studentId
+            it[deviceId] = device.deviceId
+            it[deviceModel] = device.model
+            it[os] = device.os
+            it[fcmToken] = device.fcmToken
+            it[status] = device.status
+            it[lastSeen] = device.lastSeen
+            it[createdAt] = device.createdAt
+            it[updatedAt] = device.updatedAt
+        }
+        true
+    }
+
+    /**
+     * Find active device by student ID
+     */
+    suspend fun findActiveDeviceByStudentId(studentId: UUID): Device? = exposedTransaction {
+        DevicesTable
+            .selectAll()
+            .where {
+                (DevicesTable.studentId eq studentId) and
+                        (DevicesTable.status eq DeviceStatus.ACTIVE)
+            }
+            .map { it.toDevice() }
+            .singleOrNull()
+    }
+
     suspend fun existsByRegistrationNumber(regNo: String, excludeStudentId: UUID): Boolean =
         exposedTransaction {
             StudentsTable
@@ -101,32 +134,25 @@ class StudentRepository {
 
 
     suspend fun updateDevice(studentId: UUID, device: Device): Boolean = exposedTransaction {
-        DevicesTable.insert {
+        DevicesTable.update(
+            where = { DevicesTable.studentId eq studentId },
+        ) {
             it[id] = device.id
             it[DevicesTable.studentId] = studentId
             it[deviceId] = device.deviceId
             it[deviceModel] = device.model
             it[os] = device.os
             it[fcmToken] = device.fcmToken
+            it[status] = device.status
             it[lastSeen] = device.lastSeen
             it[createdAt] = device.createdAt
-        }
-        true
+        } > 0
     }
 
     suspend fun updateLastLogin(studentId: UUID, timestamp: LocalDateTime): Boolean = exposedTransaction {
         StudentsTable.update({ StudentsTable.id eq studentId }) {
             it[lastLoginAt] = timestamp
             it[updatedAt] = timestamp
-        } > 0
-    }
-
-    suspend fun updateDeviceLastSeen(
-        deviceId: String,
-        timestamp: LocalDateTime
-    ): Boolean = exposedTransaction {
-        DevicesTable.update({ DevicesTable.deviceId eq deviceId }) {
-            it[lastSeen] = timestamp
         } > 0
     }
 
@@ -185,15 +211,6 @@ class StudentRepository {
              it[updatedAt] = LocalDateTime.now()
          } > 0
      }
-
-
-    suspend fun getPendingRequests(): List<Device> = exposedTransaction {
-        DevicesTable
-            .selectAll()
-            .where { DevicesTable.status eq DeviceStatus.PENDING }
-            .orderBy(DevicesTable.createdAt to SortOrder.DESC)
-            .map { it.toDevice() }
-    }
 
     suspend fun getAllActiveDevices(): List<Device> = exposedTransaction {
         DevicesTable
