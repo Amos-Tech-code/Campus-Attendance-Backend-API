@@ -49,15 +49,24 @@ object FirebaseService {
         }
 
         return try {
+//            val message = Message.builder()
+//                .setToken(token)
+//                .setNotification(
+//                    Notification.builder()
+//                        .setTitle(title)
+//                        .setBody(body)
+//                        .build()
+//                )
+//                .putAllData(data)
+//                .build()
             val message = Message.builder()
                 .setToken(token)
-                .setNotification(
-                    Notification.builder()
-                        .setTitle(title)
-                        .setBody(body)
-                        .build()
+                .putAllData(
+                    data + mapOf(
+                        "title" to title,
+                        "body" to body
+                    )
                 )
-                .putAllData(data)
                 .build()
 
             val response = FirebaseMessaging.getInstance().send(message)
@@ -96,15 +105,24 @@ object FirebaseService {
         }
 
         return try {
+//            val message = MulticastMessage.builder()
+//                .addAllTokens(tokens)
+//                .setNotification(
+//                    Notification.builder()
+//                        .setTitle(title)
+//                        .setBody(body)
+//                        .build()
+//                )
+//                .putAllData(data)
+//                .build()
             val message = MulticastMessage.builder()
                 .addAllTokens(tokens)
-                .setNotification(
-                    Notification.builder()
-                        .setTitle(title)
-                        .setBody(body)
-                        .build()
+                .putAllData(
+                    data + mapOf(
+                        "title" to title,
+                        "body" to body
+                    )
                 )
-                .putAllData(data)
                 .build()
 
             val response = FirebaseMessaging.getInstance().sendEachForMulticast(message)
@@ -143,15 +161,24 @@ object FirebaseService {
         }
 
         return try {
+//            val message = Message.builder()
+//                .setTopic(topic)
+//                .setNotification(
+//                    Notification.builder()
+//                        .setTitle(title)
+//                        .setBody(body)
+//                        .build()
+//                )
+//                .putAllData(data)
+//                .build()
             val message = Message.builder()
                 .setTopic(topic)
-                .setNotification(
-                    Notification.builder()
-                        .setTitle(title)
-                        .setBody(body)
-                        .build()
+                .putAllData(
+                    data + mapOf(
+                        "title" to title,
+                        "body" to body
+                    )
                 )
-                .putAllData(data)
                 .build()
 
             val response = FirebaseMessaging.getInstance().send(message)
