@@ -133,6 +133,19 @@ class DeviceChangeRequestRepository {
         } > 0
     }
 
+    suspend fun systemRejectRequest(
+        requestId: UUID,
+        rejectionReason: String
+    ): Boolean = exposedTransaction {
+        DeviceChangeRequestsTable.update(
+            where = { DeviceChangeRequestsTable.id eq requestId }
+        ) {
+            it[status] = DeviceChangeStatus.REJECTED
+            it[reviewedAt] = LocalDateTime.now()
+            it[this.rejectionReason] = rejectionReason
+        } > 0
+    }
+
     suspend fun canLecturerApproveRequest(lecturerId: UUID, studentId: UUID): Boolean = exposedTransaction {
         StudentEnrollmentsTable
             .innerJoin(LecturerTeachingAssignmentsTable) {

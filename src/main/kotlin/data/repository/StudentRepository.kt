@@ -133,9 +133,9 @@ class StudentRepository {
     }
 
 
-    suspend fun updateDevice(studentId: UUID, device: Device): Boolean = exposedTransaction {
+    suspend fun updateDevice(device: Device): Boolean = exposedTransaction {
         DevicesTable.update(
-            where = { DevicesTable.studentId eq studentId },
+            where = { DevicesTable.studentId eq device.studentId },
         ) {
             it[id] = device.id
             it[DevicesTable.studentId] = studentId

@@ -365,25 +365,9 @@ class AuthServiceImpl(
                             lastLoginAt = student.lastLogin.toIsoStringOrNull()
                         )
                     } else {
-                        // New device - Create pending device entry and auto-create change request
+                        // New device - Notify student device is with status PENDING and auto-create change request
 
-                        // 1. Create device entry with PENDING status in DevicesTable
-                        val newDevice = Device(
-                            id = UUID.randomUUID(),
-                            studentId = student.id,
-                            deviceId = deviceInfo.deviceId,
-                            model = deviceInfo.model,
-                            os = deviceInfo.os,
-                            fcmToken = deviceInfo.fcmToken,
-                            status = DeviceStatus.PENDING,
-                            lastSeen = now,
-                            createdAt = now,
-                            updatedAt = now
-                        )
-
-                        studentRepository.createDevice(newDevice)
-
-                        // 2. AUTO-CREATE device change request in background (non-blocking)
+                        // 1. AUTO-CREATE device change request in background (non-blocking)
                         backgroundTaskScope.scope.launch {
                             try {
                                 createAutomaticDeviceChangeRequest(student.id, deviceInfo)
