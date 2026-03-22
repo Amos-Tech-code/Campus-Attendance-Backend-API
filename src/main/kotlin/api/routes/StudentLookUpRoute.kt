@@ -34,5 +34,6 @@ fun Route.studentLookUpRoute(studentLookupService: StudentLookUpService) {
             call.respond(response)
 
         }
+
     }
 }
