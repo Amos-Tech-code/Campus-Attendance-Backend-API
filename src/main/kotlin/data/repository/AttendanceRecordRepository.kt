@@ -3,6 +3,9 @@ package com.amos_tech_code.data.repository
 import com.amos_tech_code.api.dtos.response.AttendanceStatsResponse
 import com.amos_tech_code.api.dtos.response.StudentAttendanceRecordDto
 import com.amos_tech_code.data.database.utils.exposedTransaction
+import com.amos_tech_code.domain.models.AttendanceStats
+import com.amos_tech_code.domain.models.RecentAttendance
+import com.amos_tech_code.domain.models.UnitAttendance
 import data.database.entities.AcademicTermsTable
 import data.database.entities.AttendanceRecordsTable
 import data.database.entities.AttendanceSessionsTable
@@ -13,6 +16,7 @@ import domain.models.AttendanceSessionStatus
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.count
 import org.jetbrains.exposed.sql.countDistinct
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.innerJoin
@@ -20,6 +24,7 @@ import org.jetbrains.exposed.sql.leftJoin
 import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.util.UUID
 
@@ -187,6 +192,175 @@ class AttendanceRecordRepository {
             currentStreak = streak,
             lastUpdated = System.currentTimeMillis()
         )
+    }
+
+    suspend fun getOverallAttendanceStats(studentId: UUID): AttendanceStats = exposedTransaction {
+        val attended = AttendanceRecordsTable
+            .select(AttendanceRecordsTable.id)
+            .where { AttendanceRecordsTable.studentId eq studentId }
+            .count()
+            .toInt()
+
+        val total = AttendanceSessionsTable
+            .innerJoin(AttendanceRecordsTable) {
+                AttendanceSessionsTable.id eq AttendanceRecordsTable.sessionId
+            }
+            .select(AttendanceSessionsTable.id)
+            .where { AttendanceRecordsTable.studentId eq studentId }
+            .count()
+            .toInt()
+
+        AttendanceStats(attended = attended, total = total)
+    }
+
+    suspend fun getAttendanceByUnit(studentId: UUID): List<UnitAttendance> = exposedTransaction {
+        // Get attended sessions per unit with proper joins
+        val attendedPerUnit = AttendanceRecordsTable
+            .innerJoin(AttendanceSessionsTable) {
+                AttendanceRecordsTable.sessionId eq AttendanceSessionsTable.id
+            }
+            .innerJoin(UnitsTable) {
+                AttendanceSessionsTable.unitId eq UnitsTable.id
+            }
+            .select(
+                AttendanceSessionsTable.unitId,
+                UnitsTable.code,
+                UnitsTable.name,
+                AttendanceRecordsTable.id.count()
+            )
+            .where { AttendanceRecordsTable.studentId eq studentId }
+            .groupBy(
+                AttendanceSessionsTable.unitId,
+                UnitsTable.code,
+                UnitsTable.name
+            )
+            .map { row ->
+                val unitId = row[AttendanceSessionsTable.unitId]
+                val unitCode = row[UnitsTable.code]
+                val unitName = row[UnitsTable.name]
+                val attended = row[AttendanceRecordsTable.id.count()].toInt()
+                Triple(unitId, unitCode, unitName) to attended
+            }
+            .toMap()
+
+        // Get total sessions per unit
+        val totalPerUnit = AttendanceSessionsTable
+            .select(
+                AttendanceSessionsTable.unitId,
+                AttendanceSessionsTable.id.count()
+            )
+            .groupBy(AttendanceSessionsTable.unitId)
+            .map { row ->
+                row[AttendanceSessionsTable.unitId] to row[AttendanceSessionsTable.id.count()].toInt()
+            }
+            .toMap()
+
+        // Combine results
+        attendedPerUnit.map { (key, attended) ->
+            val (unitId, unitCode, unitName) = key
+            val total = totalPerUnit[unitId] ?: 0
+
+            UnitAttendance(
+                unitId = unitId,
+                unitCode = unitCode,
+                unitName = unitName,
+                attended = attended,
+                total = total
+            )
+        }
+    }
+
+    suspend fun getRecentAttendance(
+        studentId: UUID,
+        limit: Int = 10
+    ): List<RecentAttendance> = exposedTransaction {
+        AttendanceRecordsTable
+            .innerJoin(AttendanceSessionsTable) {
+                AttendanceRecordsTable.sessionId eq AttendanceSessionsTable.id
+            }
+            .innerJoin(UnitsTable) {
+                AttendanceSessionsTable.unitId eq UnitsTable.id
+            }
+            .selectAll()
+            .where { AttendanceRecordsTable.studentId eq studentId }
+            .orderBy(AttendanceRecordsTable.attendedAt to SortOrder.DESC)
+            .limit(limit)
+            .map { row ->
+                RecentAttendance(
+                    sessionId = row[AttendanceSessionsTable.id],
+                    sessionTitle = row[AttendanceSessionsTable.sessionTitle] ?: "Untitled",
+                    unitCode = row[UnitsTable.code],
+                    unitName = row[UnitsTable.name],
+                    attendedAt = row[AttendanceRecordsTable.attendedAt],
+                    attendanceMethod = row[AttendanceRecordsTable.attendanceMethodUsed].name,
+                    isSuspicious = row[AttendanceRecordsTable.isSuspicious]
+                )
+            }
+    }
+
+    /**
+     * Get count of suspicious activities for a student
+     */
+    suspend fun getSuspiciousActivityCount(studentId: UUID): Int = exposedTransaction {
+        AttendanceRecordsTable
+            .select(AttendanceRecordsTable.id)
+            .where {
+                (AttendanceRecordsTable.studentId eq studentId) and
+                        (AttendanceRecordsTable.isSuspicious eq true)
+            }
+            .count()
+            .toInt()
+    }
+
+    /**
+     * Get attendance statistics for a specific unit
+     */
+    suspend fun getAttendanceStatsForUnit(
+        studentId: UUID,
+        unitId: UUID,
+        academicTermId: UUID
+    ): AttendanceStats = exposedTransaction {
+        // Get attended sessions for this unit
+        val attended = AttendanceRecordsTable
+            .innerJoin(AttendanceSessionsTable) {
+                AttendanceRecordsTable.sessionId eq AttendanceSessionsTable.id
+            }
+            .select(AttendanceRecordsTable.id)
+            .where {
+                (AttendanceRecordsTable.studentId eq studentId) and
+                        (AttendanceSessionsTable.unitId eq unitId) and
+                        (AttendanceSessionsTable.academicTermId eq academicTermId)
+            }
+            .count()
+            .toInt()
+
+        // Get total sessions for this unit in this academic term
+        val total = AttendanceSessionsTable
+            .select(AttendanceSessionsTable.id)
+            .where {
+                (AttendanceSessionsTable.unitId eq unitId) and
+                        (AttendanceSessionsTable.academicTermId eq academicTermId)
+            }
+            .count()
+            .toInt()
+
+        AttendanceStats(
+            attended = attended,
+            total = total
+        )
+    }
+
+    /**
+     * Get the date of the student's last attendance
+     */
+    suspend fun getLastAttendanceDate(studentId: UUID): LocalDateTime? = exposedTransaction {
+        AttendanceRecordsTable
+            .select(AttendanceRecordsTable.attendedAt)
+            .where { AttendanceRecordsTable.studentId eq studentId }
+            .orderBy(AttendanceRecordsTable.attendedAt to SortOrder.DESC)
+            .limit(1)
+            .map { it[AttendanceRecordsTable.attendedAt] }
+            .singleOrNull()
     }
 
     // Helper method to calculate streak for specific term

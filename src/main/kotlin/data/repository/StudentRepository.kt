@@ -48,25 +48,6 @@ class StudentRepository {
     }
 
     /**
-     * Create a new device entry (with any status)
-     */
-    suspend fun createDevice(device: Device): Boolean = exposedTransaction {
-        DevicesTable.insert {
-            it[id] = device.id
-            it[studentId] = device.studentId
-            it[deviceId] = device.deviceId
-            it[deviceModel] = device.model
-            it[os] = device.os
-            it[fcmToken] = device.fcmToken
-            it[status] = device.status
-            it[lastSeen] = device.lastSeen
-            it[createdAt] = device.createdAt
-            it[updatedAt] = device.updatedAt
-        }
-        true
-    }
-
-    /**
      * Find active device by student ID
      */
     suspend fun findActiveDeviceByStudentId(studentId: UUID): Device? = exposedTransaction {
@@ -186,13 +167,6 @@ class StudentRepository {
             .singleOrNull()
     }
 
-    suspend fun updateDeviceStatus(deviceId: UUID, status: DeviceStatus): Boolean = exposedTransaction {
-        DevicesTable.update({ DevicesTable.id eq deviceId }) {
-            it[DevicesTable.status] = status
-            it[updatedAt] = LocalDateTime.now()
-        } > 0
-    }
-
     suspend fun updateDeviceLastSeen(deviceId: UUID, lastSeen: LocalDateTime, fcmToken: String?): Boolean = exposedTransaction {
         DevicesTable.update({ DevicesTable.id eq deviceId }) {
             it[DevicesTable.lastSeen] = lastSeen
@@ -242,6 +216,7 @@ class StudentRepository {
         fullName = this[StudentsTable.fullName],
         createdAt = this[StudentsTable.createdAt],
         lastLogin = this[StudentsTable.lastLoginAt],
+        isActive = this[StudentsTable.isActive],
         device = null,
     )
 }

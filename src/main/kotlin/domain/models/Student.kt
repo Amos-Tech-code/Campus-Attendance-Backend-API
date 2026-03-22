@@ -9,6 +9,7 @@ data class Student(
     val registrationNumber: String,
     val fullName: String,
     val device: Device?,
+    val isActive: Boolean,
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime? = null,
     val lastLogin: LocalDateTime? = null

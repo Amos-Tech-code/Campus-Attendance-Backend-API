@@ -6,6 +6,7 @@ import com.amos_tech_code.domain.dtos.response.*
 import com.amos_tech_code.domain.models.ActiveEnrollmentInfo
 import com.amos_tech_code.domain.models.ExistingEnrollment
 import com.amos_tech_code.domain.models.Lecturer
+import com.amos_tech_code.domain.models.StudentEnrollment
 import com.amos_tech_code.domain.models.StudentEnrollmentInfo
 import domain.models.StudentEnrollmentSource
 import com.amos_tech_code.domain.models.TeachingAssignmentInfo
@@ -25,6 +26,7 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.innerJoin
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.leftJoin
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -51,6 +53,7 @@ class StudentEnrollmentRepository {
                 StudentEnrollmentsTable.id,
                 ProgrammesTable.name,
                 ProgrammesTable.id,
+                UniversitiesTable.id,
                 UniversitiesTable.name
             )
             .where {
@@ -63,7 +66,43 @@ class StudentEnrollmentRepository {
                     enrollmentId = row[StudentEnrollmentsTable.id],
                     programmeName = row[ProgrammesTable.name],
                     programmeId = row[ProgrammesTable.id],
+                    universityId = row[UniversitiesTable.id],
                     universityName = row[UniversitiesTable.name]
+                )
+            }
+    }
+
+    // In StudentEnrollmentRepository.kt
+    suspend fun findActiveEnrollments(studentId: UUID): List<StudentEnrollment> = exposedTransaction {
+        StudentEnrollmentsTable
+            .innerJoin(ProgrammesTable) {
+                StudentEnrollmentsTable.programmeId eq ProgrammesTable.id
+            }
+            .innerJoin(AcademicTermsTable) {
+                StudentEnrollmentsTable.academicTermId eq AcademicTermsTable.id
+            }
+            .innerJoin(UniversitiesTable) {
+                StudentEnrollmentsTable.universityId eq UniversitiesTable.id
+            }
+            .selectAll()
+            .where {
+                (StudentEnrollmentsTable.studentId eq studentId) and
+                        (StudentEnrollmentsTable.isActive eq true)
+            }
+            .map { row ->
+                StudentEnrollment(
+                    id = row[StudentEnrollmentsTable.id],
+                    studentId = row[StudentEnrollmentsTable.studentId],
+                    universityId = row[StudentEnrollmentsTable.universityId],
+                    universityName = row[UniversitiesTable.name],
+                    programmeId = row[StudentEnrollmentsTable.programmeId],
+                    programmeName = row[ProgrammesTable.name],
+                    academicTermId = row[StudentEnrollmentsTable.academicTermId],
+                    academicYear = row[AcademicTermsTable.academicYear],
+                    semester = row[AcademicTermsTable.semester],
+                    yearOfStudy = row[StudentEnrollmentsTable.yearOfStudy],
+                    enrollmentDate = row[StudentEnrollmentsTable.enrollmentDate],
+                    isActive = row[StudentEnrollmentsTable.isActive]
                 )
             }
     }

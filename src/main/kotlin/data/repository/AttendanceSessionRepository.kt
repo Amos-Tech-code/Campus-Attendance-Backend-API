@@ -288,6 +288,62 @@ class AttendanceSessionRepository {
         }
     }
 
+    suspend fun getUnitsForStudent(
+        studentId: UUID,
+        programmeId: UUID,
+        academicTermId: UUID
+    ): List<StudentUnit> = exposedTransaction {
+        // Get semester from academic term
+        val semester = AcademicTermsTable
+            .select(AcademicTermsTable.semester)
+            .where { AcademicTermsTable.id eq academicTermId }
+            .singleOrNull()
+            ?.get(AcademicTermsTable.semester)
+
+        if (semester == null) {
+            return@exposedTransaction emptyList()
+        }
+
+        // Get student's year of study
+        val yearOfStudy = StudentEnrollmentsTable
+            .select(StudentEnrollmentsTable.yearOfStudy)
+            .where {
+                (StudentEnrollmentsTable.studentId eq studentId) and
+                        (StudentEnrollmentsTable.programmeId eq programmeId) and
+                        (StudentEnrollmentsTable.academicTermId eq academicTermId) and
+                        (StudentEnrollmentsTable.isActive eq true)
+            }
+            .singleOrNull()
+            ?.get(StudentEnrollmentsTable.yearOfStudy)
+
+        if (yearOfStudy == null) {
+            return@exposedTransaction emptyList()
+        }
+
+        // Get units for this programme, year of study, and semester
+        ProgrammeUnitsTable
+            .innerJoin(UnitsTable) {
+                ProgrammeUnitsTable.unitId eq UnitsTable.id
+            }
+            .select(
+                ProgrammeUnitsTable.unitId,
+                UnitsTable.code,
+                UnitsTable.name
+            )
+            .where {
+                (ProgrammeUnitsTable.programmeId eq programmeId) and
+                        (ProgrammeUnitsTable.yearOfStudy eq yearOfStudy) and
+                        (ProgrammeUnitsTable.semester eq semester)
+            }
+            .map { row ->
+                StudentUnit(
+                    unitId = row[ProgrammeUnitsTable.unitId],
+                    unitCode = row[UnitsTable.code],
+                    unitName = row[UnitsTable.name]
+                )
+            }
+    }
+
     suspend fun updateSession(
         sessionId: UUID,
         lecturerId: UUID,
