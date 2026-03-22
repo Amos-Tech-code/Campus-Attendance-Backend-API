@@ -1,4 +1,4 @@
-package com.amos_tech_code.api.dtos.response
+package com.amos_tech_code.api.dtos.admin
 
 import kotlinx.serialization.Serializable
 
@@ -7,6 +7,7 @@ data class AdminResponse(
     val id: String,
     val email: String,
     val fullName: String,
+    val role: String = "ADMIN",
     val lastLoginAt: String? = null,
     val isActive: Boolean = true
 )

@@ -1,7 +1,7 @@
 package com.amos_tech_code.domain.services.impl
 
-import com.amos_tech_code.api.dtos.response.ActivityLogDto
-import com.amos_tech_code.api.dtos.response.DashboardStatsDto
+import com.amos_tech_code.api.dtos.admin.ActivityLogDto
+import com.amos_tech_code.api.dtos.admin.DashboardStatsDto
 import com.amos_tech_code.data.repository.AdminRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

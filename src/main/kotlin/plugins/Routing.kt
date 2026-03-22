@@ -23,6 +23,7 @@ import com.amos_tech_code.domain.services.NotificationService
 import com.amos_tech_code.domain.services.StudentLookUpService
 import com.amos_tech_code.domain.services.impl.AdminAuthService
 import com.amos_tech_code.domain.services.impl.AdminDashboardService
+import com.amos_tech_code.domain.services.impl.AdminManagementService
 import com.amos_tech_code.services.MarkAttendanceService
 import com.amos_tech_code.services.StudentEnrollmentService
 import domain.services.impl.DeviceChangeService
@@ -45,11 +46,13 @@ fun Application.configureRouting() {
     val attendanceManagementService by inject<AttendanceManagementService>()
     val accountService by inject<AccountService>()
     val attendanceExportService by inject<AttendanceExportService>()
-    val adminAuthService by inject<AdminAuthService>()
-    val adminDashboardService by inject<AdminDashboardService>()
     val notificationService by inject<NotificationService>()
     val deviceChangeService by inject<DeviceChangeService>()
     val studentLookupService by inject<StudentLookUpService>()
+
+    val adminAuthService by inject<AdminAuthService>()
+    val adminDashboardService by inject<AdminDashboardService>()
+    val adminManagementService by inject<AdminManagementService>()
 
     routing {
 
@@ -98,6 +101,7 @@ fun Application.configureRouting() {
         adminRoutes(
             adminAuthService,
             adminDashboardService,
+            adminManagementService,
         )
 
     }

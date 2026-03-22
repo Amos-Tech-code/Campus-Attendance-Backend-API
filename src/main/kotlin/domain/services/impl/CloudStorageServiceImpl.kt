@@ -21,7 +21,7 @@ class CloudStorageServiceImpl : CloudStorageService {
             "secure" to true
         )
         cloudinary = Cloudinary(config)
-        logger.info("Cloudinary service initialized for cloud: ${AppConfig.CLOUD_NAME}")
+        logger.info("✅ Cloudinary service initialized successfully")
     }
 
     override suspend fun uploadQRCode(imageBytes: ByteArray, fileName: String): String {

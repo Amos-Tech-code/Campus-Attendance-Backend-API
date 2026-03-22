@@ -1,54 +1,17 @@
 package di
 
-import com.amos_tech_code.data.repository.AdminRepository
-import com.amos_tech_code.data.repository.AttendanceExportRepository
-import com.amos_tech_code.data.repository.AttendanceRecordRepository
+import com.amos_tech_code.data.repository.*
+import com.amos_tech_code.domain.services.*
+import com.amos_tech_code.domain.services.impl.*
+import com.amos_tech_code.services.*
+import com.amos_tech_code.utils.BackgroundTaskScope
 import data.repository.AttendanceSessionRepository
-import com.amos_tech_code.data.repository.LecturerAcademicRepository
-import com.amos_tech_code.data.repository.LecturerRepository
-import com.amos_tech_code.data.repository.NotificationRepository
+import data.repository.DeviceChangeRequestRepository
 import data.repository.StudentEnrollmentRepository
 import data.repository.StudentRepository
-import com.amos_tech_code.domain.services.AccountService
-import com.amos_tech_code.domain.services.AttendanceEventBus
-import com.amos_tech_code.domain.services.AttendanceExportService
 import domain.services.AttendanceManagementService
-import com.amos_tech_code.services.MarkAttendanceService
 import domain.services.AttendanceSessionService
-import com.amos_tech_code.services.AuthService
-import com.amos_tech_code.domain.services.CloudStorageService
-import com.amos_tech_code.domain.services.CsvGeneratorService
-import com.amos_tech_code.services.GoogleAuthService
-import com.amos_tech_code.services.LecturerAcademicService
-import com.amos_tech_code.domain.services.LiveAttendanceService
-import com.amos_tech_code.domain.services.NotificationService
-import com.amos_tech_code.domain.services.PdfGeneratorService
-import com.amos_tech_code.domain.services.StudentLookUpService
-import com.amos_tech_code.domain.services.impl.AccountServiceImpl
-import com.amos_tech_code.domain.services.impl.AdminAuthService
-import com.amos_tech_code.domain.services.impl.AdminDashboardService
-import com.amos_tech_code.domain.services.impl.AttendanceExportServiceImpl
-import domain.services.impl.AttendanceManagementServiceImpl
-import com.amos_tech_code.domain.services.impl.CsvGeneratorServiceImpl
-import com.amos_tech_code.domain.services.impl.PdfGeneratorServiceImpl
-import com.amos_tech_code.domain.services.impl.StudentLookUpServiceImpl
-import domain.services.impl.AttendanceEventBusImpl
-import com.amos_tech_code.services.QRCodeService
-import com.amos_tech_code.services.SessionCodeGenerator
-import com.amos_tech_code.services.StudentEnrollmentService
-import domain.services.impl.MarkAttendanceServiceImpl
-import domain.services.impl.AttendanceSessionServiceImpl
-import domain.services.impl.AuthServiceImpl
-import domain.services.impl.CloudStorageServiceImpl
-import domain.services.impl.GoogleAuthServiceImpl
-import domain.services.impl.LecturerAcademicServiceImpl
-import domain.services.impl.LiveAttendanceServiceImpl
-import domain.services.impl.QRCodeServiceImpl
-import domain.services.impl.SessionCodeGeneratorImpl
-import domain.services.impl.StudentEnrollmentServiceImpl
-import com.amos_tech_code.utils.BackgroundTaskScope
-import data.repository.DeviceChangeRequestRepository
-import domain.services.impl.DeviceChangeService
+import domain.services.impl.*
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import org.koin.dsl.module
@@ -162,15 +125,5 @@ val appModule = module {
     single { NotificationRepository() }
 
     single { DeviceChangeRequestRepository() }
-
-    /*-----------------------------------
-    ADMIN SERVICES AND REPOSITORIES
-    ------------------------------------*/
-
-    single { AdminAuthService(get()) }
-
-    single { AdminDashboardService(get()) }
-
-    single { AdminRepository() }
 
 }

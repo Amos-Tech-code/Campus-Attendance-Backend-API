@@ -1,8 +1,8 @@
 package com.amos_tech_code.domain.services.impl
 
-import com.amos_tech_code.api.dtos.response.AdminAuthResponse
-import com.amos_tech_code.api.dtos.response.AdminLoginRequest
-import com.amos_tech_code.api.dtos.response.AdminResponse
+import com.amos_tech_code.api.dtos.admin.AdminAuthResponse
+import com.amos_tech_code.api.dtos.admin.AdminLoginRequest
+import com.amos_tech_code.api.dtos.admin.AdminResponse
 import com.amos_tech_code.config.AdminJwtConfig
 import com.amos_tech_code.data.repository.AdminRepository
 import com.amos_tech_code.domain.models.Admin
