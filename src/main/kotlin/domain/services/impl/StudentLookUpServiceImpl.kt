@@ -26,6 +26,8 @@ import domain.models.DeviceChangeStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
+import utils.toIsoString
+import utils.toIsoStringOrNull
 import java.time.format.DateTimeFormatter
 import java.util.*
 
@@ -40,7 +42,6 @@ class StudentLookUpServiceImpl(
 {
 
     private val logger = LoggerFactory.getLogger(StudentLookUpServiceImpl::class.java)
-    private val dateFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME
 
     /**
      * Look up student by registration number for a specific lecturer
@@ -56,7 +57,7 @@ class StudentLookUpServiceImpl(
                 throw ValidationException("Student Registration is required")
             }
             // Validate lecturer exists and get their university
-            val lecturer = lecturerRepository.findById(lecturerId)
+            lecturerRepository.findById(lecturerId)
                 ?: throw ResourceNotFoundException("Lecturer not found")
 
             val lecturerUniversities = lecturerRepository.getLecturerUniversities(lecturerId)
@@ -91,7 +92,7 @@ class StudentLookUpServiceImpl(
                 ?.let { request ->
                     PendingDeviceChangeInfo(
                         requestId = request.id.toString(),
-                        requestedAt = request.requestedAt.toString(),
+                        requestedAt = request.requestedAt.toIsoString(),
                         newDeviceModel = request.newDeviceModel,
                         newDeviceOS = request.newDeviceOS,
                         reason = request.reason
@@ -107,13 +108,13 @@ class StudentLookUpServiceImpl(
                     fullName = student.fullName,
                     registrationNumber = student.registrationNumber,
                     isActive = student.isActive,
-                    lastLoginAt = student.lastLogin?.toString()
+                    lastLoginAt = student.lastLogin?.toIsoStringOrNull()
                 ),
                 deviceInfo = DeviceLookupInfo(
                     deviceId = device?.deviceId,
                     deviceModel = device?.model,
                     deviceStatus = device?.status?.name,
-                    lastSeen = device?.lastSeen?.toString()
+                    lastSeen = device?.lastSeen?.toIsoStringOrNull()
                 ),
                 enrollmentInfo = enrollmentInfo,
                 attendanceSummary = attendanceSummary,
@@ -150,7 +151,7 @@ class StudentLookUpServiceImpl(
                 programmeName = enrollment.programmeName,
                 yearOfStudy = enrollment.yearOfStudy,
                 academicTerm = "${enrollment.academicYear} - Semester ${enrollment.semester}",
-                enrollmentDate = enrollment.enrollmentDate.toString(),
+                enrollmentDate = enrollment.enrollmentDate.toIsoString(),
                 units = units
             )
         }
@@ -216,7 +217,7 @@ class StudentLookUpServiceImpl(
             totalSessions = overallStats.total,
             sessionsAttended = overallStats.attended,
             suspiciousActivities = suspiciousCount,
-            lastAttendanceDate = lastAttendance?.toString(),
+            lastAttendanceDate = lastAttendance?.toIsoStringOrNull(),
             attendanceByUnit = unitsAttendance.map { unit ->
                 UnitAttendanceInfo(
                     unitCode = unit.unitCode,
@@ -243,7 +244,7 @@ class StudentLookUpServiceImpl(
                 RecentActivityInfo(
                     activityType = ActivityType.ATTENDANCE_MARKED,
                     description = "Attended ${attendance.unitCode} - ${attendance.sessionTitle}",
-                    timestamp = attendance.attendedAt.toString(),
+                    timestamp = attendance.attendedAt.toIsoString(),
                     details = mapOf(
                         "unitCode" to attendance.unitCode,
                         "sessionTitle" to attendance.sessionTitle,
@@ -262,7 +263,7 @@ class StudentLookUpServiceImpl(
                 RecentActivityInfo(
                     activityType = request.status.toActivityType(),
                     description = request.status.getDescription(request.newDeviceModel),
-                    timestamp = request.requestedAt.toString(),
+                    timestamp = request.requestedAt.toIsoString(),
                     details = mapOf(
                         "status" to request.status.name,
                         "newDeviceModel" to request.newDeviceModel,

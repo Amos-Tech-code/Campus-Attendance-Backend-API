@@ -3,12 +3,6 @@ package com.amos_tech_code.domain.models
 import java.time.LocalDateTime
 import java.util.UUID
 
-
-data class University(
-    val id: UUID,
-    val name: String
-)
-
 data class TeachingUnit(
     val unitId: UUID,
     val unitCode: String,
