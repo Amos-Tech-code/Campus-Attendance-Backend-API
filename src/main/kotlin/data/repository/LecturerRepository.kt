@@ -2,9 +2,17 @@ package com.amos_tech_code.data.repository
 
 import com.amos_tech_code.data.database.utils.exposedTransaction
 import com.amos_tech_code.domain.models.Lecturer
+import com.amos_tech_code.domain.models.ResolvedUniversity
+import com.amos_tech_code.domain.models.TeachingUnit
+import data.database.entities.LecturerTeachingAssignmentsTable
+import data.database.entities.LecturerUniversitiesTable
 import data.database.entities.LecturersTable
+import data.database.entities.UnitsTable
+import data.database.entities.UniversitiesTable
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.innerJoin
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
@@ -106,6 +114,49 @@ class LecturerRepository() {
             it[LecturersTable.fcmToken] = fcmToken
             it[updatedAt] = LocalDateTime.now()
         } > 0
+    }
+
+    // In LecturerRepository.kt
+    suspend fun getLecturerUniversities(lecturerId: UUID): List<ResolvedUniversity> = exposedTransaction {
+        LecturerUniversitiesTable
+            .innerJoin(UniversitiesTable) {
+                LecturerUniversitiesTable.universityId eq UniversitiesTable.id
+            }
+            .select(UniversitiesTable.columns)
+            .where { LecturerUniversitiesTable.lecturerId eq lecturerId }
+            .map { row ->
+                ResolvedUniversity(
+                    id = row[UniversitiesTable.id],
+                    name = row[UniversitiesTable.name]
+                )
+            }
+    }
+
+    suspend fun getTeachingUnits(
+        lecturerId: UUID,
+        academicTermId: UUID
+    ): List<TeachingUnit> = exposedTransaction {
+        LecturerTeachingAssignmentsTable
+            .innerJoin(UnitsTable) {
+                LecturerTeachingAssignmentsTable.unitId eq UnitsTable.id
+            }
+            .select(
+                LecturerTeachingAssignmentsTable.unitId,
+                UnitsTable.code,
+                UnitsTable.name
+            )
+            .where {
+                (LecturerTeachingAssignmentsTable.lecturerId eq lecturerId) and
+                        (LecturerTeachingAssignmentsTable.academicTermId eq academicTermId) and
+                        (LecturerTeachingAssignmentsTable.isActive eq true)
+            }
+            .map { row ->
+                TeachingUnit(
+                    unitId = row[LecturerTeachingAssignmentsTable.unitId],
+                    unitCode = row[UnitsTable.code],
+                    unitName = row[UnitsTable.name]
+                )
+            }
     }
 
     // Helper functions

@@ -13,12 +13,14 @@ import com.amos_tech_code.routes.lecturerAcademicSetupRoutes
 import api.routes.studentEnrollmentRoutes
 import com.amos_tech_code.api.routes.adminRoutes
 import com.amos_tech_code.api.routes.notificationRoutes
+import com.amos_tech_code.api.routes.studentLookUpRoute
 import com.amos_tech_code.domain.services.AttendanceExportService
 import domain.services.AttendanceSessionService
 import com.amos_tech_code.services.AuthService
 import com.amos_tech_code.services.LecturerAcademicService
 import com.amos_tech_code.domain.services.LiveAttendanceService
 import com.amos_tech_code.domain.services.NotificationService
+import com.amos_tech_code.domain.services.StudentLookUpService
 import com.amos_tech_code.domain.services.impl.AdminAuthService
 import com.amos_tech_code.domain.services.impl.AdminDashboardService
 import com.amos_tech_code.services.MarkAttendanceService
@@ -47,6 +49,7 @@ fun Application.configureRouting() {
     val adminDashboardService by inject<AdminDashboardService>()
     val notificationService by inject<NotificationService>()
     val deviceChangeService by inject<DeviceChangeService>()
+    val studentLookupService by inject<StudentLookUpService>()
 
     routing {
 
@@ -83,6 +86,8 @@ fun Application.configureRouting() {
             studentEnrollmentRoutes(studentEnrollmentService)
 
             deviceChangeRoutes(deviceChangeService)
+
+            studentLookUpRoute(studentLookupService)
 
         }
 

@@ -24,5 +24,6 @@ data class ActiveEnrollmentInfo(
     val enrollmentId: UUID,
     val programmeName: String,
     val programmeId: UUID,
+    val universityId: UUID,
     val universityName: String
 )

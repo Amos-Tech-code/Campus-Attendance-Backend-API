@@ -23,6 +23,7 @@ import com.amos_tech_code.services.LecturerAcademicService
 import com.amos_tech_code.domain.services.LiveAttendanceService
 import com.amos_tech_code.domain.services.NotificationService
 import com.amos_tech_code.domain.services.PdfGeneratorService
+import com.amos_tech_code.domain.services.StudentLookUpService
 import com.amos_tech_code.domain.services.impl.AccountServiceImpl
 import com.amos_tech_code.domain.services.impl.AdminAuthService
 import com.amos_tech_code.domain.services.impl.AdminDashboardService
@@ -30,6 +31,7 @@ import com.amos_tech_code.domain.services.impl.AttendanceExportServiceImpl
 import domain.services.impl.AttendanceManagementServiceImpl
 import com.amos_tech_code.domain.services.impl.CsvGeneratorServiceImpl
 import com.amos_tech_code.domain.services.impl.PdfGeneratorServiceImpl
+import com.amos_tech_code.domain.services.impl.StudentLookUpServiceImpl
 import domain.services.impl.AttendanceEventBusImpl
 import com.amos_tech_code.services.QRCodeService
 import com.amos_tech_code.services.SessionCodeGenerator
@@ -128,6 +130,16 @@ val appModule = module {
         )
     }
 
+    single<StudentLookUpService> {
+        StudentLookUpServiceImpl(
+        get(),
+        get(),
+        get(),
+        get(),
+            get(),
+            get()
+        )
+    }
 
     /*-----------------------------------------
           REPOSITORY
@@ -150,7 +162,6 @@ val appModule = module {
     single { NotificationRepository() }
 
     single { DeviceChangeRequestRepository() }
-
 
     /*-----------------------------------
     ADMIN SERVICES AND REPOSITORIES

@@ -163,6 +163,7 @@ class AuthServiceImpl(
                 id = studentId,
                 registrationNumber = request.registrationNumber,
                 fullName = request.fullName,
+                isActive = true,
                 createdAt = now,
                 updatedAt = now,
                 lastLogin = now,
