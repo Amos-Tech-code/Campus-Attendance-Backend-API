@@ -1,5 +1,6 @@
 package com.amos_tech_code.api.dtos.response
 
+import domain.models.ActivityType
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -79,7 +80,7 @@ data class PendingDeviceChangeInfo(
 
 @Serializable
 data class RecentActivityInfo(
-    val activityType: String, // "ATTENDANCE", "DEVICE_CHANGE", etc.
+    val activityType: ActivityType, // "ATTENDANCE", "DEVICE_CHANGE", etc.
     val description: String,
     val timestamp: String,
     val details: Map<String, String>?

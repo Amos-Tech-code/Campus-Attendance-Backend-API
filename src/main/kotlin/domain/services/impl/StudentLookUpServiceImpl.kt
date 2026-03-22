@@ -21,6 +21,7 @@ import com.amos_tech_code.utils.AppException
 import com.amos_tech_code.utils.InternalServerException
 import com.amos_tech_code.utils.ValidationException
 import data.repository.*
+import domain.models.ActivityType
 import domain.models.DeviceChangeStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -235,12 +236,12 @@ class StudentLookUpServiceImpl(
     ): List<RecentActivityInfo> {
         val activities = mutableListOf<RecentActivityInfo>()
 
-        // Get recent attendance records (last 10)
+        // Get recent attendance records
         val recentAttendance = attendanceRecordRepository.getRecentAttendance(studentId, limit = 5)
         recentAttendance.forEach { attendance ->
             activities.add(
                 RecentActivityInfo(
-                    activityType = "ATTENDANCE",
+                    activityType = ActivityType.ATTENDANCE_MARKED,
                     description = "Attended ${attendance.unitCode} - ${attendance.sessionTitle}",
                     timestamp = attendance.attendedAt.toString(),
                     details = mapOf(
@@ -259,18 +260,38 @@ class StudentLookUpServiceImpl(
         deviceRequests.forEach { request ->
             activities.add(
                 RecentActivityInfo(
-                    activityType = "DEVICE_CHANGE",
-                    description = "Device change request ${request.status.name.lowercase()}",
+                    activityType = request.status.toActivityType(),
+                    description = request.status.getDescription(request.newDeviceModel),
                     timestamp = request.requestedAt.toString(),
                     details = mapOf(
                         "status" to request.status.name,
                         "newDeviceModel" to request.newDeviceModel,
-                        "requestId" to request.id.toString()
+                        "newDeviceOS" to request.newDeviceOS,
+                        "requestId" to request.id.toString(),
+                        "reason" to (request.reason ?: "")
                     )
                 )
             )
         }
 
         return activities.sortedByDescending { it.timestamp }.take(10)
+    }
+
+    fun DeviceChangeStatus.toActivityType(): ActivityType {
+        return when (this) {
+            DeviceChangeStatus.PENDING -> ActivityType.DEVICE_CHANGE_REQUESTED
+            DeviceChangeStatus.APPROVED -> ActivityType.DEVICE_CHANGE_APPROVED
+            DeviceChangeStatus.REJECTED -> ActivityType.DEVICE_CHANGE_REJECTED
+            DeviceChangeStatus.CANCELLED -> ActivityType.DEVICE_CHANGE_CANCELLED
+        }
+    }
+
+    fun DeviceChangeStatus.getDescription(deviceModel: String): String {
+        return when (this) {
+            DeviceChangeStatus.PENDING -> "Device change requested for $deviceModel"
+            DeviceChangeStatus.APPROVED -> "Device change approved for $deviceModel"
+            DeviceChangeStatus.REJECTED -> "Device change rejected for $deviceModel"
+            DeviceChangeStatus.CANCELLED -> "Device change cancelled for $deviceModel"
+        }
     }
 }
