@@ -1,0 +1,47 @@
+<!-- templates/admin/modules/units.html -->
+<div>
+    <div class="unit-header">
+        <div class="header-actions">
+            <div class="filter-group">
+                <select id="universityFilterUnit" onchange="unitsFilterByUniversity()" class="filter-select">
+                    <option value="">All Universities</option>
+                </select>
+                <select id="departmentFilterUnit" onchange="unitsFilterByDepartment()" class="filter-select">
+                    <option value="">All Departments</option>
+                </select>
+                <select id="statusFilterUnit" onchange="unitsFilterByStatus()" class="filter-select">
+                    <option value="">All Status</option>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+            </div>
+            <div class="search-box">
+                <input type="text" id="searchUnit" placeholder="Search by code or name..." class="search-input">
+                <button onclick="unitsSearch()" class="btn-primary">Search</button>
+            </div>
+            <button class="btn-primary" onclick="showCreateUnitModal()">+ Add Unit</button>
+        </div>
+    </div>
+
+    <div class="data-table">
+        <table>
+            <thead>
+            <tr>
+                <th>Code</th>
+                <th>Name</th>
+                <th>University</th>
+                <th>Department</th>
+                <th>Programmes</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody id="units-table-body">
+            <tr><td colspan="8" class="loading-text">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pagination" id="units-pagination"></div>
+</div>

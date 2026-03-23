@@ -1,0 +1,31 @@
+<!-- templates/admin/modules/universities.html -->
+<div>
+    <div class="university-header">
+        <div class="header-actions">
+            <div class="search-box">
+                <input type="text" id="searchUniversity" placeholder="Search universities..." class="search-input">
+                <button onclick="universitiesSearch()" class="btn-primary">Search</button>
+            </div>
+            <button class="btn-primary" onclick="showCreateUniversityModal()">+ Add University</button>
+        </div>
+    </div>
+
+    <div class="data-table">
+        <table>
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>Departments</th>
+                <th>Programmes</th>
+                <th>Units</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </thead>
+            <tbody id="universities-table-body">
+            <tr><td colspan="6" class="loading-text">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pagination" id="pagination"></div>
+</div>

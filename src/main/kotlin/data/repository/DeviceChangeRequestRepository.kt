@@ -1,13 +1,10 @@
 package data.repository
 
 import com.amos_tech_code.data.database.utils.exposedTransaction
-import data.database.entities.DeviceChangeRequestsTable
-import data.database.entities.DevicesTable
-import data.database.entities.StudentEnrollmentsTable
-import data.database.entities.LecturerTeachingAssignmentsTable
+import com.amos_tech_code.domain.models.Student
+import data.database.entities.*
 import domain.models.DeviceChangeDomainRequest
 import domain.models.DeviceChangeStatus
-import domain.models.DeviceStatus
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import java.time.LocalDateTime
@@ -179,4 +176,72 @@ class DeviceChangeRequestRepository {
         reviewedAt = this[DeviceChangeRequestsTable.reviewedAt],
         rejectionReason = this[DeviceChangeRequestsTable.rejectionReason]
     )
+
+
+    /*------------------------------------
+           ADMIN METHODS
+    ---------------------------------------*/
+
+    suspend fun getAllDeviceChangeRequests(
+        page: Int = 1,
+        pageSize: Int = 20,
+        status: DeviceChangeStatus? = null,
+        studentId: UUID? = null,
+        search: String? = null
+    ): Triple<List<DeviceChangeDomainRequest>, Long, Int> = exposedTransaction {
+        val offset = (page - 1) * pageSize
+
+        var query = DeviceChangeRequestsTable
+            .innerJoin(StudentsTable, { DeviceChangeRequestsTable.studentId }, { StudentsTable.id })
+            .select(DeviceChangeRequestsTable.columns + StudentsTable.fullName + StudentsTable.registrationNumber)
+
+        status?.let {
+            query = query.andWhere { DeviceChangeRequestsTable.status eq it }
+        }
+
+        studentId?.let {
+            query = query.andWhere { DeviceChangeRequestsTable.studentId eq it }
+        }
+
+        if (!search.isNullOrBlank()) {
+            query = query.andWhere {
+                (StudentsTable.fullName like "%$search%") or
+                        (StudentsTable.registrationNumber like "%$search%")
+            }
+        }
+
+        val total = query.count()
+
+        val requests = query
+            .orderBy(DeviceChangeRequestsTable.requestedAt to SortOrder.DESC)
+            .limit(pageSize).offset(offset.toLong())
+            .map { row ->
+                row.toDeviceChangeRequest()
+            }
+
+        Triple(requests, total, ((total + pageSize - 1) / pageSize).toInt())
+    }
+
+    suspend fun getDeviceChangeRequestWithStudentDetails(id: UUID): Pair<DeviceChangeDomainRequest, Student?>? = exposedTransaction {
+        val row = DeviceChangeRequestsTable
+            .innerJoin(StudentsTable, { DeviceChangeRequestsTable.studentId }, { StudentsTable.id })
+            .select(DeviceChangeRequestsTable.columns + StudentsTable.fullName + StudentsTable.registrationNumber)
+            .where { DeviceChangeRequestsTable.id eq id }
+            .singleOrNull()
+
+        row?.let {
+            val request = it.toDeviceChangeRequest()
+            val student = Student(
+                id = it[StudentsTable.id],
+                registrationNumber = it[StudentsTable.registrationNumber],
+                fullName = it[StudentsTable.fullName],
+                isActive = it[StudentsTable.isActive],
+                lastLogin = it[StudentsTable.lastLoginAt],
+                createdAt = it[StudentsTable.createdAt],
+                updatedAt = it[StudentsTable.updatedAt],
+                device = null
+            )
+            request to student
+        }
+    }
 }

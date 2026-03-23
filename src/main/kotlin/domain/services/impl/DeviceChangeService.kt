@@ -1,8 +1,6 @@
 package domain.services.impl
 
 import api.dtos.requests.*
-import api.dtos.response.StudentAuthResponse
-import com.amos_tech_code.config.JwtConfig
 import com.amos_tech_code.data.repository.LecturerRepository
 import com.amos_tech_code.domain.models.Device
 import com.amos_tech_code.domain.services.NotificationService
@@ -14,12 +12,10 @@ import domain.models.DeviceChangeDomainRequest
 import domain.models.DeviceChangeStatus
 import domain.models.DeviceStatus
 import domain.models.NotificationType
-import domain.models.UserRole
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
-import utils.toIsoStringOrNull
 import java.time.LocalDateTime
 import java.util.*
 
@@ -328,7 +324,6 @@ class DeviceChangeService(
             }
         }
     }
-
 
     /**
      * Notify all eligible lecturers about a device change request

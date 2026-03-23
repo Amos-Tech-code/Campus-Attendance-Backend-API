@@ -1,0 +1,43 @@
+<!-- templates/admin/modules/academic-terms.html -->
+<div>
+    <div class="academic-term-header">
+        <div class="header-actions">
+            <div class="filter-group">
+                <select id="universityFilterTerm" onchange="academicTermsFilterByUniversity()" class="filter-select">
+                    <option value="">All Universities</option>
+                </select>
+                <select id="statusFilterTerm" onchange="academicTermsFilterByStatus()" class="filter-select">
+                    <option value="">All Status</option>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+            </div>
+            <div class="search-box">
+                <input type="text" id="searchTerm" placeholder="Search by academic year..." class="search-input">
+                <button onclick="academicTermsSearch()" class="btn-primary">Search</button>
+            </div>
+            <button class="btn-primary" onclick="showCreateAcademicTermModal()">+ Add Academic Term</button>
+        </div>
+    </div>
+
+    <div class="data-table">
+        <table>
+            <thead>
+            <tr>
+                <th>Academic Year</th>
+                <th>Semester</th>
+                <th>University</th>
+                <th>Weeks</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody id="academic-terms-table-body">
+            <tr><td colspan="7" class="loading-text">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pagination" id="academic-terms-pagination"></div>
+</div>

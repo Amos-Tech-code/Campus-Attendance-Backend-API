@@ -1,5 +1,7 @@
 package com.amos_tech_code.data.repository
 
+import com.amos_tech_code.api.dtos.admin.SuspiciousActivityResponse
+import com.amos_tech_code.api.dtos.admin.SuspiciousActivityStatsResponse
 import com.amos_tech_code.api.dtos.response.AttendanceStatsResponse
 import com.amos_tech_code.api.dtos.response.StudentAttendanceRecordDto
 import com.amos_tech_code.data.database.utils.exposedTransaction
@@ -9,13 +11,16 @@ import com.amos_tech_code.domain.models.UnitAttendance
 import data.database.entities.AcademicTermsTable
 import data.database.entities.AttendanceRecordsTable
 import data.database.entities.AttendanceSessionsTable
+import data.database.entities.LecturersTable
 import data.database.entities.SessionProgrammesTable
 import data.database.entities.StudentEnrollmentsTable
+import data.database.entities.StudentsTable
 import data.database.entities.UnitsTable
 import domain.models.AttendanceSessionStatus
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.count
 import org.jetbrains.exposed.sql.countDistinct
 import org.jetbrains.exposed.sql.deleteWhere
@@ -23,6 +28,7 @@ import org.jetbrains.exposed.sql.innerJoin
 import org.jetbrains.exposed.sql.leftJoin
 import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.update
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -401,5 +407,208 @@ class AttendanceRecordRepository {
         return@exposedTransaction streak
     }
 
+
+    /*---------------------------------
+          ADMIN METHODS
+    -------------------------------- */
+    suspend fun getAllSuspiciousActivities(
+        page: Int = 1,
+        pageSize: Int = 20,
+        studentId: UUID? = null,
+        sessionId: UUID? = null,
+        unitId: UUID? = null,
+        dateFrom: String? = null,
+        dateTo: String? = null,
+        search: String? = null
+    ): Triple<List<SuspiciousActivityResponse>, Long, Int> = exposedTransaction {
+        val offset = (page - 1) * pageSize
+
+        var query = AttendanceRecordsTable
+            .innerJoin(StudentsTable, { AttendanceRecordsTable.studentId }, { StudentsTable.id })
+            .innerJoin(AttendanceSessionsTable, { AttendanceRecordsTable.sessionId }, { AttendanceSessionsTable.id })
+            .innerJoin(UnitsTable, { AttendanceSessionsTable.unitId }, { UnitsTable.id })
+            .leftJoin(LecturersTable, { AttendanceSessionsTable.lecturerId }, { LecturersTable.id })
+            .select(
+                AttendanceRecordsTable.id,
+                AttendanceRecordsTable.studentId,
+                StudentsTable.fullName,
+                StudentsTable.registrationNumber,
+                AttendanceRecordsTable.sessionId,
+                AttendanceSessionsTable.sessionTitle,
+                UnitsTable.code,
+                UnitsTable.name,
+                AttendanceSessionsTable.lecturerId,
+                LecturersTable.fullName,
+                AttendanceRecordsTable.attendanceMethodUsed,
+                AttendanceRecordsTable.attendedAt,
+                AttendanceRecordsTable.isSuspicious,
+                AttendanceRecordsTable.suspiciousReason,
+                AttendanceRecordsTable.studentLatitude,
+                AttendanceRecordsTable.studentLongitude,
+                AttendanceRecordsTable.distanceFromLecturer,
+                AttendanceRecordsTable.isLocationVerified,
+                AttendanceRecordsTable.deviceId,
+                AttendanceRecordsTable.isDeviceVerified
+            )
+            .where { AttendanceRecordsTable.isSuspicious eq true }
+
+        // Apply filters
+        studentId?.let {
+            query = query.andWhere { AttendanceRecordsTable.studentId eq it }
+        }
+
+        sessionId?.let {
+            query = query.andWhere { AttendanceRecordsTable.sessionId eq it }
+        }
+
+        unitId?.let {
+            query = query.andWhere { AttendanceSessionsTable.unitId eq it }
+        }
+
+        if (!search.isNullOrBlank()) {
+            query = query.andWhere {
+                (StudentsTable.fullName like "%$search%") or
+                        (StudentsTable.registrationNumber like "%$search%") or
+                        (UnitsTable.name like "%$search%") or
+                        (UnitsTable.code like "%$search%")
+            }
+        }
+
+        val total = query.count()
+
+        val activities = query
+            .orderBy(AttendanceRecordsTable.attendedAt to SortOrder.DESC)
+            .limit(pageSize).offset(offset.toLong())
+            .map { row ->
+                SuspiciousActivityResponse(
+                    id = row[AttendanceRecordsTable.id].toString(),
+                    studentId = row[AttendanceRecordsTable.studentId].toString(),
+                    studentName = row[StudentsTable.fullName],
+                    studentRegNo = row[StudentsTable.registrationNumber],
+                    sessionId = row[AttendanceRecordsTable.sessionId].toString(),
+                    sessionTitle = row[AttendanceSessionsTable.sessionTitle],
+                    unitCode = row[UnitsTable.code],
+                    unitName = row[UnitsTable.name],
+                    lecturerId = row[AttendanceSessionsTable.lecturerId].toString(),
+                    lecturerName = row[LecturersTable.fullName],
+                    attendanceMethodUsed = row[AttendanceRecordsTable.attendanceMethodUsed],
+                    attendedAt = row[AttendanceRecordsTable.attendedAt].toString(),
+                    isSuspicious = row[AttendanceRecordsTable.isSuspicious],
+                    suspiciousReason = row[AttendanceRecordsTable.suspiciousReason],
+                    studentLatitude = row[AttendanceRecordsTable.studentLatitude],
+                    studentLongitude = row[AttendanceRecordsTable.studentLongitude],
+                    distanceFromLecturer = row[AttendanceRecordsTable.distanceFromLecturer],
+                    isLocationVerified = row[AttendanceRecordsTable.isLocationVerified],
+                    deviceId = row[AttendanceRecordsTable.deviceId],
+                    isDeviceVerified = row[AttendanceRecordsTable.isDeviceVerified]
+                )
+            }
+
+        Triple(activities, total, ((total + pageSize - 1) / pageSize).toInt())
+    }
+
+    suspend fun getSuspiciousActivityById(id: UUID): SuspiciousActivityResponse? = exposedTransaction {
+        val row = AttendanceRecordsTable
+            .innerJoin(StudentsTable, { AttendanceRecordsTable.studentId }, { StudentsTable.id })
+            .innerJoin(AttendanceSessionsTable, { AttendanceRecordsTable.sessionId }, { AttendanceSessionsTable.id })
+            .innerJoin(UnitsTable, { AttendanceSessionsTable.unitId }, { UnitsTable.id })
+            .leftJoin(LecturersTable, { AttendanceSessionsTable.lecturerId }, { LecturersTable.id })
+            .select(
+                AttendanceRecordsTable.id,
+                AttendanceRecordsTable.studentId,
+                StudentsTable.fullName,
+                StudentsTable.registrationNumber,
+                AttendanceRecordsTable.sessionId,
+                AttendanceSessionsTable.sessionTitle,
+                UnitsTable.code,
+                UnitsTable.name,
+                AttendanceSessionsTable.lecturerId,
+                LecturersTable.fullName,
+                AttendanceRecordsTable.attendanceMethodUsed,
+                AttendanceRecordsTable.attendedAt,
+                AttendanceRecordsTable.isSuspicious,
+                AttendanceRecordsTable.suspiciousReason,
+                AttendanceRecordsTable.studentLatitude,
+                AttendanceRecordsTable.studentLongitude,
+                AttendanceRecordsTable.distanceFromLecturer,
+                AttendanceRecordsTable.isLocationVerified,
+                AttendanceRecordsTable.deviceId,
+                AttendanceRecordsTable.isDeviceVerified
+            )
+            .where { (AttendanceRecordsTable.id eq id) and (AttendanceRecordsTable.isSuspicious eq true) }
+            .singleOrNull()
+
+        row?.let {
+            SuspiciousActivityResponse(
+                id = it[AttendanceRecordsTable.id].toString(),
+                studentId = it[AttendanceRecordsTable.studentId].toString(),
+                studentName = it[StudentsTable.fullName],
+                studentRegNo = it[StudentsTable.registrationNumber],
+                sessionId = it[AttendanceRecordsTable.sessionId].toString(),
+                sessionTitle = it[AttendanceSessionsTable.sessionTitle],
+                unitCode = it[UnitsTable.code],
+                unitName = it[UnitsTable.name],
+                lecturerId = it[AttendanceSessionsTable.lecturerId].toString(),
+                lecturerName = it[LecturersTable.fullName],
+                attendanceMethodUsed = it[AttendanceRecordsTable.attendanceMethodUsed],
+                attendedAt = it[AttendanceRecordsTable.attendedAt].toString(),
+                isSuspicious = it[AttendanceRecordsTable.isSuspicious],
+                suspiciousReason = it[AttendanceRecordsTable.suspiciousReason],
+                studentLatitude = it[AttendanceRecordsTable.studentLatitude],
+                studentLongitude = it[AttendanceRecordsTable.studentLongitude],
+                distanceFromLecturer = it[AttendanceRecordsTable.distanceFromLecturer],
+                isLocationVerified = it[AttendanceRecordsTable.isLocationVerified],
+                deviceId = it[AttendanceRecordsTable.deviceId],
+                isDeviceVerified = it[AttendanceRecordsTable.isDeviceVerified]
+            )
+        }
+    }
+
+    suspend fun getSuspiciousActivityStats(): SuspiciousActivityStatsResponse = exposedTransaction {
+
+        val totalSuspicious = AttendanceRecordsTable
+            .selectAll()
+            .where { AttendanceRecordsTable.isSuspicious eq true }
+            .count()
+
+        val pendingReview = totalSuspicious
+        val reviewedAndConfirmed = 0L
+        val reviewedAndCleared = 0L
+
+        // Define count expression
+        val countExpr = AttendanceRecordsTable.id.count()
+
+        val reasons = AttendanceRecordsTable
+            .select(AttendanceRecordsTable.suspiciousReason, countExpr)
+            .where { AttendanceRecordsTable.isSuspicious eq true }
+            .groupBy(AttendanceRecordsTable.suspiciousReason)
+            .associate { row ->
+                val reason = row[AttendanceRecordsTable.suspiciousReason] ?: "UNKNOWN"
+                val count = row[countExpr]
+
+                reason to count
+            }
+
+        SuspiciousActivityStatsResponse(
+            totalSuspicious = totalSuspicious,
+            pendingReview = pendingReview,
+            reviewedAndConfirmed = reviewedAndConfirmed,
+            reviewedAndCleared = reviewedAndCleared,
+            bySeverity = emptyMap(),
+            byFlagType = reasons
+        )
+    }
+
+    suspend fun updateSuspiciousFlag(
+        id: UUID,
+        isSuspicious: Boolean,
+        notes: String?
+    ): Boolean = exposedTransaction {
+        val updateCount = AttendanceRecordsTable.update({ AttendanceRecordsTable.id eq id }) {
+            it[this.isSuspicious] = isSuspicious
+            it[suspiciousReason] = notes ?: (if (isSuspicious) "Marked as suspicious by admin" else "Cleared by admin")
+        }
+        updateCount > 0
+    }
 
 }

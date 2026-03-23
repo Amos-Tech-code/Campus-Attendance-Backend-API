@@ -1,0 +1,41 @@
+<!-- templates/admin/modules/device-requests.html -->
+<div>
+    <div class="device-request-header">
+        <div class="header-actions">
+            <div class="filter-group">
+                <select id="statusFilterRequest" onchange="deviceRequestsFilterByStatus()" class="filter-select">
+                    <option value="">All Status</option>
+                    <option value="PENDING">Pending</option>
+                    <option value="APPROVED">Approved</option>
+                    <option value="REJECTED">Rejected</option>
+                    <option value="CANCELLED">Cancelled</option>
+                </select>
+            </div>
+            <div class="search-box">
+                <input type="text" id="searchRequest" placeholder="Search by student name or reg no..." class="search-input">
+                <button onclick="deviceRequestsSearch()" class="btn-primary">Search</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="data-table">
+        <table>
+            <thead>
+            <tr>
+                <th>Student</th>
+                <th>Reg No</th>
+                <th>Old Device</th>
+                <th>New Device</th>
+                <th>Reason</th>
+                <th>Status</th>
+                <th>Requested</th>
+                <th>Actions</th>
+            </thead>
+            <tbody id="device-requests-table-body">
+            <tr><td colspan="8" class="loading-text">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pagination" id="device-requests-pagination"></div>
+</div>
