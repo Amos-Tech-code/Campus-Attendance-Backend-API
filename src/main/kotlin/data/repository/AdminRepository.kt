@@ -1,40 +1,27 @@
 package com.amos_tech_code.data.repository
 
+import com.amos_tech_code.api.dtos.admin.AdminResponse
+import com.amos_tech_code.api.dtos.admin.CreateAdminRequest
+import com.amos_tech_code.api.dtos.admin.UpdateAdminRequest
 import com.amos_tech_code.data.database.entities.AdminRefreshTokensTable
 import com.amos_tech_code.data.database.entities.AdminsTable
 import com.amos_tech_code.data.database.utils.exposedTransaction
-import com.amos_tech_code.domain.models.ActivityLog
 import com.amos_tech_code.domain.models.Admin
-import com.amos_tech_code.domain.models.DashboardStats
-import data.database.entities.*
 import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.mindrot.jbcrypt.BCrypt
 import java.time.LocalDateTime
 import java.util.*
 
 class AdminRepository {
 
-    suspend fun createAdmin(email: String, password: String, fullName: String): Admin? = exposedTransaction {
-        val hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt())
-        val id = UUID.randomUUID()
-
-        AdminsTable.insert {
-            it[AdminsTable.id] = id
-            it[AdminsTable.email] = email
-            it[AdminsTable.passwordHash] = hashedPassword
-            it[AdminsTable.fullName] = fullName
-            it[createdAt] = LocalDateTime.now()
-            it[updatedAt] = LocalDateTime.now()
-        }
-
-        findById(id)
-    }
+    // ========== AUTH METHODS ==========
 
     suspend fun findByEmail(email: String): Admin? = exposedTransaction {
         AdminsTable
             .selectAll()
             .where { AdminsTable.email eq email }
-            .map { it.toAdmin() }
+            .map { it.toAdmin()}
             .singleOrNull()
     }
 
@@ -85,56 +72,97 @@ class AdminRepository {
         } > 0
     }
 
-    suspend fun getDashboardStats(): DashboardStats = exposedTransaction {
-        val totalStudents = StudentsTable.selectAll().count()
-        val totalLecturers = LecturersTable.selectAll().count()
-        val totalUniversities = UniversitiesTable.selectAll().count()
-        val totalProgrammes = ProgrammesTable.selectAll().count()
-        val totalSessions = AttendanceSessionsTable.selectAll().count()
+    // ========== MANAGEMENT METHODS ==========
 
-        val today = LocalDateTime.now().toLocalDate().atStartOfDay()
-        val todaySessions = AttendanceSessionsTable
+    suspend fun getAllAdmins(): List<AdminResponse> = exposedTransaction {
+        AdminsTable
             .selectAll()
-            .where { AttendanceSessionsTable.scheduledStartTime greaterEq today }
-            .count()
+            .orderBy(AdminsTable.createdAt to SortOrder.DESC)
+            .map { it.toAdminResponse() }
+    }
 
-        val totalAttendance = AttendanceRecordsTable.selectAll().count()
-
-        // Get recent activities (simplified - you can expand this)
-        val recentActivities = mutableListOf<ActivityLog>()
-
-        // Last 5 student logins
-        StudentsTable
+    suspend fun getAdminByIdResponse(id: UUID): AdminResponse? = exposedTransaction {
+        AdminsTable
             .selectAll()
-            .where { StudentsTable.lastLoginAt.isNotNull() }
-            .orderBy(StudentsTable.lastLoginAt to SortOrder.DESC)
-            .limit(5)
-            .forEach {
-                recentActivities.add(
-                    ActivityLog(
-                        id = it[StudentsTable.id].toString(),
-                        type = "STUDENT_LOGIN",
-                        description = "Student ${it[StudentsTable.fullName]} logged in",
-                        timestamp = it[StudentsTable.lastLoginAt].toString(),
-                        performedBy = it[StudentsTable.fullName]
-                    )
-                )
-            }
+            .where { AdminsTable.id eq id }
+            .map { it.toAdminResponse() }
+            .singleOrNull()
+    }
 
-        DashboardStats(
-            totalStudents = totalStudents,
-            totalLecturers = totalLecturers,
-            totalUniversities = totalUniversities,
-            totalProgrammes = totalProgrammes,
-            totalSessions = totalSessions,
-            todaySessions = todaySessions,
-            totalAttendance = totalAttendance,
-            recentActivities = recentActivities
+    suspend fun createAdmin(request: CreateAdminRequest): AdminResponse? = exposedTransaction {
+        // Check if email already exists
+        val existing = AdminsTable
+            .selectAll()
+            .where { AdminsTable.email eq request.email }
+            .map { it[AdminsTable.email] }
+            .singleOrNull()
+
+        if (existing != null) return@exposedTransaction null
+
+        val hashedPassword = BCrypt.hashpw(request.password, BCrypt.gensalt())
+        val id = UUID.randomUUID()
+        val now = LocalDateTime.now()
+
+        AdminsTable.insert {
+            it[AdminsTable.id] = id
+            it[AdminsTable.email] = request.email
+            it[AdminsTable.passwordHash] = hashedPassword
+            it[AdminsTable.fullName] = request.fullName
+            it[AdminsTable.role] = request.role
+            it[AdminsTable.createdAt] = now
+            it[AdminsTable.updatedAt] = now
+        }
+
+        AdminResponse(
+            id = id.toString(),
+            email = request.email,
+            fullName = request.fullName,
+            role = request.role,
+            isActive = true
         )
     }
 
+    suspend fun updateAdmin(id: UUID, request: UpdateAdminRequest): Boolean = exposedTransaction {
+        val updateCount = AdminsTable.update({ AdminsTable.id eq id }) {
+            request.fullName?.let { fullName -> it[AdminsTable.fullName] = fullName }
+            request.role?.let { role -> it[AdminsTable.role] = role }
+            request.isActive?.let { isActive -> it[AdminsTable.isActive] = isActive }
+            it[AdminsTable.updatedAt] = LocalDateTime.now()
+        }
+        updateCount > 0
+    }
+
+    suspend fun deleteAdmin(id: UUID): Boolean = exposedTransaction {
+        // Check if this is the last admin (prevent deleting all admins)
+        val adminCount = AdminsTable.selectAll().count()
+        if (adminCount <= 1) return@exposedTransaction false
+
+        val deleteCount = AdminsTable.deleteWhere { AdminsTable.id eq id }
+        deleteCount > 0
+    }
+
+    suspend fun resetAdminPassword(id: UUID, newPassword: String): Boolean = exposedTransaction {
+        val hashedPassword = BCrypt.hashpw(newPassword, BCrypt.gensalt())
+        val updateCount = AdminsTable.update({ AdminsTable.id eq id }) {
+            it[AdminsTable.passwordHash] = hashedPassword
+            it[AdminsTable.updatedAt] = LocalDateTime.now()
+        }
+        updateCount > 0
+    }
+
+    // ========== MAPPERS ==========
+
     private fun ResultRow.toAdmin(): Admin = Admin(
         id = this[AdminsTable.id],
+        email = this[AdminsTable.email],
+        fullName = this[AdminsTable.fullName],
+        role = this[AdminsTable.role],
+        lastLoginAt = this[AdminsTable.lastLoginAt]?.toString(),
+        isActive = this[AdminsTable.isActive]
+    )
+
+    private fun ResultRow.toAdminResponse(): AdminResponse = AdminResponse(
+        id = this[AdminsTable.id].toString(),
         email = this[AdminsTable.email],
         fullName = this[AdminsTable.fullName],
         role = this[AdminsTable.role],

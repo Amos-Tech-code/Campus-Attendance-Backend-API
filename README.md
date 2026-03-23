@@ -1,11 +1,11 @@
-# SmartAttend
+# Campus Attendance System
 
-Smart Attendance System Server
+Campus Attendance System Backend API
 
 -------------------------------
 
 ## Description
-This project aims to develop and deploy SmartAttend as a practical solution to attendance management challenges in Kenyan universities, demonstrating the effective application of mobile computing principles to real-world educational problems.
+This project aims to develop and deploy campus attendance as a practical solution to attendance management challenges in Kenyan universities, demonstrating the effective application of mobile computing principles to real-world educational problems.
 
 -----------------------------------
 

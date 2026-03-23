@@ -23,12 +23,16 @@ import com.amos_tech_code.domain.services.NotificationService
 import com.amos_tech_code.domain.services.StudentLookUpService
 import com.amos_tech_code.domain.services.impl.AdminAuthService
 import com.amos_tech_code.domain.services.impl.AdminDashboardService
+import com.amos_tech_code.domain.services.impl.AdminManagementService
+import com.amos_tech_code.domain.services.impl.LecturerStudentManagementService
 import com.amos_tech_code.services.MarkAttendanceService
 import com.amos_tech_code.services.StudentEnrollmentService
 import domain.services.impl.DeviceChangeService
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.*
 import io.ktor.server.auth.authenticate
+import io.ktor.server.http.content.singlePageApplication
+import io.ktor.server.http.content.staticResources
 import io.ktor.server.response.respond
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
@@ -45,13 +49,22 @@ fun Application.configureRouting() {
     val attendanceManagementService by inject<AttendanceManagementService>()
     val accountService by inject<AccountService>()
     val attendanceExportService by inject<AttendanceExportService>()
-    val adminAuthService by inject<AdminAuthService>()
-    val adminDashboardService by inject<AdminDashboardService>()
     val notificationService by inject<NotificationService>()
     val deviceChangeService by inject<DeviceChangeService>()
     val studentLookupService by inject<StudentLookUpService>()
 
+    val adminAuthService by inject<AdminAuthService>()
+    val adminDashboardService by inject<AdminDashboardService>()
+    val adminManagementService by inject<AdminManagementService>()
+    val lecturerStudentManagementService by inject<LecturerStudentManagementService>()
+
     routing {
+
+        singlePageApplication {
+            useResources = true
+            filesPath = "static" // Folder in resources
+            defaultPage = "index.html"
+        }
 
         get("/health/status") {
             call.respond(
@@ -98,7 +111,15 @@ fun Application.configureRouting() {
         adminRoutes(
             adminAuthService,
             adminDashboardService,
+            adminManagementService,
+            lecturerStudentManagementService
         )
+
+        // Serve static files
+        staticResources("/static", basePackage = "static")
+
+        // Serve admin templates
+        staticResources("/templates", basePackage = "templates")
 
     }
 }

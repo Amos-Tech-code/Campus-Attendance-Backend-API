@@ -1,10 +1,16 @@
 package data.repository
 
+import com.amos_tech_code.api.dtos.admin.EnrollmentInfoAdmin
+import com.amos_tech_code.api.dtos.admin.StudentResponse
 import com.amos_tech_code.data.database.utils.exposedTransaction
 import com.amos_tech_code.domain.models.Device
 import com.amos_tech_code.domain.models.Student
+import data.database.entities.AcademicTermsTable
 import data.database.entities.DevicesTable
+import data.database.entities.ProgrammesTable
+import data.database.entities.StudentEnrollmentsTable
 import data.database.entities.StudentsTable
+import data.database.entities.UniversitiesTable
 import domain.models.DeviceStatus
 import org.jetbrains.exposed.sql.*
 import java.time.LocalDateTime
@@ -219,4 +225,169 @@ class StudentRepository {
         isActive = this[StudentsTable.isActive],
         device = null,
     )
+
+
+    /*---------------------
+    ADMIN METHODS
+     -------------------*/
+    suspend fun getAllStudents(
+        page: Int = 1,
+        pageSize: Int = 20,
+        search: String? = null,
+        status: Boolean? = null
+    ): Triple<List<StudentResponse>, Long, Int> = exposedTransaction {
+        val offset = (page - 1) * pageSize
+
+        var query = StudentsTable
+            .selectAll()
+
+        // Apply filters
+        if (!search.isNullOrBlank()) {
+            query = query.andWhere {
+                (StudentsTable.fullName like "%$search%") or
+                        (StudentsTable.registrationNumber like "%$search%")
+            }
+        }
+
+        if (status != null) {
+            query = query.andWhere { StudentsTable.isActive eq status }
+        }
+
+        // Get total count
+        val total = query.count()
+
+        // Get paginated results
+        val students = query
+            .orderBy(StudentsTable.createdAt to SortOrder.DESC)
+            .limit(pageSize).offset(offset.toLong())
+            .map { row ->
+                val studentId = row[StudentsTable.id]
+
+                // Get enrollments for this student
+                val enrollments = StudentEnrollmentsTable
+                    .innerJoin(ProgrammesTable, { StudentEnrollmentsTable.programmeId }, { ProgrammesTable.id })
+                    .innerJoin(UniversitiesTable, { ProgrammesTable.universityId }, { UniversitiesTable.id })
+                    .innerJoin(AcademicTermsTable, { StudentEnrollmentsTable.academicTermId }, { AcademicTermsTable.id })
+                    .select(
+                        ProgrammesTable.name,
+                        UniversitiesTable.name,
+                        AcademicTermsTable.academicYear,
+                        AcademicTermsTable.semester,
+                        StudentEnrollmentsTable.yearOfStudy,
+                        StudentEnrollmentsTable.enrollmentDate
+                    )
+                    .where { StudentEnrollmentsTable.studentId eq studentId }
+                    .andWhere { StudentEnrollmentsTable.isActive eq true }
+                    .map { enrollRow ->
+                        EnrollmentInfoAdmin(
+                            programmeName = enrollRow[ProgrammesTable.name],
+                            universityName = enrollRow[UniversitiesTable.name],
+                            academicTerm = "${enrollRow[AcademicTermsTable.academicYear]} - Semester ${enrollRow[AcademicTermsTable.semester]}",
+                            yearOfStudy = enrollRow[StudentEnrollmentsTable.yearOfStudy],
+                            enrollmentDate = enrollRow[StudentEnrollmentsTable.enrollmentDate].toString()
+                        )
+                    }
+
+                // Count devices
+                val devicesCount = DevicesTable
+                    .selectAll()
+                    .where { DevicesTable.studentId eq studentId }
+                    .andWhere { DevicesTable.status eq DeviceStatus.ACTIVE }
+                    .count()
+                    .toInt()
+
+                StudentResponse(
+                    id = studentId.toString(),
+                    registrationNumber = row[StudentsTable.registrationNumber],
+                    fullName = row[StudentsTable.fullName],
+                    isActive = row[StudentsTable.isActive],
+                    lastLoginAt = row[StudentsTable.lastLoginAt]?.toString(),
+                    enrollments = enrollments,
+                    devices = devicesCount
+                )
+            }
+
+        Triple(students, total, ((total + pageSize - 1) / pageSize).toInt())
+    }
+
+    suspend fun getStudentById(id: UUID): StudentResponse? = exposedTransaction {
+        val row = StudentsTable
+            .selectAll()
+            .where { StudentsTable.id eq id }
+            .singleOrNull()
+
+        row?.let {
+            val enrollments = StudentEnrollmentsTable
+                .innerJoin(ProgrammesTable, { StudentEnrollmentsTable.programmeId }, { ProgrammesTable.id })
+                .innerJoin(UniversitiesTable, { ProgrammesTable.universityId }, { UniversitiesTable.id })
+                .innerJoin(AcademicTermsTable, { StudentEnrollmentsTable.academicTermId }, { AcademicTermsTable.id })
+                .select(
+                    ProgrammesTable.name,
+                    UniversitiesTable.name,
+                    AcademicTermsTable.academicYear,
+                    AcademicTermsTable.semester,
+                    StudentEnrollmentsTable.yearOfStudy,
+                    StudentEnrollmentsTable.enrollmentDate
+                )
+                .where { StudentEnrollmentsTable.studentId eq id }
+                .andWhere { StudentEnrollmentsTable.isActive eq true }
+                .map { enrollRow ->
+                    EnrollmentInfoAdmin(
+                        programmeName = enrollRow[ProgrammesTable.name],
+                        universityName = enrollRow[UniversitiesTable.name],
+                        academicTerm = "${enrollRow[AcademicTermsTable.academicYear]} - Semester ${enrollRow[AcademicTermsTable.semester]}",
+                        yearOfStudy = enrollRow[StudentEnrollmentsTable.yearOfStudy],
+                        enrollmentDate = enrollRow[StudentEnrollmentsTable.enrollmentDate].toString()
+                    )
+                }
+
+            val devicesCount = DevicesTable
+                .selectAll()
+                .where { DevicesTable.studentId eq id }
+                .andWhere { DevicesTable.status eq DeviceStatus.ACTIVE }
+                .count()
+                .toInt()
+
+            StudentResponse(
+                id = it[StudentsTable.id].toString(),
+                registrationNumber = it[StudentsTable.registrationNumber],
+                fullName = it[StudentsTable.fullName],
+                isActive = it[StudentsTable.isActive],
+                lastLoginAt = it[StudentsTable.lastLoginAt]?.toString(),
+                enrollments = enrollments,
+                devices = devicesCount
+            )
+        }
+    }
+
+    suspend fun updateStudent(
+        id: UUID,
+        fullName: String? = null,
+        isActive: Boolean? = null
+    ): Boolean = exposedTransaction {
+        val updateCount = StudentsTable.update({ StudentsTable.id eq id }) {
+            fullName?.let { fullName -> it[StudentsTable.fullName] = fullName }
+            isActive?.let { isActive -> it[StudentsTable.isActive] = isActive }
+            it[StudentsTable.updatedAt] = LocalDateTime.now()
+        }
+        updateCount > 0
+    }
+
+    suspend fun deleteStudent(id: UUID): Boolean = exposedTransaction {
+        // Soft delete - just deactivate
+        val updateCount = StudentsTable.update({ StudentsTable.id eq id }) {
+            it[StudentsTable.isActive] = false
+            it[StudentsTable.updatedAt] = LocalDateTime.now()
+        }
+        updateCount > 0
+    }
+
+    suspend fun activateStudent(id: UUID): Boolean = exposedTransaction {
+        val updateCount = StudentsTable.update({ StudentsTable.id eq id }) {
+            it[StudentsTable.isActive] = true
+            it[StudentsTable.updatedAt] = LocalDateTime.now()
+        }
+        updateCount > 0
+    }
+
 }

@@ -1,0 +1,41 @@
+<!-- templates/admin/modules/students.html -->
+<div>
+    <div class="students-header">
+        <div class="header-actions">
+            <div class="search-box">
+                <input type="text" id="searchStudent" placeholder="Search by name or registration number..." class="search-input">
+                <button onclick="studentsSearchStudents()" class="btn-primary">Search</button>
+            </div>
+            <div class="filter-box">
+                <select id="statusFilter" onchange="studentsFilterStudents()" class="filter-select">
+                    <option value="">All Status</option>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="data-table">
+        <table>
+            <thead>
+            <tr>
+                <th>Reg No</th>
+                <th>Full Name</th>
+                <th>Programme</th>
+                <th>University</th>
+                <th>Year</th>
+                <th>Devices</th>
+                <th>Status</th>
+                <th>Last Login</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody id="students-table-body">
+            <tr><td colspan="9" class="loading-text">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pagination" id="pagination"></div>
+</div>

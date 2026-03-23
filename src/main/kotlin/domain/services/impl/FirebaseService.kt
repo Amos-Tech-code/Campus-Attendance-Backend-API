@@ -28,7 +28,7 @@ object FirebaseService {
 
             if (FirebaseApp.getApps().isEmpty()) {
                 FirebaseApp.initializeApp(options)
-                logger.info("Firebase initialized successfully")
+                logger.info("✅ Firebase initialized successfully")
                 isInitialized = true
             }
         } catch (e: Exception) {

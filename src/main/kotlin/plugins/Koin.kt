@@ -1,5 +1,6 @@
 package com.amos_tech_code.plugins
 
+import com.amos_tech_code.di.adminModule
 import di.appModule
 import io.ktor.server.application.*
 import org.koin.ktor.plugin.Koin
@@ -9,7 +10,12 @@ fun Application.configureKoin() {
 
     install(Koin) {
         slf4jLogger()
-        modules(appModule)
+        modules(
+            listOf(
+                appModule,
+                adminModule,
+            )
+        )
     }
 
 }

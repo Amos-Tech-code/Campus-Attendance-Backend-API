@@ -1,5 +1,7 @@
 package com.amos_tech_code.data.repository
 
+import com.amos_tech_code.api.dtos.admin.LecturerResponse
+import com.amos_tech_code.api.dtos.admin.UniversityInfo
 import com.amos_tech_code.data.database.utils.exposedTransaction
 import com.amos_tech_code.domain.models.Lecturer
 import com.amos_tech_code.domain.models.ResolvedUniversity
@@ -10,10 +12,13 @@ import data.database.entities.LecturersTable
 import data.database.entities.UnitsTable
 import data.database.entities.UniversitiesTable
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.innerJoin
 import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
 import java.time.LocalDateTime
@@ -171,6 +176,154 @@ class LecturerRepository() {
             createdAt = this[LecturersTable.createdAt],
             updatedAt = this[LecturersTable.updatedAt]
         )
+    }
+
+
+    /*-----------------------------
+    ADMIN METHODS
+     -----------------------------*/
+    suspend fun getAllLecturers(
+        page: Int = 1,
+        pageSize: Int = 20,
+        search: String? = null,
+        status: Boolean? = null
+    ): Triple<List<LecturerResponse>, Long, Int> = exposedTransaction {
+        val offset = (page - 1) * pageSize
+
+        var query = LecturersTable
+            .selectAll()
+
+        // Apply filters
+        if (!search.isNullOrBlank()) {
+            query = query.andWhere {
+                (LecturersTable.fullName like "%$search%") or
+                        (LecturersTable.email like "%$search%")
+            }
+        }
+
+        if (status != null) {
+            query = query.andWhere { LecturersTable.isActive eq status }
+        }
+
+        // Get total count
+        val total = query.count()
+
+        // Get paginated results
+        val lecturers = query
+            .orderBy(LecturersTable.createdAt to SortOrder.DESC)
+            .limit(pageSize).offset(offset.toLong())
+            .map { row ->
+                val lecturerId = row[LecturersTable.id]
+
+                // Get universities for this lecturer
+                val universities = LecturerUniversitiesTable
+                    .innerJoin(UniversitiesTable)
+                    .select(
+                        UniversitiesTable.id,
+                        UniversitiesTable.name
+                    )
+                    .where { LecturerUniversitiesTable.lecturerId eq lecturerId }
+                    .andWhere { LecturerUniversitiesTable.isActive eq true }
+                    .map { uniRow ->
+                        UniversityInfo(
+                            id = uniRow[UniversitiesTable.id].toString(),
+                            name = uniRow[UniversitiesTable.name]
+                        )
+                    }
+
+                // Count teaching assignments
+                val assignmentsCount = LecturerTeachingAssignmentsTable
+                    .selectAll()
+                    .where { LecturerTeachingAssignmentsTable.lecturerId eq lecturerId }
+                    .andWhere { LecturerTeachingAssignmentsTable.isActive eq true }
+                    .count()
+                    .toInt()
+
+                LecturerResponse(
+                    id = lecturerId.toString(),
+                    email = row[LecturersTable.email],
+                    fullName = row[LecturersTable.fullName],
+                    isProfileComplete = row[LecturersTable.isProfileComplete],
+                    isActive = row[LecturersTable.isActive],
+                    lastLoginAt = row[LecturersTable.lastLoginAt]?.toString(),
+                    universities = universities,
+                    teachingAssignments = assignmentsCount
+                )
+            }
+
+        Triple(lecturers, total, ((total + pageSize - 1) / pageSize).toInt()) // total pages
+    }
+
+    suspend fun getLecturerById(id: UUID): LecturerResponse? = exposedTransaction {
+        val row = LecturersTable
+            .selectAll()
+            .where { LecturersTable.id eq id }
+            .singleOrNull()
+
+        row?.let {
+            val universities = LecturerUniversitiesTable
+                .innerJoin(UniversitiesTable)
+                .select(
+                    UniversitiesTable.id,
+                    UniversitiesTable.name
+                )
+                .where { LecturerUniversitiesTable.lecturerId eq id }
+                .andWhere { LecturerUniversitiesTable.isActive eq true }
+                .map { uniRow ->
+                    UniversityInfo(
+                        id = uniRow[UniversitiesTable.id].toString(),
+                        name = uniRow[UniversitiesTable.name]
+                    )
+                }
+
+            val assignmentsCount = LecturerTeachingAssignmentsTable
+                .selectAll()
+                .where { LecturerTeachingAssignmentsTable.lecturerId eq id }
+                .andWhere { LecturerTeachingAssignmentsTable.isActive eq true }
+                .count()
+                .toInt()
+
+            LecturerResponse(
+                id = it[LecturersTable.id].toString(),
+                email = it[LecturersTable.email],
+                fullName = it[LecturersTable.fullName],
+                isProfileComplete = it[LecturersTable.isProfileComplete],
+                isActive = it[LecturersTable.isActive],
+                lastLoginAt = it[LecturersTable.lastLoginAt]?.toString(),
+                universities = universities,
+                teachingAssignments = assignmentsCount
+            )
+        }
+    }
+
+    suspend fun updateLecturer(
+        id: UUID,
+        fullName: String? = null,
+        isActive: Boolean? = null
+    ): Boolean = exposedTransaction {
+        val updateCount = LecturersTable.update({ LecturersTable.id eq id }) {
+            fullName?.let { fullName -> it[LecturersTable.fullName] = fullName }
+            isActive?.let { isActive -> it[LecturersTable.isActive] = isActive }
+            it[LecturersTable.updatedAt] = LocalDateTime.now()
+        }
+        updateCount > 0
+    }
+
+    suspend fun deleteLecturer(id: UUID): Boolean = exposedTransaction {
+        // Soft delete - just deactivate
+        val updateCount = LecturersTable.update({ LecturersTable.id eq id }) {
+            it[LecturersTable.isActive] = false
+            it[LecturersTable.updatedAt] = LocalDateTime.now()
+        }
+        updateCount > 0
+    }
+
+    suspend fun activateLecturer(id: UUID): Boolean = exposedTransaction {
+        val updateCount = LecturersTable.update({ LecturersTable.id eq id }) {
+            it[LecturersTable.isActive] = true
+            it[LecturersTable.updatedAt] = LocalDateTime.now()
+        }
+        updateCount > 0
     }
 
 }

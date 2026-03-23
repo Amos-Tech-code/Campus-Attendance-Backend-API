@@ -1,0 +1,23 @@
+<!-- modules/admins.html -->
+<div>
+    <div style="margin-bottom: 20px;">
+        <button class="btn-primary" onclick="window.showCreateAdminModal()">+ Create New Admin</button>
+    </div>
+    <div class="data-table">
+        <table>
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Last Login</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody id="admins-table-body">
+            <tr><td colspan="6" class="loading-text">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
