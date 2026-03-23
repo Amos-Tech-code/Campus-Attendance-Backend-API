@@ -1,0 +1,42 @@
+<!-- templates/admin/modules/lecturers.html -->
+<div>
+    <div class="lecturers-header">
+        <div class="header-actions">
+            <div class="search-box">
+                <input type="text" id="searchLecturer" placeholder="Search by name or email..." class="search-input">
+                <button onclick="searchLecturers()" class="btn-primary">Search</button>
+            </div>
+            <div class="filter-box">
+                <select id="statusFilter" onchange="filterLecturers()" class="filter-select">
+                    <option value="">All Status</option>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="data-table">
+        <table>
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Universities</th>
+                <th>Teaching Assignments</th>
+                <th>Profile Status</th>
+                <th>Status</th>
+                <th>Last Login</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody id="lecturers-table-body">
+            <tr><td colspan="8" class="loading-text">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pagination" id="pagination">
+        <!-- Pagination will be populated by JavaScript -->
+    </div>
+</div>

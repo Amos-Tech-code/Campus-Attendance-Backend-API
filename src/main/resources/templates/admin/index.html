@@ -1,0 +1,121 @@
+<!-- admin/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Attendance - Admin Dashboard</title>
+    <link rel="stylesheet" href="/static/admin/css/main.css">
+    <!-- Add Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<nav class="navbar">
+    <div class="nav-brand">Campus Attendance Admin</div>
+    <div class="nav-user">
+        <span id="adminName"></span>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+</nav>
+
+<div class="sidebar">
+    <div class="sidebar-menu">
+        <div class="menu-section">Dashboard</div>
+        <div class="menu-item active" data-module="dashboard">
+            <span class="menu-icon">📊</span>
+            <span class="menu-title">Overview</span>
+        </div>
+
+        <div class="menu-section">User Management</div>
+        <div class="menu-item" data-module="admins">
+            <span class="menu-icon">👑</span>
+            <span class="menu-title">Admins</span>
+        </div>
+        <div class="menu-item" data-module="lecturers">
+            <span class="menu-icon">👨‍🏫</span>
+            <span class="menu-title">Lecturers</span>
+        </div>
+        <div class="menu-item" data-module="students">
+            <span class="menu-icon">👨‍🎓</span>
+            <span class="menu-title">Students</span>
+        </div>
+
+        <div class="menu-section">University Structure</div>
+        <div class="menu-item" data-module="universities">
+            <span class="menu-icon">🏛️</span>
+            <span class="menu-title">Universities</span>
+        </div>
+        <div class="menu-item" data-module="departments">
+            <span class="menu-icon">📚</span>
+            <span class="menu-title">Departments</span>
+        </div>
+        <div class="menu-item" data-module="programmes">
+            <span class="menu-icon">📖</span>
+            <span class="menu-title">Programmes</span>
+        </div>
+        <div class="menu-item" data-module="units">
+            <span class="menu-icon">📘</span>
+            <span class="menu-title">Units</span>
+        </div>
+        <div class="menu-item" data-module="academic-terms">
+            <span class="menu-icon">📅</span>
+            <span class="menu-title">Academic Terms</span>
+        </div>
+
+        <div class="menu-section">System Oversight</div>
+        <div class="menu-item" data-module="device-requests">
+            <span class="menu-icon">📱</span>
+            <span class="menu-title">Device Change Requests</span>
+        </div>
+        <div class="menu-item" data-module="suspicious-activity">
+            <span class="menu-icon">⚠️</span>
+            <span class="menu-title">Suspicious Activity</span>
+        </div>
+        <div class="menu-item" data-module="attendance-reports">
+            <span class="menu-icon">📊</span>
+            <span class="menu-title">Attendance Reports</span>
+        </div>
+
+        <div class="menu-section">Configuration</div>
+        <div class="menu-item" data-module="system-settings">
+            <span class="menu-icon">⚙️</span>
+            <span class="menu-title">System Settings</span>
+        </div>
+        <div class="menu-item" data-module="notification-templates">
+            <span class="menu-icon">📧</span>
+            <span class="menu-title">Notification Templates</span>
+        </div>
+    </div>
+</div>
+
+<div class="main-content">
+    <div id="module-content" class="module-container">
+        <div class="loading-container">
+            <div class="spinner">
+                <div class="double-bounce1"></div>
+                <div class="double-bounce2"></div>
+            </div>
+            <div class="loading-text">Loading...</div>
+        </div>
+    </div>
+</div>
+
+<script src="/static/admin/js/main.js"></script>
+<script src="/static/admin/js/api.js"></script>
+<script src="/static/admin/js/modules/dashboard.js"></script>
+<script src="/static/admin/js/modules/admins.js"></script>
+<script src="/static/admin/js/modules/lecturers.js"></script>
+<script src="/static/admin/js/modules/students.js"></script>
+
+<script>
+    // Check authentication on page load
+    (function checkAuth() {
+        const token = localStorage.getItem('accessToken');
+        if (!token) {
+            window.location.href = '/admin/login';
+        }
+    })();
+</script>
+
+</body>
+</html>

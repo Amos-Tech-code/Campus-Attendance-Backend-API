@@ -16,3 +16,15 @@ data class UpdateAdminRequest(
     val role: String?,
     val isActive: Boolean?
 )
+
+@Serializable
+data class UpdateStudentRequest(
+    val fullName: String?,
+    val isActive: Boolean?
+)
+
+@Serializable
+data class UpdateLecturerRequest(
+    val fullName: String?,
+    val isActive: Boolean?
+)
