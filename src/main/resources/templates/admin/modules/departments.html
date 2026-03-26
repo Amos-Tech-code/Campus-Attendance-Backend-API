@@ -1,0 +1,36 @@
+<!-- templates/admin/modules/departments.html -->
+<div>
+    <div class="department-header">
+        <div class="header-actions">
+            <div class="filter-group">
+                <select id="universityFilter" onchange="departmentsFilterByUniversity()" class="filter-select">
+                    <option value="">All Universities</option>
+                </select>
+            </div>
+            <div class="search-box">
+                <input type="text" id="searchDepartment" placeholder="Search departments..." class="search-input">
+                <button onclick="departmentsSearch()" class="btn-primary">Search</button>
+            </div>
+            <!--<button class="btn-primary" onclick="showCreateDepartmentModal()">+ Add Department</button>-->
+        </div>
+    </div>
+
+    <div class="data-table">
+        <table>
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>University</th>
+                <th>Programmes</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody id="departments-table-body">
+            <tr><td colspan="5" class="loading-text">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pagination" id="departments-pagination"></div>
+</div>

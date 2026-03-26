@@ -1,0 +1,46 @@
+<!-- templates/admin/modules/programmes.html -->
+<div>
+    <div class="programme-header">
+        <div class="header-actions">
+            <div class="filter-group">
+                <select id="universityFilterProgramme" onchange="programmesFilterByUniversity()" class="filter-select">
+                    <option value="">All Universities</option>
+                </select>
+                <select id="departmentFilterProgramme" onchange="programmesFilterByDepartment()" class="filter-select">
+                    <option value="">All Departments</option>
+                </select>
+                <select id="statusFilterProgramme" onchange="programmesFilterByStatus()" class="filter-select">
+                    <option value="">All Status</option>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+            </div>
+            <div class="search-box">
+                <input type="text" id="searchProgramme" placeholder="Search programmes..." class="search-input">
+                <button onclick="programmesSearch()" class="btn-primary">Search</button>
+            </div>
+            <!--<button class="btn-primary" onclick="showCreateProgrammeModal()">+ Add Programme</button>-->
+        </div>
+    </div>
+
+    <div class="data-table">
+        <table>
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>University</th>
+                <th>Department</th>
+                <th>Units</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody id="programmes-table-body">
+            <tr><td colspan="7" class="loading-text">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pagination" id="programmes-pagination"></div>
+</div>

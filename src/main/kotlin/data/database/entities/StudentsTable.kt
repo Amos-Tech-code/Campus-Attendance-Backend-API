@@ -62,7 +62,7 @@ object DeviceChangeRequestsTable : Table("device_change_requests") {
         .default(DeviceChangeStatus.PENDING)
 
     val requestedAt = datetime("requested_at").clientDefault { now() }
-    val reviewedBy = uuid("reviewed_by").references(LecturersTable.id).nullable()
+    val reviewedBy = uuid("reviewed_by").nullable()
     val reviewedAt = datetime("reviewed_at").nullable()
     val rejectionReason = text("rejection_reason").nullable()
 

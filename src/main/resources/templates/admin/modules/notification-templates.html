@@ -1,0 +1,113 @@
+<!-- templates/admin/modules/notification-templates.html -->
+<div>
+    <div class="notification-header">
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('templates')">📝 Templates</button>
+            <button class="tab-btn" onclick="switchTab('history')">📜 History</button>
+            <button class="tab-btn" onclick="switchTab('broadcast')">📢 Broadcast</button>
+        </div>
+    </div>
+
+    <!-- Templates Tab -->
+    <div id="templates-tab" class="tab-content active">
+        <div class="templates-header">
+            <div class="search-box">
+                <input type="text" id="searchTemplate" placeholder="Search templates..." class="search-input">
+                <button onclick="filterTemplates()" class="btn-primary">Search</button>
+            </div>
+        </div>
+        <div class="templates-grid" id="templates-grid">
+            <div class="loading-container">Loading templates...</div>
+        </div>
+    </div>
+
+    <!-- History Tab -->
+    <div id="history-tab" class="tab-content">
+        <div class="history-header">
+            <div class="filter-group">
+                <select id="recipientTypeFilter" onchange="loadNotificationHistory()" class="filter-select">
+                    <option value="">All Recipients</option>
+                    <option value="STUDENT">Students</option>
+                    <option value="LECTURER">Lecturers</option>
+                </select>
+                <select id="notificationTypeFilter" onchange="loadNotificationHistory()" class="filter-select">
+                    <option value="">All Types</option>
+                    <option value="ATTENDANCE_MARKED">Attendance Marked</option>
+                    <option value="ATTENDANCE_REVOKED">Attendance Revoked</option>
+                    <option value="DEVICE_APPROVED">Device Approved</option>
+                    <option value="DEVICE_REJECTED">Device Rejected</option>
+                    <option value="SESSION_STARTED">Session Started</option>
+                    <option value="SESSION_ENDED">Session Ended</option>
+                    <option value="SUSPICIOUS_ACTIVITY">Suspicious Activity</option>
+                    <option value="SYSTEM_ALERT">System Alert</option>
+                </select>
+            </div>
+            <div class="search-box">
+                <input type="text" id="searchHistory" placeholder="Search by recipient name..." class="search-input">
+                <button onclick="loadNotificationHistory()" class="btn-primary">Search</button>
+            </div>
+        </div>
+        <div class="data-table">
+            <table>
+                <thead>
+                <tr>
+                    <th>Recipient</th>
+                    <th>Type</th>
+                    <th>Title</th>
+                    <th>Message</th>
+                    <th>Status</th>
+                    <th>Sent At</th>
+                </tr>
+                </thead>
+                <tbody id="history-table-body">
+                <tr><td colspan="6" class="loading-text">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination" id="history-pagination"></div>
+    </div>
+
+    <!-- Broadcast Tab -->
+    <div id="broadcast-tab" class="tab-content">
+        <div class="broadcast-form">
+            <h3>Send Broadcast Notification</h3>
+            <form id="broadcastForm">
+                <div class="form-group">
+                    <label>Recipient Type *</label>
+                    <select id="broadcastRecipient" required>
+                        <option value="STUDENTS">All Students</option>
+                        <option value="LECTURERS">All Lecturers</option>
+                        <option value="ALL">All Users</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Notification Type *</label>
+                    <select id="broadcastType" required>
+                        <option value="SYSTEM_ALERT">System Alert</option>
+                        <option value="ADMIN_ALERT">Admin Alert</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Title *</label>
+                    <input type="text" id="broadcastTitle" required placeholder="Enter notification title">
+                </div>
+                <div class="form-group">
+                    <label>Message *</label>
+                    <textarea id="broadcastMessage" rows="4" required placeholder="Enter notification message"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="broadcastPersist" checked>
+                        Save to database (users can view later)
+                    </label>
+                </div>
+                <div class="warning-box">
+                    ⚠️ This will send push notifications to all selected users. Use with caution.
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button type="submit" class="btn-primary">Send Broadcast</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

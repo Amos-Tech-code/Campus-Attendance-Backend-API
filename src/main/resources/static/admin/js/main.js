@@ -60,7 +60,7 @@ async function loadModule(moduleName) {
             'academic-terms': 'initAcademicTerms',
             'device-requests': 'initDeviceRequests',
             'suspicious-activity': 'initSuspiciousActivity',
-            'attendance-reports': 'initAttendanceReports',
+            'storage-management': 'initStorageManagement',
             'system-settings': 'initSystemSettings',
             'notification-templates': 'initNotificationTemplates'
         };
@@ -82,7 +82,8 @@ async function loadModule(moduleName) {
                 'dashboard': window.initDashboard,
                 'admins': window.initAdmins,
                 'lecturers': window.initLecturers,
-                'students': window.initStudents
+                'students': window.initStudents,
+                'storage-management': window.initStorageManagement
             };
 
             const fallbackFn = fallbackFunctions[moduleName];

@@ -1,0 +1,62 @@
+<!-- templates/admin/modules/storage-management.html -->
+<div>
+    <div class="storage-header">
+        <div class="stats-cards" id="storageStats">
+            <div class="stat-card">
+                <div class="stat-value" id="totalFiles">0</div>
+                <div class="stat-label">Total Files</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="storageUsed">0 MB</div>
+                <div class="stat-label">Storage Used</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="orphanedFiles">0</div>
+                <div class="stat-label">Orphaned Files</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="expiredFiles">0</div>
+                <div class="stat-label">Expired Files</div>
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <div class="filter-group">
+                <select id="fileTypeFilter" onchange="storageFilterByType()" class="filter-select">
+                    <option value="all">All Files</option>
+                    <option value="qr">QR Codes</option>
+                    <option value="pdf">PDF Reports</option>
+                    <option value="csv">CSV Reports</option>
+                    <option value="orphaned">Orphaned</option>
+                    <option value="expired">Expired</option>
+                </select>
+            </div>
+            <div class="search-box">
+                <input type="text" id="searchFile" placeholder="Search by filename..." class="search-input">
+                <button onclick="storageSearch()" class="btn-primary">Search</button>
+            </div>
+            <button class="btn-danger" onclick="showCleanupModal()">🗑️ Clean Up Files</button>
+        </div>
+    </div>
+
+    <div class="data-table">
+        <table>
+            <thead>
+            <tr>
+                <th>File Name</th>
+                <th>Type</th>
+                <th>Size</th>
+                <th>Created</th>
+                <th>Expires</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody id="storage-table-body">
+            <tr><td colspan="7" class="loading-text">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pagination" id="storage-pagination"></div>
+</div>

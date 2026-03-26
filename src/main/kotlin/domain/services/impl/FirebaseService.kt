@@ -32,7 +32,7 @@ object FirebaseService {
                 isInitialized = true
             }
         } catch (e: Exception) {
-            logger.error("Firebase initialization failed: ${e.message}", e)
+            logger.error("❌ Firebase initialization failed: ${e.message}", e)
             isInitialized = false
         }
     }
