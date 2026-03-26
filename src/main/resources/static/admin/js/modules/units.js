@@ -112,8 +112,8 @@ function renderUnits(units) {
             </td>
             <td>${new Date(unit.createdAt).toLocaleDateString()}</td>
             <td>
-                <button class="btn-warning" onclick="editUnit('${unit.id}')">Edit</button>
-                <button class="btn-info" onclick="manageUnitLinks('${unit.id}')">Link Programme</button>
+                <!--<button class="btn-warning" onclick="editUnit('${unit.id}')">Edit</button>
+                <button class="btn-info" onclick="manageUnitLinks('${unit.id}')">Link Programme</button>-->
                 <button class="btn-danger" onclick="deleteUnit('${unit.id}')">Delete</button>
             </td>
         </tr>

@@ -2,7 +2,7 @@ package com.amos_tech_code.api.routes
 
 import api.dtos.response.GenericResponseDto
 import com.amos_tech_code.api.dtos.response.PaginatedNotificationsDto
-import com.amos_tech_code.domain.services.NotificationService
+import com.amos_tech_code.domain.services.impl.NotificationService
 import com.amos_tech_code.utils.getUserIdFromJWT
 import com.amos_tech_code.utils.respondUnauthorized
 import io.ktor.http.*

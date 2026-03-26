@@ -19,17 +19,33 @@ window.initStorageManagement = async function() {
     }
 };
 
+
 async function loadStats() {
     try {
         const response = await fetchWithAuth('/admin/api/storage/stats');
+        if (!response.ok) {
+            console.error('Failed to load stats:', response.status, response.statusText);
+            // Set default values instead of throwing
+            document.getElementById('totalFiles').textContent = '0';
+            document.getElementById('storageUsed').textContent = '0 MB';
+            document.getElementById('orphanedFiles').textContent = '0';
+            document.getElementById('expiredFiles').textContent = '0';
+            return;
+        }
+
         const stats = await response.json();
 
-        document.getElementById('totalFiles').textContent = stats.totalFiles;
-        document.getElementById('storageUsed').textContent = stats.storageUsedMB.toFixed(2) + ' MB';
-        document.getElementById('orphanedFiles').textContent = stats.orphanedFiles;
-        document.getElementById('expiredFiles').textContent = stats.expiredFiles;
+        document.getElementById('totalFiles').textContent = stats.totalFiles || 0;
+        document.getElementById('storageUsed').textContent = (stats.storageUsedMB || 0).toFixed(2) + ' MB';
+        document.getElementById('orphanedFiles').textContent = stats.orphanedFiles || 0;
+        document.getElementById('expiredFiles').textContent = stats.expiredFiles || 0;
     } catch (err) {
         console.error('Failed to load stats:', err);
+        // Set default values on error
+        document.getElementById('totalFiles').textContent = '0';
+        document.getElementById('storageUsed').textContent = '0 MB';
+        document.getElementById('orphanedFiles').textContent = '0';
+        document.getElementById('expiredFiles').textContent = '0';
     }
 }
 

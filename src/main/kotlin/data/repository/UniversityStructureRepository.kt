@@ -102,19 +102,6 @@ class UniversityStructureRepository {
         }
     }
 
-    suspend fun createUniversity(name: String): UniversityResponse? = exposedTransaction {
-        val id = UUID.randomUUID()
-
-        UniversitiesTable.insert {
-            it[UniversitiesTable.id] = id
-            it[UniversitiesTable.name] = name
-            it[UniversitiesTable.createdAt] = LocalDateTime.now()
-            it[UniversitiesTable.updatedAt] = LocalDateTime.now()
-        }
-
-        getUniversityById(id)
-    }
-
     suspend fun updateUniversity(id: UUID, name: String): Boolean = exposedTransaction {
         UniversitiesTable.update({ UniversitiesTable.id eq id }) {
             it[UniversitiesTable.name] = name
@@ -611,7 +598,7 @@ class UniversityStructureRepository {
         semester: Int,
         weekCount: Int,
         isActive: Boolean
-    ): AcademicTermResponse? = exposedTransaction {
+    ): UUID? = exposedTransaction {
         // Check for duplicate (same university, year, and semester)
         val existing = AcademicTermsTable
             .selectAll()
@@ -638,7 +625,7 @@ class UniversityStructureRepository {
             it[AcademicTermsTable.createdAt] = LocalDateTime.now()
         }
 
-        getAcademicTermById(id)
+        id
     }
 
     suspend fun updateAcademicTerm(

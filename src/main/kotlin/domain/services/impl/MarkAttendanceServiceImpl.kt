@@ -22,7 +22,7 @@ import domain.models.SeverityLevel
 import domain.models.StudentEnrollmentSource
 import com.amos_tech_code.domain.models.VerificationOutcome
 import com.amos_tech_code.domain.services.AttendanceEventBus
-import com.amos_tech_code.domain.services.NotificationService
+import com.amos_tech_code.domain.services.impl.NotificationService
 import com.amos_tech_code.services.MarkAttendanceService
 import com.amos_tech_code.utils.AppException
 import com.amos_tech_code.utils.BackgroundTaskScope

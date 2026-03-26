@@ -5,7 +5,7 @@ import com.amos_tech_code.api.dtos.admin.DeviceChangeRequestListResponse
 import com.amos_tech_code.api.dtos.admin.DeviceChangeRequestResponseDto
 import com.amos_tech_code.api.dtos.admin.NewDeviceInfoDto
 import com.amos_tech_code.domain.models.Device
-import com.amos_tech_code.domain.services.NotificationService
+import com.amos_tech_code.domain.services.impl.NotificationService
 import com.amos_tech_code.utils.BackgroundTaskScope
 import data.repository.DeviceChangeRequestRepository
 import data.repository.StudentRepository

@@ -107,7 +107,7 @@ function renderProgrammes(programmes) {
             </td>
             <td>${new Date(prog.createdAt).toLocaleDateString()}</td>
             <td>
-                <button class="btn-warning" onclick="editProgramme('${prog.id}')">Edit</button>
+                <!--<button class="btn-warning" onclick="editProgramme('${prog.id}')">Edit</button>-->
                 <button class="btn-danger" onclick="deleteProgramme('${prog.id}')">Delete</button>
             </td>
         </tr>

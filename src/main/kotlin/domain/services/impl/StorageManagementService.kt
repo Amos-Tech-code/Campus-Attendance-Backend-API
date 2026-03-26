@@ -34,14 +34,31 @@ class StorageManagementService(
     }
 
     suspend fun getExpiredFiles(): List<StoredFileResponse> = withContext(Dispatchers.IO) {
-        repository.getExpiredFiles()
+        repository.getAllStoredFiles().filter {
+            it.expiresAt?.let { expiresStr ->
+                try {
+                    LocalDateTime.parse(expiresStr).isBefore(LocalDateTime.now())
+                } catch (_: Exception) {
+                    false
+                }
+            } ?: false
+        }
     }
 
     suspend fun cleanupFiles(request: CleanupRequest): CleanupResultResponse = withContext(Dispatchers.IO) {
         val filesToDelete = when (request.cleanupType) {
             "orphaned" -> repository.getOrphanedFiles()
             "expired" -> repository.getExpiredFiles()
-            "all" -> repository.getAllStoredFiles().filter { !it.isActive || it.expiresAt?.toLocalDateTimeOrThrow()?.isBefore(LocalDateTime.now()) ?: false }
+            "all" -> repository.getAllStoredFiles().filter {
+                !it.isActive ||
+                        (it.expiresAt?.let { expiresStr ->
+                            try {
+                                LocalDateTime.parse(expiresStr).isBefore(LocalDateTime.now())
+                            } catch (_: Exception) {
+                                false
+                            }
+                        } ?: false)
+            }
             "manual" -> {
                 request.fileIds?.let { ids ->
                     repository.getAllStoredFiles().filter { it.id in ids }

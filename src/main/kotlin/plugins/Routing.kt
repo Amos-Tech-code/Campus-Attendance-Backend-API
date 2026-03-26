@@ -19,15 +19,17 @@ import domain.services.AttendanceSessionService
 import com.amos_tech_code.services.AuthService
 import com.amos_tech_code.services.LecturerAcademicService
 import com.amos_tech_code.domain.services.LiveAttendanceService
-import com.amos_tech_code.domain.services.NotificationService
+import com.amos_tech_code.domain.services.impl.NotificationService
 import com.amos_tech_code.domain.services.StudentLookUpService
 import com.amos_tech_code.domain.services.impl.AdminAuthService
 import com.amos_tech_code.domain.services.impl.AdminDashboardService
 import com.amos_tech_code.domain.services.impl.AdminDeviceChangeService
 import com.amos_tech_code.domain.services.impl.AdminManagementService
 import com.amos_tech_code.domain.services.impl.LecturerStudentManagementService
+import com.amos_tech_code.domain.services.impl.NotificationManagementService
 import com.amos_tech_code.domain.services.impl.StorageManagementService
 import com.amos_tech_code.domain.services.impl.SuspiciousActivityService
+import com.amos_tech_code.domain.services.impl.SystemSettingsService
 import com.amos_tech_code.domain.services.impl.UniversityStructureService
 import com.amos_tech_code.services.MarkAttendanceService
 import com.amos_tech_code.services.StudentEnrollmentService
@@ -65,6 +67,8 @@ fun Application.configureRouting() {
     val adminDeviceChangeService by inject<AdminDeviceChangeService>()
     val suspiciousActivityService by inject<SuspiciousActivityService>()
     val storageManagementService by inject<StorageManagementService>()
+    val notificationManagementService by inject<NotificationManagementService>()
+    val systemSettingsService by inject<SystemSettingsService>()
 
     routing {
 
@@ -124,7 +128,9 @@ fun Application.configureRouting() {
             universityStructureService,
             adminDeviceChangeService,
             suspiciousActivityService,
-            storageManagementService
+            storageManagementService,
+            notificationManagementService,
+            systemSettingsService
         )
 
         // Serve static files

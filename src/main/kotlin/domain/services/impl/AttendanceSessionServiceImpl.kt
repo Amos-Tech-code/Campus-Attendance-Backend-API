@@ -16,7 +16,7 @@ import com.amos_tech_code.domain.models.CreateSessionData
 import com.amos_tech_code.domain.models.UpdateSessionData
 import domain.services.AttendanceSessionService
 import com.amos_tech_code.domain.services.CloudStorageService
-import com.amos_tech_code.domain.services.NotificationService
+import com.amos_tech_code.domain.services.impl.NotificationService
 import com.amos_tech_code.services.QRCodeService
 import com.amos_tech_code.services.SessionCodeGenerator
 import com.amos_tech_code.utils.*

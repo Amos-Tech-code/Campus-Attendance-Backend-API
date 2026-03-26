@@ -1,21 +1,21 @@
-package com.amos_tech_code.domain.services
+package com.amos_tech_code.domain.services.impl
 
 import com.amos_tech_code.api.dtos.response.NotificationCountsDto
 import com.amos_tech_code.api.dtos.response.NotificationDto
 import com.amos_tech_code.data.repository.LecturerRepository
 import com.amos_tech_code.data.repository.NotificationRepository
-import data.repository.StudentRepository
 import com.amos_tech_code.domain.models.Notification
-import com.amos_tech_code.domain.services.impl.FirebaseService
 import com.amos_tech_code.utils.AppException
 import com.amos_tech_code.utils.AuthorizationException
 import com.amos_tech_code.utils.InternalServerException
 import com.amos_tech_code.utils.ResourceNotFoundException
+import data.repository.StudentRepository
 import domain.models.NotificationType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.slf4j.LoggerFactory
 import java.time.ZoneOffset
-import java.util.*
+import java.util.UUID
 
 class NotificationService(
     private val studentRepository: StudentRepository,
@@ -23,7 +23,7 @@ class NotificationService(
     private val notificationRepository: NotificationRepository
 ) {
 
-    private val logger = org.slf4j.LoggerFactory.getLogger(NotificationService::class.java)
+    private val logger = LoggerFactory.getLogger(NotificationService::class.java)
 
     // Define which notification types should be persisted
     companion object {
@@ -487,8 +487,11 @@ class NotificationService(
 
             if (persist) {
                 val type = data["type"]?.let {
-                    try { NotificationType.valueOf(it) }
-                    catch (e: Exception) { null }
+                    try {
+                        NotificationType.valueOf(it)
+                    } catch (e: Exception) {
+                        null
+                    }
                 } ?: NotificationType.SYSTEM_ALERT
 
                 devices.forEach { device ->
@@ -522,8 +525,11 @@ class NotificationService(
             // Optionally persist for important announcements
             if (persist) {
                 val type = data["type"]?.let {
-                    try { NotificationType.valueOf(it) }
-                    catch (e: Exception) { null }
+                    try {
+                        NotificationType.valueOf(it)
+                    } catch (e: Exception) {
+                        null
+                    }
                 } ?: NotificationType.SYSTEM_ALERT
 
                 allDevices.forEach { device ->
@@ -557,8 +563,11 @@ class NotificationService(
             // Optionally persist for important announcements
             if (persist) {
                 val type = data["type"]?.let {
-                    try { NotificationType.valueOf(it) }
-                    catch (e: Exception) { null }
+                    try {
+                        NotificationType.valueOf(it)
+                    } catch (e: Exception) {
+                        null
+                    }
                 } ?: NotificationType.SYSTEM_ALERT
 
                 allLecturers.forEach { lecturer ->

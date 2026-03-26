@@ -37,7 +37,7 @@ class StorageManagementRepository {
                     expiresAt = null,
                     associatedWith = "AttendanceSession",
                     associatedId = row[AttendanceSessionsTable.id].toString(),
-                    isActive = row[AttendanceSessionsTable.status] == AttendanceSessionStatus.ENDED && row[AttendanceSessionsTable.status] != AttendanceSessionStatus.CANCELLED
+                    isActive = row[AttendanceSessionsTable.status] != AttendanceSessionStatus.ENDED && row[AttendanceSessionsTable.status] != AttendanceSessionStatus.CANCELLED
                 )
             }
             .filterNotNull()
@@ -58,7 +58,7 @@ class StorageManagementRepository {
                     expiresAt = row[AttendanceExportsTable.expiresAt].toIsoString(),
                     associatedWith = "AttendanceExport",
                     associatedId = row[AttendanceExportsTable.id].toString(),
-                    isActive = row[AttendanceExportsTable.expiresAt].isAfter(LocalDateTime.now()) ?: true
+                    isActive = row[AttendanceExportsTable.expiresAt].isAfter(LocalDateTime.now())
                 )
             }
     }
@@ -79,7 +79,15 @@ class StorageManagementRepository {
         val totalSizeBytes = reports.sumOf { it.fileSize ?: 0L }
 
         val orphaned = allFiles.filter { !it.isActive }.count()
-        val expired = reports.filter { it.expiresAt?.toLocalDateTimeOrThrow()?.isBefore(LocalDateTime.now()) ?: false }.count()
+        val expired = reports.filter {
+            it.expiresAt?.let {
+                try {
+                    LocalDateTime.parse(it).isBefore(LocalDateTime.now())
+                } catch (e: Exception) {
+                    false
+                }
+            } ?: false
+        }.count()
 
         StorageStatsResponse(
             totalFiles = allFiles.size.toLong(),

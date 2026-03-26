@@ -225,7 +225,11 @@ class DeviceChangeRequestRepository {
     suspend fun getDeviceChangeRequestWithStudentDetails(id: UUID): Pair<DeviceChangeDomainRequest, Student?>? = exposedTransaction {
         val row = DeviceChangeRequestsTable
             .innerJoin(StudentsTable, { DeviceChangeRequestsTable.studentId }, { StudentsTable.id })
-            .select(DeviceChangeRequestsTable.columns + StudentsTable.fullName + StudentsTable.registrationNumber)
+            .select(
+                DeviceChangeRequestsTable.columns + StudentsTable.id
+                        + StudentsTable.fullName + StudentsTable.registrationNumber + StudentsTable.lastLoginAt
+                + StudentsTable.createdAt + StudentsTable.updatedAt + StudentsTable.isActive
+            )
             .where { DeviceChangeRequestsTable.id eq id }
             .singleOrNull()
 

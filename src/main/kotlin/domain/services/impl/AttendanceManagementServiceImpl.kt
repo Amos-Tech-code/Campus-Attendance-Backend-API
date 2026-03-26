@@ -5,7 +5,7 @@ import com.amos_tech_code.api.dtos.response.AttendanceStatsResponse
 import com.amos_tech_code.api.dtos.response.StudentAttendanceHistoryResponse
 import com.amos_tech_code.data.repository.AttendanceRecordRepository
 import domain.services.AttendanceManagementService
-import com.amos_tech_code.domain.services.NotificationService
+import com.amos_tech_code.domain.services.impl.NotificationService
 import com.amos_tech_code.utils.*
 import data.repository.AttendanceSessionRepository
 import kotlinx.coroutines.launch

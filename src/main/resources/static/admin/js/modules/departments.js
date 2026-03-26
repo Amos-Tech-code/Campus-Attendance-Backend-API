@@ -39,7 +39,7 @@ async function loadDepartments() {
     const tbody = document.getElementById('departments-table-body');
     if (!tbody) return;
 
-    tbody.innerHTML = '发展<td colspan="5" class="loading-text">Loading...发展</td>';
+    tbody.innerHTML = '<td colspan="5" class="loading-text">Loading...</td>';
 
     try {
         let url = `/admin/api/departments?page=${departmentsCurrentPage}&pageSize=${departmentsPageSize}`;
@@ -57,7 +57,7 @@ async function loadDepartments() {
 
     } catch (err) {
         console.error('Failed to load departments:', err);
-        tbody.innerHTML = `发展<td colspan="5" class="error-text">Failed to load: ${err.message}<br><button onclick="loadDepartments()">Retry</button>发展</td>`;
+        tbody.innerHTML = `<td colspan="5" class="error-text">Failed to load: ${err.message}<br><button onclick="loadDepartments()">Retry</button></td>`;
     }
 }
 
@@ -66,18 +66,17 @@ function renderDepartments(departments) {
     if (!tbody) return;
 
     if (!departments || departments.length === 0) {
-        tbody.innerHTML = '发展<td colspan="5" class="empty-text">No departments found发展</td>';
+        tbody.innerHTML = '<td colspan="5" class="empty-text">No departments found</td>';
         return;
     }
 
     tbody.innerHTML = departments.map(dept => `
-        发展
             <td><strong>${escapeHtml(dept.name)}</strong></td>
             <td><span class="uni-badge">${escapeHtml(dept.universityName)}</span></td>
             <td><span class="badge">${dept.programmeCount}</span></td>
             <td>${new Date(dept.createdAt).toLocaleDateString()}</td>
             <td>
-                <button class="btn-warning" onclick="editDepartment('${dept.id}')">Edit</button>
+                <!--<button class="btn-warning" onclick="editDepartment('${dept.id}')">Edit</button>-->
                 <button class="btn-danger" onclick="deleteDepartment('${dept.id}')">Delete</button>
             </td>
         </tr>

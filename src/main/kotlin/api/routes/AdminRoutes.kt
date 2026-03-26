@@ -12,12 +12,15 @@ import com.amos_tech_code.api.dtos.admin.CreateUniversityRequest
 import com.amos_tech_code.api.dtos.admin.LinkUnitToProgrammeRequest
 import com.amos_tech_code.api.dtos.admin.RefreshTokenRequest
 import com.amos_tech_code.api.dtos.admin.ReviewSuspiciousActivityRequest
+import com.amos_tech_code.api.dtos.admin.SendBroadcastRequest
 import com.amos_tech_code.api.dtos.admin.UpdateAcademicTermRequest
 import com.amos_tech_code.api.dtos.admin.UpdateAdminRequest
 import com.amos_tech_code.api.dtos.admin.UpdateDepartmentRequest
 import com.amos_tech_code.api.dtos.admin.UpdateLecturerRequest
+import com.amos_tech_code.api.dtos.admin.UpdateNotificationTemplateRequest
 import com.amos_tech_code.api.dtos.admin.UpdateProgrammeRequest
 import com.amos_tech_code.api.dtos.admin.UpdateStudentRequest
+import com.amos_tech_code.api.dtos.admin.UpdateSystemSettingsRequest
 import com.amos_tech_code.api.dtos.admin.UpdateUnitRequest
 import com.amos_tech_code.api.dtos.admin.UpdateUniversityRequest
 import com.amos_tech_code.domain.services.impl.AdminAuthService
@@ -25,11 +28,14 @@ import com.amos_tech_code.domain.services.impl.AdminDashboardService
 import com.amos_tech_code.domain.services.impl.AdminDeviceChangeService
 import com.amos_tech_code.domain.services.impl.AdminManagementService
 import com.amos_tech_code.domain.services.impl.LecturerStudentManagementService
+import com.amos_tech_code.domain.services.impl.NotificationManagementService
 import com.amos_tech_code.domain.services.impl.StorageManagementService
 import com.amos_tech_code.domain.services.impl.SuspiciousActivityService
+import com.amos_tech_code.domain.services.impl.SystemSettingsService
 import com.amos_tech_code.domain.services.impl.UniversityStructureService
 import com.amos_tech_code.utils.getUserIdFromJWT
 import domain.models.DeviceChangeStatus
+import domain.models.NotificationType
 import io.ktor.http.*
 import io.ktor.server.auth.*
 import io.ktor.server.request.*
@@ -48,6 +54,8 @@ fun Route.adminRoutes(
     adminDeviceChangeService: AdminDeviceChangeService,
     suspiciousActivityService: SuspiciousActivityService,
     storageManagementService: StorageManagementService,
+    notificationManagementService: NotificationManagementService,
+    systemSettingsService: SystemSettingsService
 ) {
     // Serve HTML pages
     route("/admin") {
@@ -721,7 +729,7 @@ fun Route.adminRoutes(
                     call.respond(HttpStatusCode.BadRequest, e.message ?: "Invalid request state")
                 } catch (e: IllegalArgumentException) {
                     call.respond(HttpStatusCode.NotFound, e.message ?: "Request not found")
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     call.respond(HttpStatusCode.InternalServerError, "Failed to process request")
                 }
             }
@@ -808,6 +816,84 @@ fun Route.adminRoutes(
                 }
             }
 
+
+            // ========== NOTIFICATION MANAGEMENT ROUTES ==========
+            get("/notifications/history") {
+                val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
+                val pageSize = call.request.queryParameters["pageSize"]?.toIntOrNull() ?: 20
+                val recipientType = call.request.queryParameters["recipientType"]
+                val notificationType = call.request.queryParameters["notificationType"]?.let {
+                    NotificationType.valueOf(it)
+                }
+                val search = call.request.queryParameters["search"]
+
+                val result = notificationManagementService.getNotificationHistory(
+                    page = page,
+                    pageSize = pageSize,
+                    recipientType = recipientType,
+                    notificationType = notificationType,
+                    search = search
+                )
+                call.respond(HttpStatusCode.OK, result)
+            }
+
+            get("/notifications/templates") {
+                val templates = notificationManagementService.getNotificationTemplates()
+                call.respond(HttpStatusCode.OK, templates)
+            }
+
+            put("/notifications/templates/{type}") {
+                val type = call.parameters["type"] ?: throw IllegalArgumentException("Invalid template type")
+                val request = call.receive<UpdateNotificationTemplateRequest>()
+                val updated = notificationManagementService.updateNotificationTemplate(type, request)
+                if (updated) {
+                    call.respond(HttpStatusCode.OK, mapOf("message" to "Template updated successfully"))
+                } else {
+                    call.respond(HttpStatusCode.NotFound, "Template not found")
+                }
+            }
+
+            post("/notifications/broadcast") {
+                val request = call.receive<SendBroadcastRequest>()
+                val sent = notificationManagementService.sendBroadcastNotification(request)
+                if (sent) {
+                    call.respond(HttpStatusCode.OK, mapOf("message" to "Broadcast sent successfully"))
+                } else {
+                    call.respond(HttpStatusCode.InternalServerError, "Failed to send broadcast")
+                }
+            }
+
+            get("/notifications/stats") {
+                val stats = notificationManagementService.getNotificationStats()
+                call.respond(HttpStatusCode.OK, stats)
+            }
+
+
+            // ========== SYSTEM SETTINGS ROUTES ==========
+            get("/system-settings") {
+                val settings = systemSettingsService.getSettings()
+                call.respond(HttpStatusCode.OK, settings)
+            }
+
+            put("/system-settings") {
+                val request = call.receive<UpdateSystemSettingsRequest>()
+                val updated = systemSettingsService.updateSettings(request)
+                if (updated) {
+                    call.respond(HttpStatusCode.OK, mapOf("message" to "Settings updated successfully"))
+                } else {
+                    call.respond(HttpStatusCode.InternalServerError, "Failed to update settings")
+                }
+            }
+
+            get("/system-settings/{key}") {
+                val key = call.parameters["key"] ?: throw IllegalArgumentException("Invalid key")
+                val value = systemSettingsService.getSetting(key)
+                if (value != null) {
+                    call.respond(HttpStatusCode.OK, mapOf("key" to key, "value" to value))
+                } else {
+                    call.respond(HttpStatusCode.NotFound, "Setting not found")
+                }
+            }
 
         }
     }

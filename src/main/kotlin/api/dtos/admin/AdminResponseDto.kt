@@ -2,6 +2,7 @@ package com.amos_tech_code.api.dtos.admin
 
 import domain.models.AttendanceMethod
 import domain.models.DeviceChangeStatus
+import domain.models.NotificationType
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -15,22 +16,11 @@ data class AdminResponse(
 )
 
 @Serializable
-data class AdminLoginRequest(
-    val email: String,
-    val password: String
-)
-
-@Serializable
 data class AdminAuthResponse(
     val accessToken: String,
     val refreshToken: String,
     val admin: AdminResponse,
     val expiresIn: Long = 3600 // 1 hour
-)
-
-@Serializable
-data class RefreshTokenRequest(
-    val refreshToken: String
 )
 
 @Serializable
@@ -123,16 +113,6 @@ data class UniversityResponse(
     val createdAt: String
 )
 
-@Serializable
-data class CreateUniversityRequest(
-    val name: String
-)
-
-@Serializable
-data class UpdateUniversityRequest(
-    val name: String
-)
-
 // Department DTOs
 @Serializable
 data class DepartmentResponse(
@@ -142,17 +122,6 @@ data class DepartmentResponse(
     val name: String,
     val programmeCount: Int = 0,
     val createdAt: String
-)
-
-@Serializable
-data class CreateDepartmentRequest(
-    val universityId: String,
-    val name: String
-)
-
-@Serializable
-data class UpdateDepartmentRequest(
-    val name: String
 )
 
 // Programme DTOs
@@ -167,21 +136,6 @@ data class ProgrammeResponse(
     val isActive: Boolean,
     val unitCount: Int = 0,
     val createdAt: String
-)
-
-@Serializable
-data class CreateProgrammeRequest(
-    val universityId: String,
-    val departmentId: String,
-    val name: String,
-    val isActive: Boolean = true
-)
-
-@Serializable
-data class UpdateProgrammeRequest(
-    val name: String?,
-    val departmentId: String?,
-    val isActive: Boolean?
 )
 
 // Unit DTOs
@@ -204,30 +158,6 @@ data class ProgrammeInfo(
     val id: String,
     val name: String,
     val yearOfStudy: Int
-)
-
-@Serializable
-data class CreateUnitRequest(
-    val universityId: String,
-    val departmentId: String,
-    val code: String,
-    val name: String,
-    val isActive: Boolean = true
-)
-
-@Serializable
-data class UpdateUnitRequest(
-    val code: String?,
-    val name: String?,
-    val departmentId: String?,
-    val isActive: Boolean?
-)
-
-@Serializable
-data class LinkUnitToProgrammeRequest(
-    val programmeId: String,
-    val yearOfStudy: Int,
-    val semester: Int = 1
 )
 
 // List Responses
@@ -277,23 +207,6 @@ data class AcademicTermResponse(
 )
 
 @Serializable
-data class CreateAcademicTermRequest(
-    val universityId: String,
-    val academicYear: String,
-    val semester: Int,
-    val weekCount: Int = 14,
-    val isActive: Boolean = true
-)
-
-@Serializable
-data class UpdateAcademicTermRequest(
-    val academicYear: String?,
-    val semester: Int?,
-    val weekCount: Int?,
-    val isActive: Boolean?
-)
-
-@Serializable
 data class AcademicTermListResponse(
     val terms: List<AcademicTermResponse>,
     val total: Long,
@@ -335,12 +248,6 @@ data class DeviceChangeRequestListResponse(
 )
 
 @Serializable
-data class AdminDeviceChangeApprovalRequest(
-    val approve: Boolean,
-    val rejectionReason: String? = null
-)
-
-@Serializable
 data class SuspiciousActivityResponse(
     val id: String,
     val studentId: String,
@@ -370,12 +277,6 @@ data class SuspiciousActivityListResponse(
     val total: Long,
     val page: Int,
     val pageSize: Int
-)
-
-@Serializable
-data class ReviewSuspiciousActivityRequest(
-    val isSuspicious: Boolean,
-    val notes: String? = null
 )
 
 @Serializable
@@ -433,9 +334,139 @@ data class CleanupDetail(
     val error: String?
 )
 
+
 @Serializable
-data class CleanupRequest(
-    val cleanupType: String, // "orphaned", "expired", "all", "manual"
-    val fileIds: List<String>? = null,
-    val olderThanDays: Int? = 30
+data class NotificationTemplateResponse(
+    val type: String,
+    val title: String,
+    val defaultTitle: String,
+    val body: String,
+    val defaultBody: String,
+    val isEnabled: Boolean,
+    val persistToDatabase: Boolean,
+    val recipientType: String // "STUDENT", "LECTURER", "BOTH"
+)
+
+@Serializable
+data class NotificationHistoryResponse(
+    val id: String,
+    val recipientId: String,
+    val recipientName: String,
+    val recipientType: String,
+    val title: String,
+    val message: String,
+    val type: String,
+    val isRead: Boolean,
+    val createdAt: String
+)
+
+@Serializable
+data class NotificationHistoryListResponse(
+    val notifications: List<NotificationHistoryResponse>,
+    val total: Long,
+    val page: Int,
+    val pageSize: Int
+)
+
+@Serializable
+data class SystemSettingsResponse(
+    // Attendance Settings
+    val defaultAttendanceDuration: Int = 30,
+    val defaultLocationRadius: Int = 50,
+    val allowedAttendanceMethods: List<String> = listOf("QR_CODE", "MANUAL_CODE", "LECTURER_MANUAL"),
+    val requireLocationForAttendance: Boolean = true,
+    val requireDeviceVerification: Boolean = true,
+
+    // Session Settings
+    val sessionCodeLength: Int = 6,
+    val sessionCodeExpiryMinutes: Int = 30,
+    val maxActiveSessionsPerLecturer: Int = 3,
+
+    // Security Settings
+    val maxLoginAttempts: Int = 5,
+    val lockoutDurationMinutes: Int = 30,
+    val passwordExpiryDays: Int = 90,
+    val requireStrongPasswords: Boolean = true,
+    val sessionTimeoutMinutes: Int = 60,
+
+    // Device Management
+    val maxDevicesPerStudent: Int = 2,
+    val deviceChangeRequiresApproval: Boolean = true,
+    val autoApproveTrustedDevices: Boolean = false,
+
+    // System Preferences
+    val systemName: String = "Campus Attendance System",
+    val systemEmail: String = "admin@campus.edu",
+    val timezone: String = "Africa/Nairobi",
+    val dateFormat: String = "dd/MM/yyyy",
+    val timeFormat: String = "24h",
+
+    // Notification Settings
+    val enablePushNotifications: Boolean = true,
+    val enableEmailNotifications: Boolean = false,
+    val notificationRetentionDays: Int = 30,
+
+    // Report Settings
+    val defaultReportFormat: String = "PDF",
+    val autoGenerateReports: Boolean = false,
+    val reportRetentionDays: Int = 90,
+
+    // Maintenance Settings
+    val maintenanceMode: Boolean = false,
+    val maintenanceMessage: String = "",
+    val lastBackup: String? = null
+)
+
+@Serializable
+data class AttendanceSettingsDto(
+    val defaultAttendanceDuration: Int? = null,
+    val defaultLocationRadius: Int? = null,
+    val allowedAttendanceMethods: List<String>? = null,
+    val requireLocationForAttendance: Boolean? = null,
+    val requireDeviceVerification: Boolean? = null
+)
+
+@Serializable
+data class SecuritySettingsDto(
+    val maxLoginAttempts: Int? = null,
+    val lockoutDurationMinutes: Int? = null,
+    val passwordExpiryDays: Int? = null,
+    val requireStrongPasswords: Boolean? = null,
+    val sessionTimeoutMinutes: Int? = null
+)
+
+@Serializable
+data class DeviceSettingsDto(
+    val maxDevicesPerStudent: Int? = null,
+    val deviceChangeRequiresApproval: Boolean? = null,
+    val autoApproveTrustedDevices: Boolean? = null
+)
+
+@Serializable
+data class SystemPreferencesDto(
+    val systemName: String? = null,
+    val systemEmail: String? = null,
+    val timezone: String? = null,
+    val dateFormat: String? = null,
+    val timeFormat: String? = null
+)
+
+@Serializable
+data class NotificationSettingsDto(
+    val enablePushNotifications: Boolean? = null,
+    val enableEmailNotifications: Boolean? = null,
+    val notificationRetentionDays: Int? = null
+)
+
+@Serializable
+data class ReportSettingsDto(
+    val defaultReportFormat: String? = null,
+    val autoGenerateReports: Boolean? = null,
+    val reportRetentionDays: Int? = null
+)
+
+@Serializable
+data class MaintenanceSettingsDto(
+    val maintenanceMode: Boolean? = null,
+    val maintenanceMessage: String? = null
 )

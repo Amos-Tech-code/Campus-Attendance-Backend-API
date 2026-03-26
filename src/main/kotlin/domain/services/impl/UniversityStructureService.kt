@@ -1,14 +1,18 @@
 package com.amos_tech_code.domain.services.impl
 
 import com.amos_tech_code.api.dtos.admin.*
+import com.amos_tech_code.data.repository.LecturerAcademicRepository
 import com.amos_tech_code.data.repository.UniversityStructureRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import utils.toIsoString
 import utils.toUUID
+import java.time.LocalDateTime
 import java.util.*
 
 class UniversityStructureService(
-    private val repository: UniversityStructureRepository
+    private val repository: UniversityStructureRepository,
+    private val lecturerAcademicRepository: LecturerAcademicRepository
 ) {
 
     // Universities
@@ -26,7 +30,16 @@ class UniversityStructureService(
     }
 
     suspend fun createUniversity(request: CreateUniversityRequest): UniversityResponse? = withContext(Dispatchers.IO) {
-        repository.createUniversity(request.name)
+        //repository.createUniversity(request.name)
+        val resolvedUniversity = lecturerAcademicRepository.findOrCreateUniversity(request.name)
+        UniversityResponse(
+            id = resolvedUniversity.id.toString(),
+            name = resolvedUniversity.name,
+            departmentCount = 0,
+            programmeCount = 0,
+            unitCount = 0,
+            createdAt = LocalDateTime.now().toIsoString(),
+        )
     }
 
     suspend fun updateUniversity(id: UUID, request: UpdateUniversityRequest): Boolean = withContext(Dispatchers.IO) {
@@ -149,13 +162,17 @@ class UniversityStructureService(
     }
 
     suspend fun createAcademicTerm(request: CreateAcademicTermRequest): AcademicTermResponse? = withContext(Dispatchers.IO) {
-        repository.createAcademicTerm(
+        val result = repository.createAcademicTerm(
             universityId = request.universityId.toUUID(),
             academicYear = request.academicYear,
             semester = request.semester,
             weekCount = request.weekCount,
             isActive = request.isActive
         )
+
+        if (result == null) throw Exception("Academic term creation failed.")
+
+        repository.getAcademicTermById(result)
     }
 
     suspend fun updateAcademicTerm(id: UUID, request: UpdateAcademicTermRequest): Boolean = withContext(Dispatchers.IO) {

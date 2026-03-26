@@ -3,7 +3,7 @@ package domain.services.impl
 import api.dtos.requests.*
 import com.amos_tech_code.data.repository.LecturerRepository
 import com.amos_tech_code.domain.models.Device
-import com.amos_tech_code.domain.services.NotificationService
+import com.amos_tech_code.domain.services.impl.NotificationService
 import com.amos_tech_code.utils.*
 import data.repository.DeviceChangeRequestRepository
 import data.repository.StudentEnrollmentRepository

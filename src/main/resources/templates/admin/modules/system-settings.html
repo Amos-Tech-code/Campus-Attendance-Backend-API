@@ -1,0 +1,184 @@
+<!-- templates/admin/modules/system-settings.html -->
+<div>
+    <div class="settings-header">
+        <h2>System Configuration</h2>
+        <p>Configure global system settings and preferences</p>
+    </div>
+
+    <div class="settings-container">
+        <form id="systemSettingsForm">
+            <!-- Attendance Settings -->
+            <div class="settings-section">
+                <h3>📋 Attendance Settings</h3>
+                <div class="settings-grid">
+                    <div class="form-group">
+                        <label>Default Session Duration (minutes)</label>
+                        <input type="number" id="defaultAttendanceDuration" min="5" max="120" step="5">
+                        <small>How long attendance sessions last by default</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Default Location Radius (meters)</label>
+                        <input type="number" id="defaultLocationRadius" min="10" max="500" step="10">
+                        <small>How far students can be from lecturer to mark attendance</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Allowed Attendance Methods</label>
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" value="QR_CODE"> QR Code Scan</label>
+                            <label><input type="checkbox" value="MANUAL_CODE"> Manual Code Entry</label>
+                            <label><input type="checkbox" value="LECTURER_MANUAL"> Lecturer Manual</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="requireLocationForAttendance"> Require Location Verification</label>
+                    </div>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="requireDeviceVerification"> Require Device Verification</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Settings -->
+            <div class="settings-section">
+                <h3>🔒 Security Settings</h3>
+                <div class="settings-grid">
+                    <div class="form-group">
+                        <label>Max Login Attempts</label>
+                        <input type="number" id="maxLoginAttempts" min="3" max="10">
+                        <small>Number of failed attempts before lockout</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Lockout Duration (minutes)</label>
+                        <input type="number" id="lockoutDurationMinutes" min="5" max="120">
+                    </div>
+                    <div class="form-group">
+                        <label>Password Expiry (days)</label>
+                        <input type="number" id="passwordExpiryDays" min="30" max="365">
+                    </div>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="requireStrongPasswords"> Require Strong Passwords</label>
+                    </div>
+                    <div class="form-group">
+                        <label>Session Timeout (minutes)</label>
+                        <input type="number" id="sessionTimeoutMinutes" min="15" max="480">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Device Management Settings -->
+            <div class="settings-section">
+                <h3>📱 Device Management</h3>
+                <div class="settings-grid">
+                    <div class="form-group">
+                        <label>Max Devices per Student</label>
+                        <input type="number" id="maxDevicesPerStudent" min="1" max="5">
+                    </div>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="deviceChangeRequiresApproval"> Device Change Requires Approval</label>
+                    </div>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="autoApproveTrustedDevices"> Auto-Approve Trusted Devices</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Preferences -->
+            <div class="settings-section">
+                <h3>⚙️ System Preferences</h3>
+                <div class="settings-grid">
+                    <div class="form-group">
+                        <label>System Name</label>
+                        <input type="text" id="systemName">
+                    </div>
+                    <div class="form-group">
+                        <label>System Email</label>
+                        <input type="email" id="systemEmail">
+                    </div>
+                    <div class="form-group">
+                        <label>Timezone</label>
+                        <select id="timezone">
+                            <option value="Africa/Nairobi">East Africa Time (EAT)</option>
+                            <option value="UTC">UTC</option>
+                            <option value="America/New_York">Eastern Time (ET)</option>
+                            <option value="Europe/London">Greenwich Mean Time (GMT)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Date Format</label>
+                        <select id="dateFormat">
+                            <option value="dd/MM/yyyy">DD/MM/YYYY</option>
+                            <option value="MM/dd/yyyy">MM/DD/YYYY</option>
+                            <option value="yyyy-MM-dd">YYYY-MM-DD</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Time Format</label>
+                        <select id="timeFormat">
+                            <option value="24h">24-hour</option>
+                            <option value="12h">12-hour (AM/PM)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notification Settings -->
+            <div class="settings-section">
+                <h3>🔔 Notification Settings</h3>
+                <div class="settings-grid">
+                    <div class="form-group">
+                        <label><input type="checkbox" id="enablePushNotifications"> Enable Push Notifications</label>
+                    </div>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="enableEmailNotifications"> Enable Email Notifications</label>
+                    </div>
+                    <div class="form-group">
+                        <label>Notification Retention (days)</label>
+                        <input type="number" id="notificationRetentionDays" min="7" max="365">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Report Settings -->
+            <div class="settings-section">
+                <h3>📊 Report Settings</h3>
+                <div class="settings-grid">
+                    <div class="form-group">
+                        <label>Default Report Format</label>
+                        <select id="defaultReportFormat">
+                            <option value="PDF">PDF</option>
+                            <option value="CSV">CSV</option>
+                            <option value="EXCEL">Excel</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="autoGenerateReports"> Auto-Generate Reports</label>
+                    </div>
+                    <div class="form-group">
+                        <label>Report Retention (days)</label>
+                        <input type="number" id="reportRetentionDays" min="30" max="365">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Maintenance Settings -->
+            <div class="settings-section">
+                <h3>🔧 Maintenance</h3>
+                <div class="settings-grid">
+                    <div class="form-group">
+                        <label><input type="checkbox" id="maintenanceMode"> Maintenance Mode</label>
+                        <small>When enabled, only admins can access the system</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Maintenance Message</label>
+                        <textarea id="maintenanceMessage" rows="3" placeholder="Message to show during maintenance..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-actions">
+                <button type="submit" class="btn-primary">💾 Save All Settings</button>
+                <button type="button" class="btn-warning" onclick="resetSettings()">⟳ Reset to Defaults</button>
+            </div>
+        </form>
+    </div>
+</div>
