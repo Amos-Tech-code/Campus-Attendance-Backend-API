@@ -1,6 +1,8 @@
 package data.repository
 
+import api.dtos.response.AcademicTermResponse
 import api.dtos.response.StudentEnrollmentResponse
+import api.dtos.response.UniversityResponse
 import com.amos_tech_code.data.database.utils.exposedTransaction
 import com.amos_tech_code.domain.dtos.response.*
 import com.amos_tech_code.domain.models.ActiveEnrollmentInfo

@@ -1,8 +1,6 @@
 package api.dtos.response
 
-import com.amos_tech_code.domain.dtos.response.AcademicTermResponse
 import com.amos_tech_code.domain.dtos.response.ProgrammeResponse
-import com.amos_tech_code.domain.dtos.response.UniversityResponse
 import kotlinx.serialization.Serializable
 import kotlin.Boolean
 

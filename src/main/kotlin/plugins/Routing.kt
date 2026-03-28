@@ -9,7 +9,7 @@ import com.amos_tech_code.api.routes.accountRoutes
 import com.amos_tech_code.api.routes.attendanceManagementRoutes
 import com.amos_tech_code.domain.services.AccountService
 import domain.services.AttendanceManagementService
-import com.amos_tech_code.routes.lecturerAcademicSetupRoutes
+import api.routes.lecturerAcademicSetupRoutes
 import api.routes.studentEnrollmentRoutes
 import com.amos_tech_code.api.routes.adminRoutes
 import com.amos_tech_code.api.routes.notificationRoutes
