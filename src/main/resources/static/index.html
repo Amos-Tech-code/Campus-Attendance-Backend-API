@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmartAttend - Campus Attendance System</title>
+    <title>Attend - Campus Attendance System</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
@@ -42,7 +42,7 @@
 
         /* Navigation */
         .navbar {
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(255, 255, 255, 0.98);
             backdrop-filter: blur(10px);
             box-shadow: 0 2px 20px rgba(0,0,0,0.1);
             position: fixed;
@@ -101,17 +101,34 @@
             color: #667eea;
         }
 
-        .btn-login {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white !important;
-            padding: 0.5rem 1.5rem;
-            border-radius: 25px;
-            transition: transform 0.3s ease !important;
+        .app-buttons {
+            display: flex;
+            gap: 1rem;
         }
 
-        .btn-login:hover {
+        .btn-lecturer {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 25px;
+            transition: transform 0.3s ease;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .btn-student {
+            background: transparent;
+            color: #667eea;
+            padding: 0.5rem 1.5rem;
+            border-radius: 25px;
+            border: 2px solid #667eea;
+            transition: transform 0.3s ease;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .btn-lecturer:hover, .btn-student:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
 
         /* Hero Section */
@@ -134,74 +151,71 @@
             align-items: center;
         }
 
-        .hero-content {
+        .hero-content h1 {
             font-size: 3.5rem;
             font-weight: 800;
             line-height: 1.2;
             margin-bottom: 1.5rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .hero-highlight {
+            background: linear-gradient(135deg, #ffd89b 0%, #c7e9fb 100%);
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
         }
-        h1 {
-            font-size: 3.5rem;
-            font-weight: 800;
-            line-height: 1.2;
-            margin-bottom: 1.5rem;
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: white;
-        }
 
         .hero-content p {
             font-size: 1.2rem;
-            color: #4a5568;
+            color: rgba(255,255,255,0.9);
             margin-bottom: 2rem;
             line-height: 1.6;
         }
 
-        .hero-buttons {
+        .app-download-buttons {
             display: flex;
             gap: 1rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
         }
 
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        .download-btn {
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            text-decoration: none;
             color: white;
-            padding: 1rem 2rem;
-            border: none;
-            border-radius: 50px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .download-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+
+        .download-btn i {
+            font-size: 1.8rem;
+        }
+
+        .download-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .download-text small {
+            font-size: 0.7rem;
+            opacity: 0.8;
+        }
+
+        .download-text span {
             font-size: 1rem;
             font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
-        }
-
-        .btn-secondary {
-            background: white;
-            color: #667eea;
-            padding: 1rem 2rem;
-            border: 2px solid #667eea;
-            border-radius: 50px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .btn-secondary:hover {
-            background: #667eea;
-            transform: translateY(-2px);
         }
 
         .hero-image {
@@ -212,7 +226,7 @@
         .hero-image img {
             width: 100%;
             border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
         }
 
         @keyframes float {
@@ -288,6 +302,81 @@
             line-height: 1.6;
         }
 
+        /* Dual App Section */
+        .dual-app {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+            padding: 6rem 2rem;
+        }
+
+        .apps-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+        }
+
+        .app-card {
+            background: white;
+            border-radius: 30px;
+            padding: 2.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .app-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .app-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+        }
+
+        .app-icon i {
+            font-size: 2.5rem;
+            color: white;
+        }
+
+        .app-card h3 {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+        }
+
+        .app-card.lecturer h3 {
+            color: #667eea;
+        }
+
+        .app-card.student h3 {
+            color: #764ba2;
+        }
+
+        .app-features {
+            list-style: none;
+            text-align: left;
+            margin: 1.5rem 0;
+        }
+
+        .app-features li {
+            padding: 0.5rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: #4a5568;
+        }
+
+        .app-features li i {
+            color: #48bb78;
+            font-size: 1rem;
+        }
+
         /* Stats Section */
         .stats {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -357,111 +446,6 @@
         .step p {
             color: #718096;
             line-height: 1.6;
-        }
-
-        /* Testimonials Section */
-        .testimonials {
-            background: white;
-            padding: 6rem 2rem;
-        }
-
-        .testimonials-grid {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-        }
-
-        .testimonial-card {
-            background: #f7fafc;
-            padding: 2rem;
-            border-radius: 20px;
-            position: relative;
-        }
-
-        .testimonial-card i {
-            font-size: 2rem;
-            color: #667eea;
-            opacity: 0.5;
-            position: absolute;
-            top: 20px;
-            left: 20px;
-        }
-
-        .testimonial-card p {
-            margin: 2rem 0 1rem;
-            line-height: 1.6;
-            color: #4a5568;
-        }
-
-        .testimonial-author {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-
-        .author-avatar {
-            width: 50px;
-            height: 50px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 1.2rem;
-        }
-
-        .author-info h4 {
-            font-size: 1rem;
-            margin-bottom: 0.25rem;
-        }
-
-        .author-info p {
-            font-size: 0.875rem;
-            color: #718096;
-            margin: 0;
-        }
-
-        /* CTA Section */
-        .cta {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 5rem 2rem;
-            text-align: center;
-            color: white;
-        }
-
-        .cta h2 {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-        }
-
-        .cta p {
-            font-size: 1.2rem;
-            margin-bottom: 2rem;
-            opacity: 0.9;
-        }
-
-        .btn-cta {
-            background: white;
-            color: #667eea;
-            padding: 1rem 2rem;
-            border: none;
-            border-radius: 50px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .btn-cta:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
         }
 
         /* Footer */
@@ -541,8 +525,12 @@
                 font-size: 2.5rem;
             }
 
-            .hero-buttons {
+            .app-download-buttons {
                 justify-content: center;
+            }
+
+            .apps-container {
+                grid-template-columns: 1fr;
             }
 
             .nav-links {
@@ -559,7 +547,6 @@
             }
         }
 
-        /* Mobile Menu Button */
         .menu-btn {
             display: none;
             font-size: 1.5rem;
@@ -578,16 +565,19 @@
 <nav class="navbar">
     <div class="nav-container">
         <div class="logo">
-            <i class="fas fa-chalkboard-teacher logo-icon"></i>
+            <i class="fas fa-chalkboard-user logo-icon"></i>
             <span class="logo-text">Campus Attendance</span>
         </div>
         <div class="nav-links">
             <a href="#home">Home</a>
             <a href="#features">Features</a>
+            <a href="#apps">Apps</a>
             <a href="#how-it-works">How It Works</a>
-            <a href="#testimonials">Testimonials</a>
             <a href="#contact">Contact</a>
-            <a href="#" class="btn-login">Login</a>
+            <div class="app-buttons">
+                <a href="#" class="btn-lecturer">Lecturer Portal</a>
+                <a href="#" class="btn-student">Student Portal</a>
+            </div>
         </div>
         <div class="menu-btn">
             <i class="fas fa-bars"></i>
@@ -599,15 +589,34 @@
 <section class="hero" id="home">
     <div class="hero-container">
         <div class="hero-content">
-            <h1>Campus Attendance for<br>Modern Campuses</h1>
-            <p>Revolutionize attendance management with QR codes, location verification, and real-time analytics. Secure, efficient, and paperless.</p>
-            <div class="hero-buttons">
-                <a href="#" class="btn-primary">Get Started <i class="fas fa-arrow-right"></i></a>
-                <a href="#" class="btn-secondary">Watch Demo <i class="fas fa-play"></i></a>
+            <h1>Attendance for<br><span class="hero-highlight">Modern Campuses</span></h1>
+            <p>Revolutionize attendance management with QR codes, location verification, and real-time analytics. Dedicated apps for lecturers and students.</p>
+            <div class="app-download-buttons">
+                <a href="#" class="download-btn">
+                    <i class="fab fa-google-play"></i>
+                    <div class="download-text">
+                        <small>GET IT ON</small>
+                        <span>Google Play</span>
+                    </div>
+                </a>
+                <a href="#" class="download-btn">
+                    <i class="fas fa-mobile-alt"></i>
+                    <div class="download-text">
+                        <small>DOWNLOAD FOR</small>
+                        <span>Lecturer</span>
+                    </div>
+                </a>
+                <a href="#" class="download-btn">
+                    <i class="fas fa-mobile-alt"></i>
+                    <div class="download-text">
+                        <small>DOWNLOAD FOR</small>
+                        <span>Student</span>
+                    </div>
+                </a>
             </div>
         </div>
         <div class="hero-image">
-            <img src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=500&h=400&fit=crop" alt="Student using Campus Attendance">
+            <img src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=500&h=400&fit=crop" alt="Students using Attend">
         </div>
     </div>
 </section>
@@ -622,14 +631,14 @@
                 <i class="fas fa-qrcode"></i>
             </div>
             <h3>QR Code Scanning</h3>
-            <p>Students can mark attendance instantly by scanning unique QR codes generated for each session.</p>
+            <p>Students mark attendance instantly by scanning unique QR codes generated for each session.</p>
         </div>
         <div class="feature-card">
             <div class="feature-icon">
                 <i class="fas fa-map-marker-alt"></i>
             </div>
             <h3>Location Verification</h3>
-            <p>Ensure students are actually in the lecture hall with GPS location verification.</p>
+            <p>GPS verification ensures students are actually in the lecture hall when marking attendance.</p>
         </div>
         <div class="feature-card">
             <div class="feature-icon">
@@ -640,24 +649,62 @@
         </div>
         <div class="feature-card">
             <div class="feature-icon">
-                <i class="fas fa-mobile-alt"></i>
-            </div>
-            <h3>Platform Support</h3>
-            <p>Available on Android - access attendance from any android device.</p>
-        </div>
-        <div class="feature-card">
-            <div class="feature-icon">
                 <i class="fas fa-shield-alt"></i>
             </div>
             <h3>Device Verification</h3>
-            <p>Prevent proxy attendance with device binding and verification system.</p>
+            <p>Prevent proxy attendance with device binding and approval workflow for device changes.</p>
         </div>
         <div class="feature-card">
             <div class="feature-icon">
                 <i class="fas fa-bell"></i>
             </div>
             <h3>Instant Notifications</h3>
-            <p>Get real-time alerts for attendance marking, session updates, and suspicious activities.</p>
+            <p>Real-time alerts for attendance marking, session updates, and suspicious activity detection.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <h3>Offline Support</h3>
+            <p>Mark attendance even without internet - syncs automatically when connection returns.</p>
+        </div>
+    </div>
+</section>
+
+<!-- Dual App Section -->
+<section class="dual-app" id="apps">
+    <h2 class="section-title">Two Apps, One Ecosystem</h2>
+    <p class="section-subtitle">Tailored experiences for lecturers and students</p>
+    <div class="apps-container">
+        <div class="app-card lecturer">
+            <div class="app-icon">
+                <i class="fas fa-chalkboard-user"></i>
+            </div>
+            <h3>Lecturer App</h3>
+            <ul class="app-features">
+                <li><i class="fas fa-check-circle"></i> Create and manage attendance sessions</li>
+                <li><i class="fas fa-check-circle"></i> Generate QR codes and session codes</li>
+                <li><i class="fas fa-check-circle"></i> View live attendance dashboard</li>
+                <li><i class="fas fa-check-circle"></i> Export attendance reports (PDF/CSV)</li>
+                <li><i class="fas fa-check-circle"></i> Approve student device change requests</li>
+                <li><i class="fas fa-check-circle"></i> Detect suspicious attendance activity</li>
+            </ul>
+            <a href="#" class="btn-lecturer" style="display: inline-block; margin-top: 1rem;">Download for Lecturers</a>
+        </div>
+        <div class="app-card student">
+            <div class="app-icon">
+                <i class="fas fa-user-graduate"></i>
+            </div>
+            <h3>Student App</h3>
+            <ul class="app-features">
+                <li><i class="fas fa-check-circle"></i> Quick QR code attendance marking</li>
+                <li><i class="fas fa-check-circle"></i> Manual session code entry</li>
+                <li><i class="fas fa-check-circle"></i> View attendance history and stats</li>
+                <li><i class="fas fa-check-circle"></i> Request device change when needed</li>
+                <li><i class="fas fa-check-circle"></i> Receive push notifications</li>
+                <li><i class="fas fa-check-circle"></i> Track session schedules</li>
+            </ul>
+            <a href="#" class="btn-student" style="display: inline-block; margin-top: 1rem;">Download for Students</a>
         </div>
     </div>
 </section>
@@ -666,11 +713,11 @@
 <section class="stats">
     <div class="stats-grid">
         <div class="stat-item">
-            <h2>10,000+</h2>
+            <h2>20+</h2>
             <p>Active Students</p>
         </div>
         <div class="stat-item">
-            <h2>500+</h2>
+            <h2>7+</h2>
             <p>Universities</p>
         </div>
         <div class="stat-item">
@@ -678,7 +725,7 @@
             <p>Accuracy Rate</p>
         </div>
         <div class="stat-item">
-            <h2>50K+</h2>
+            <h2>50+</h2>
             <p>Sessions Tracked</p>
         </div>
     </div>
@@ -692,97 +739,49 @@
         <div class="step">
             <div class="step-number">1</div>
             <h3>Lecturer Creates Session</h3>
-            <p>Lecturer starts a session and generates a unique QR code or session code.</p>
+            <p>Lecturer starts a session, sets location, and generates a unique QR code or session code.</p>
         </div>
         <div class="step">
             <div class="step-number">2</div>
             <h3>Student Marks Attendance</h3>
-            <p>Students scan the QR code or enter the session code to mark attendance.</p>
+            <p>Students scan QR code or enter session code with their registered device.</p>
         </div>
         <div class="step">
             <div class="step-number">3</div>
             <h3>System Verifies</h3>
-            <p>Location, device, and time verification ensure authenticity.</p>
+            <p>Location, device, and time verification ensure authentic attendance.</p>
         </div>
         <div class="step">
             <div class="step-number">4</div>
             <h3>Real-time Tracking</h3>
-            <p>Attendance is recorded instantly and visible to lecturers.</p>
+            <p>Attendance is recorded instantly with live dashboard for lecturers.</p>
         </div>
     </div>
-</section>
-
-<!-- Testimonials Section -->
-<section class="testimonials" id="testimonials">
-    <h2 class="section-title">What Our Users Say</h2>
-    <p class="section-subtitle">Trusted by educators and students across campuses</p>
-    <div class="testimonials-grid">
-        <div class="testimonial-card">
-            <i class="fas fa-quote-left"></i>
-            <p>"Campus Attendance has transformed how we manage attendance. The QR code system is fast and the location verification ensures accuracy."</p>
-            <div class="testimonial-author">
-                <div class="author-avatar">JD</div>
-                <div class="author-info">
-                    <h4>Dr. James Mwangi</h4>
-                    <p>Senior Lecturer, University of Nairobi</p>
-                </div>
-            </div>
-        </div>
-        <div class="testimonial-card">
-            <i class="fas fa-quote-left"></i>
-            <p>"The real-time analytics help us identify attendance patterns and support at-risk students. Best decision we made!"</p>
-            <div class="testimonial-author">
-                <div class="author-avatar">SK</div>
-                <div class="author-info">
-                    <h4>Prof. Sarah Kamau</h4>
-                    <p>Dean of Students, Kenyatta University</p>
-                </div>
-            </div>
-        </div>
-        <div class="testimonial-card">
-            <i class="fas fa-quote-left"></i>
-            <p>"As a student, marking attendance is now effortless. No more long queues or paper sign-in sheets."</p>
-            <div class="testimonial-author">
-                <div class="author-avatar">MO</div>
-                <div class="author-info">
-                    <h4>Michael Omondi</h4>
-                    <p>Computer Science Student</p>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- CTA Section -->
-<section class="cta">
-    <h2>Ready to Transform Your Campus?</h2>
-    <p>Join thousands of universities using Campus Attendance for efficient attendance management</p>
-    <a href="#" class="btn-cta">Start Free Trial <i class="fas fa-arrow-right"></i></a>
 </section>
 
 <!-- Footer -->
 <footer class="footer" id="contact">
     <div class="footer-content">
         <div class="footer-section">
-            <h4>Campus Attendance</h4>
-            <p>Revolutionizing campus attendance management with cutting-edge technology.</p>
+            <h4>Attend</h4>
+            <p>Revolutionizing campus attendance management with cutting-edge technology for lecturers and students.</p>
         </div>
         <div class="footer-section">
             <h4>Quick Links</h4>
             <ul>
                 <li><a href="#home">Home</a></li>
                 <li><a href="#features">Features</a></li>
+                <li><a href="#apps">Apps</a></li>
                 <li><a href="#how-it-works">How It Works</a></li>
-                <li><a href="#testimonials">Testimonials</a></li>
             </ul>
         </div>
         <div class="footer-section">
             <h4>Resources</h4>
             <ul>
                 <li><a href="#">Documentation</a></li>
-                <li><a href="#">API Reference</a></li>
                 <li><a href="#">Support Center</a></li>
                 <li><a href="#">Privacy Policy</a></li>
+                <li><a href="#">Terms of Service</a></li>
             </ul>
         </div>
         <div class="footer-section">
@@ -796,7 +795,7 @@
         </div>
     </div>
     <div class="footer-bottom">
-        <p>&copy; 2026 Campus Attendance. All rights reserved. | Made with <i class="fas fa-heart" style="color: #667eea;"></i> for Education</p>
+        <p>&copy; 2026 Attend - Campus Attendance System. All rights reserved. | Made with <i class="fas fa-heart" style="color: #667eea;"></i> for Education</p>
     </div>
 </footer>
 
@@ -821,11 +820,11 @@
         if (window.scrollY > 100) {
             navbar.style.background = 'rgba(255, 255, 255, 0.98)';
         } else {
-            navbar.style.background = 'rgba(255, 255, 255, 0.95)';
+            navbar.style.background = 'rgba(255, 255, 255, 0.98)';
         }
     });
 
-    // Mobile menu toggle (optional - you can implement full mobile menu if needed)
+    // Mobile menu toggle
     const menuBtn = document.querySelector('.menu-btn');
     const navLinks = document.querySelector('.nav-links');
 
@@ -850,7 +849,7 @@
         });
     }, observerOptions);
 
-    document.querySelectorAll('.feature-card, .step, .testimonial-card').forEach(el => {
+    document.querySelectorAll('.feature-card, .app-card, .step').forEach(el => {
         el.style.opacity = '0';
         el.style.transform = 'translateY(30px)';
         el.style.transition = 'all 0.6s ease';

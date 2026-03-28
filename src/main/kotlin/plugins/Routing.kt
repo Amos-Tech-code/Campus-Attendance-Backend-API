@@ -74,7 +74,7 @@ fun Application.configureRouting() {
 
         singlePageApplication {
             useResources = true
-            filesPath = "static" // Folder in resources
+            filesPath = "static"
             defaultPage = "index.html"
         }
 
