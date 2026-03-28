@@ -1,32 +1,18 @@
 package api.routes
 
-import api.dtos.response.GenericResponseDto
-import com.amos_tech_code.domain.dtos.requests.AcademicSetUpRequest
-import com.amos_tech_code.domain.dtos.requests.AddAcademicTermRequest
-import com.amos_tech_code.domain.dtos.requests.AddProgrammeRequest
-import com.amos_tech_code.domain.dtos.requests.AddTeachingAssignmentRequest
-import com.amos_tech_code.domain.dtos.requests.AddUnitToProgrammeRequest
-import com.amos_tech_code.domain.dtos.requests.DepartmentSuggestionRequest
-import com.amos_tech_code.domain.dtos.requests.ProgrammeSuggestionRequest
-import com.amos_tech_code.domain.dtos.requests.UnitSuggestionRequest
-import com.amos_tech_code.domain.dtos.requests.UniversitySuggestionRequest
-import com.amos_tech_code.domain.dtos.requests.UpdateAcademicTermRequest
-import com.amos_tech_code.domain.dtos.requests.UpdateProgrammeRequest
-import com.amos_tech_code.domain.dtos.requests.UpdateTeachingAssignmentRequest
-import com.amos_tech_code.domain.dtos.requests.UpdateUnitRequest
-import domain.models.UserRole
+import com.amos_tech_code.domain.dtos.requests.*
 import com.amos_tech_code.services.LecturerAcademicService
-import com.amos_tech_code.utils.AuthenticationException
-import com.amos_tech_code.utils.ValidationException
-import com.amos_tech_code.utils.getUserIdFromJWT
-import com.amos_tech_code.utils.getUserRoleFromJWT
-import com.amos_tech_code.utils.respondBadRequest
-import com.amos_tech_code.utils.respondForbidden
+import com.amos_tech_code.utils.*
+import domain.dtos.requests.AddAcademicTermRequest
+import domain.dtos.requests.AddProgrammeWithUnitsRequest
+import domain.dtos.requests.AddUnitToProgrammeRequest
+import domain.dtos.requests.UpdateProgrammeDetailsRequest
+import domain.models.UserRole
 import io.ktor.http.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import java.util.UUID
+import java.util.*
 
 fun Route.lecturerAcademicSetupRoutes(
     lecturerAcademicService : LecturerAcademicService
@@ -68,323 +54,101 @@ fun Route.lecturerAcademicSetupRoutes(
             )
         }
 
-        // ============ UPDATE OPERATIONS ============
-
         /**
-         * Deactivate university for current lecturer
-         * Returns GenericResponseDto
+         * Lecturer deactivates themselves from a university
+         * This removes the lecturer's teaching assignments for this university
+         * Does NOT delete the university entity itself
          */
-        patch("/universities/{universityId}/deactivate") {
+        delete("/universities/{universityId}/deactivate") {
             val lecturerId = call.getUserIdFromJWT()
                 ?: throw AuthenticationException("Not authenticated")
 
-            val universityId = call.parameters["universityId"]
-                ?: throw ValidationException("University ID required")
+            val universityId = UUID.fromString(
+                call.parameters["universityId"]
+                    ?: throw ValidationException("University ID required")
+            )
 
             val response = lecturerAcademicService.deactivateUniversityForLecturer(
                 lecturerId = lecturerId,
-                universityId = UUID.fromString(universityId)
+                universityId = universityId
             )
 
             call.respond(HttpStatusCode.OK, response)
         }
-
         /**
-         * Reactivate university for current lecturer
-         * Returns GenericResponseDto
-         */
-        patch("/universities/{universityId}/reactivate") {
-            val lecturerId = call.getUserIdFromJWT()
-                ?: throw AuthenticationException("Not authenticated")
-
-            val universityId = call.parameters["universityId"]
-                ?: throw ValidationException("University ID required")
-
-            val response = lecturerAcademicService.reactivateUniversityForLecturer(
-                lecturerId = lecturerId,
-                universityId = UUID.fromString(universityId)
-            )
-
-            call.respond(HttpStatusCode.OK, response)
-        }
-
-        // ============ ACADEMIC TERM OPERATIONS ============
-
-        /**
-         * Add new academic term
-         * Returns GenericResponseDto
+         * Add a new academic term to a university
+         * Creates a new term and optionally activates it
          */
         post("/universities/{universityId}/terms") {
-            val lecturerId = call.getUserIdFromJWT()
-                ?: throw AuthenticationException("Not authenticated")
-
-            val universityId = call.parameters["universityId"]
-                ?: throw ValidationException("University ID required")
-
+            val lecturerId = call.getUserIdFromJWT() ?: throw AuthenticationException("Not authenticated")
+            val universityId = UUID.fromString(call.parameters["universityId"] ?: throw ValidationException("University ID required"))
             val request = call.receive<AddAcademicTermRequest>()
 
-            lecturerAcademicService.addAcademicTerm(
-                lecturerId = lecturerId,
-                universityId = UUID.fromString(universityId),
-                request = request
-            )
-
-            call.respond(HttpStatusCode.OK, GenericResponseDto(
-                statusCode = 200,
-                message = "Academic term added successfully"
-            ))
+            val response = lecturerAcademicService.addAcademicTerm(lecturerId, universityId, request)
+            call.respond(HttpStatusCode.Created, response)
         }
 
-        /**
-         * Update academic term
-         * Returns GenericResponseDto
-         */
-        patch("/terms/{termId}") {
-            val lecturerId = call.getUserIdFromJWT()
-                ?: throw AuthenticationException("Not authenticated")
-
-            val termId = call.parameters["termId"]
-                ?: throw ValidationException("Term ID required")
-
-            val request = call.receive<UpdateAcademicTermRequest>()
-
-            lecturerAcademicService.updateAcademicTerm(
-                lecturerId = lecturerId,
-                termId = UUID.fromString(termId),
-                request = request
-            )
-
-            call.respond(HttpStatusCode.OK, GenericResponseDto(
-                statusCode = 200,
-                message = "Academic term updated successfully"
-            ))
-        }
 
         /**
-         * Activate a specific term (deactivates all others)
-         * Returns GenericResponseDto
-         */
-        patch("/terms/{termId}/activate") {
-            val lecturerId = call.getUserIdFromJWT()
-                ?: throw AuthenticationException("Not authenticated")
-
-            val termId = call.parameters["termId"]
-                ?: throw ValidationException("Term ID required")
-
-            val response = lecturerAcademicService.activateTerm(
-                lecturerId = lecturerId,
-                termId = UUID.fromString(termId)
-            )
-
-            call.respond(HttpStatusCode.OK, response)
-        }
-
-        // ============ PROGRAMME OPERATIONS ============
-
-        /**
-         * Add new programme
-         * Returns GenericResponseDto
+         * Add a new programme with at least one unit
+         * Creates programme and automatically creates teaching assignments
          */
         post("/universities/{universityId}/programmes") {
-            val lecturerId = call.getUserIdFromJWT()
-                ?: throw AuthenticationException("Not authenticated")
+            val lecturerId = call.getUserIdFromJWT() ?: throw AuthenticationException("Not authenticated")
+            val universityId = UUID.fromString(call.parameters["universityId"] ?: throw ValidationException("University ID required"))
+            val request = call.receive<AddProgrammeWithUnitsRequest>()
 
-            val universityId = call.parameters["universityId"]
-                ?: throw ValidationException("University ID required")
-
-            val request = call.receive<AddProgrammeRequest>()
-
-            lecturerAcademicService.addProgramme(
-                lecturerId = lecturerId,
-                universityId = UUID.fromString(universityId),
-                request = request
-            )
-
-            call.respond(HttpStatusCode.OK, GenericResponseDto(
-                statusCode = 200,
-                message = "Programme added successfully"
-            ))
+            val response = lecturerAcademicService.addProgrammeWithUnits(lecturerId, universityId, request)
+            call.respond(HttpStatusCode.Created, response)
         }
 
         /**
-         * Update programme
-         * Returns GenericResponseDto
+         * Update programme details (name, year, student count)
+         * Does NOT modify units - use separate unit endpoints for that
          */
         patch("/programmes/{programmeId}") {
-            val lecturerId = call.getUserIdFromJWT()
-                ?: throw AuthenticationException("Not authenticated")
+            val lecturerId = call.getUserIdFromJWT() ?: throw AuthenticationException("Not authenticated")
+            val programmeId = UUID.fromString(call.parameters["programmeId"] ?: throw ValidationException("Programme ID required"))
+            val request = call.receive<UpdateProgrammeDetailsRequest>()
 
-            val programmeId = call.parameters["programmeId"]
-                ?: throw ValidationException("Programme ID required")
-
-            val request = call.receive<UpdateProgrammeRequest>()
-
-            lecturerAcademicService.updateProgramme(
-                lecturerId = lecturerId,
-                programmeId = UUID.fromString(programmeId),
-                request = request
-            )
-
-            call.respond(HttpStatusCode.OK, GenericResponseDto(
-                statusCode = 200,
-                message = "Programme updated successfully"
-            ))
+            val response = lecturerAcademicService.updateProgrammeDetails(lecturerId, programmeId, request)
+            call.respond(HttpStatusCode.OK, response)
         }
 
         /**
-         * Deactivate programme
-         * Returns GenericResponseDto
+         * Deactivate a programme (soft delete)
          */
         delete("/programmes/{programmeId}") {
-            val lecturerId = call.getUserIdFromJWT()
-                ?: throw AuthenticationException("Not authenticated")
+            val lecturerId = call.getUserIdFromJWT() ?: throw AuthenticationException("Not authenticated")
+            val programmeId = UUID.fromString(call.parameters["programmeId"] ?: throw ValidationException("Programme ID required"))
 
-            val programmeId = call.parameters["programmeId"]
-                ?: throw ValidationException("Programme ID required")
-
-            val response = lecturerAcademicService.deactivateProgramme(
-                lecturerId = lecturerId,
-                programmeId = UUID.fromString(programmeId)
-            )
-
+            val response = lecturerAcademicService.deactivateProgramme(lecturerId, programmeId)
             call.respond(HttpStatusCode.OK, response)
         }
 
-        // ============ UNIT OPERATIONS ============
-
         /**
-         * Add unit to programme
-         * Returns GenericResponseDto
+         * Add a new unit to a programme
+         * Creates unit, links to programme, and creates teaching assignment
          */
         post("/programmes/{programmeId}/units") {
-            val lecturerId = call.getUserIdFromJWT()
-                ?: throw AuthenticationException("Not authenticated")
-
-            val programmeId = call.parameters["programmeId"]
-                ?: throw ValidationException("Programme ID required")
-
+            val lecturerId = call.getUserIdFromJWT() ?: throw AuthenticationException("Not authenticated")
+            val programmeId = UUID.fromString(call.parameters["programmeId"] ?: throw ValidationException("Programme ID required"))
             val request = call.receive<AddUnitToProgrammeRequest>()
 
-            lecturerAcademicService.addUnitToProgramme(
-                lecturerId = lecturerId,
-                programmeId = UUID.fromString(programmeId),
-                request = request
-            )
-
-            call.respond(HttpStatusCode.OK, GenericResponseDto(
-                statusCode = 200,
-                message = "Unit added successfully"
-            ))
+            val response = lecturerAcademicService.addUnitToProgramme(lecturerId, programmeId, request)
+            call.respond(HttpStatusCode.Created, response)
         }
 
         /**
-         * Update unit
-         * Returns GenericResponseDto
+         * Remove a unit from a programme (soft delete)
+         * Does NOT delete the unit entity, just removes from teaching assignments
          */
-        patch("/units/{unitId}") {
-            val lecturerId = call.getUserIdFromJWT()
-                ?: throw AuthenticationException("Not authenticated")
+        delete("/programmes/{programmeId}/units/{unitId}") {
+            val lecturerId = call.getUserIdFromJWT() ?: throw AuthenticationException("Not authenticated")
+            val programmeId = UUID.fromString(call.parameters["programmeId"] ?: throw ValidationException("Programme ID required"))
+            val unitId = UUID.fromString(call.parameters["unitId"] ?: throw ValidationException("Unit ID required"))
 
-            val unitId = call.parameters["unitId"]
-                ?: throw ValidationException("Unit ID required")
-
-            val request = call.receive<UpdateUnitRequest>()
-
-            lecturerAcademicService.updateUnit(
-                lecturerId = lecturerId,
-                unitId = UUID.fromString(unitId),
-                request = request
-            )
-
-            call.respond(HttpStatusCode.OK, GenericResponseDto(
-                statusCode = 200,
-                message = "Unit updated successfully"
-            ))
-        }
-
-        /**
-         * Deactivate unit
-         * Returns GenericResponseDto
-         */
-        delete("/units/{unitId}") {
-            val lecturerId = call.getUserIdFromJWT()
-                ?: throw AuthenticationException("Not authenticated")
-
-            val unitId = call.parameters["unitId"]
-                ?: throw ValidationException("Unit ID required")
-
-            val response = lecturerAcademicService.deactivateUnit(
-                lecturerId = lecturerId,
-                unitId = UUID.fromString(unitId)
-            )
-
-            call.respond(HttpStatusCode.OK, response)
-        }
-
-        // ============ TEACHING ASSIGNMENT OPERATIONS ============
-
-        /**
-         * Add teaching assignment
-         * Returns GenericResponseDto
-         */
-        post("/teaching-assignments") {
-            val lecturerId = call.getUserIdFromJWT()
-                ?: throw AuthenticationException("Not authenticated")
-
-            val request = call.receive<AddTeachingAssignmentRequest>()
-
-            lecturerAcademicService.addTeachingAssignment(
-                lecturerId = lecturerId,
-                request = request
-            )
-
-            call.respond(HttpStatusCode.OK, GenericResponseDto(
-                statusCode = 200,
-                message = "Teaching assignment added successfully"
-            ))
-        }
-
-        /**
-         * Update teaching assignment
-         * Returns GenericResponseDto
-         */
-        patch("/teaching-assignments/{assignmentId}") {
-            val lecturerId = call.getUserIdFromJWT()
-                ?: throw AuthenticationException("Not authenticated")
-
-            val assignmentId = call.parameters["assignmentId"]
-                ?: throw ValidationException("Assignment ID required")
-
-            val request = call.receive<UpdateTeachingAssignmentRequest>()
-
-            lecturerAcademicService.updateTeachingAssignment(
-                lecturerId = lecturerId,
-                assignmentId = UUID.fromString(assignmentId),
-                request = request
-            )
-
-            call.respond(HttpStatusCode.OK, GenericResponseDto(
-                statusCode = 200,
-                message = "Teaching assignment updated successfully"
-            ))
-        }
-
-        /**
-         * Delete teaching assignment
-         * Returns GenericResponseDto
-         */
-        delete("/teaching-assignments/{assignmentId}") {
-            val lecturerId = call.getUserIdFromJWT()
-                ?: throw AuthenticationException("Not authenticated")
-
-            val assignmentId = call.parameters["assignmentId"]
-                ?: throw ValidationException("Assignment ID required")
-
-            val response = lecturerAcademicService.deleteTeachingAssignment(
-                lecturerId = lecturerId,
-                assignmentId = UUID.fromString(assignmentId)
-            )
-
+            val response = lecturerAcademicService.removeUnitFromProgramme(lecturerId, programmeId, unitId)
             call.respond(HttpStatusCode.OK, response)
         }
 
