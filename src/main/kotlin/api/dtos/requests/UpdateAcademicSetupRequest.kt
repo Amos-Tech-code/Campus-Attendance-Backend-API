@@ -2,6 +2,87 @@ package com.amos_tech_code.domain.dtos.requests
 
 import kotlinx.serialization.Serializable
 
+// Academic Term DTOs
+@Serializable
+data class AddAcademicTermRequest(
+    val academicYear: String,
+    val semester: Int,
+    val weekCount: Int = 14
+)
+
+@Serializable
+data class UpdateAcademicTermRequest(
+    val academicYear: String? = null,
+    val semester: Int? = null,
+    val weekCount: Int? = null
+)
+
+// Programme DTOs
+@Serializable
+data class AddProgrammeRequest(
+    val name: String,
+    val departmentId: String,
+    val yearOfStudy: Int,
+    val expectedStudentCount: Int
+)
+
+@Serializable
+data class UpdateProgrammeRequest(
+    val name: String? = null,
+    val departmentId: String? = null,
+    val yearOfStudy: Int? = null,
+    val expectedStudentCount: Int? = null,
+    val isActive: Boolean? = null
+)
+
+// Unit DTOs
+@Serializable
+data class AddUnitToProgrammeRequest(
+    val code: String,
+    val name: String,
+    val semester: Int,
+    val yearOfStudy: Int,
+    val departmentId: String,
+    val lectureDay: String? = null,
+    val lectureTime: String? = null,
+    val lectureVenue: String? = null
+)
+
+@Serializable
+data class UpdateUnitRequest(
+    val code: String? = null,
+    val name: String? = null,
+    val semester: Int? = null,
+    val departmentId: String? = null,
+    val lectureDay: String? = null,
+    val lectureTime: String? = null,
+    val lectureVenue: String? = null,
+    val isActive: Boolean? = null
+)
+
+// Teaching Assignment DTOs
+@Serializable
+data class AddTeachingAssignmentRequest(
+    val universityId: String,
+    val programmeId: String,
+    val unitId: String,
+    val academicTermId: String,
+    val yearOfStudy: Int,
+    val expectedStudents: Int,
+    val lectureDay: String? = null,
+    val lectureTime: String? = null,
+    val lectureVenue: String? = null
+)
+
+@Serializable
+data class UpdateTeachingAssignmentRequest(
+    val expectedStudents: Int? = null,
+    val lectureDay: String? = null,
+    val lectureTime: String? = null,
+    val lectureVenue: String? = null,
+    val isActive: Boolean? = null
+)
+/*
 @Serializable
 data class UpdateAcademicSetupRequest(
     val universityId: String,
@@ -96,3 +177,5 @@ data class AcademicTermRef(
     val academicTermId: String? = null,
     val draft: NewAcademicTermDraft? = null
 )
+
+ */

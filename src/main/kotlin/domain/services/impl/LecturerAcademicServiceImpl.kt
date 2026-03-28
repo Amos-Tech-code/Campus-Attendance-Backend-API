@@ -1,28 +1,21 @@
 package domain.services.impl
 
-import com.amos_tech_code.data.database.utils.exposedTransaction
+import api.dtos.response.*
 import com.amos_tech_code.data.repository.LecturerAcademicRepository
-import com.amos_tech_code.domain.dtos.requests.AcademicSetUpRequest
-import com.amos_tech_code.domain.dtos.requests.DepartmentSuggestionRequest
-import com.amos_tech_code.domain.dtos.requests.ProgrammeSetupRequest
-import com.amos_tech_code.domain.dtos.requests.ProgrammeSuggestionRequest
-import com.amos_tech_code.domain.dtos.requests.UnitSetupRequest
-import com.amos_tech_code.domain.dtos.requests.UnitSuggestionRequest
-import com.amos_tech_code.domain.dtos.requests.UniversitySuggestionRequest
-import com.amos_tech_code.domain.dtos.requests.UpdateAcademicSetupRequest
+import com.amos_tech_code.domain.dtos.requests.*
 import com.amos_tech_code.domain.dtos.response.*
 import com.amos_tech_code.domain.models.ResolvedProgramme
 import com.amos_tech_code.domain.models.ResolvedUniversity
 import com.amos_tech_code.services.LecturerAcademicService
-import com.amos_tech_code.utils.AppException
-import com.amos_tech_code.utils.InternalServerException
-import com.amos_tech_code.utils.ValidationException
+import com.amos_tech_code.utils.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.slf4j.LoggerFactory
 import java.util.*
 
 class LecturerAcademicServiceImpl(
-    private val lecturerAcademicRepository: LecturerAcademicRepository
+    private val lecturerAcademicRepository: LecturerAcademicRepository,
 ) : LecturerAcademicService {
 
     private val logger = LoggerFactory.getLogger(LecturerAcademicServiceImpl::class.java)
@@ -268,87 +261,534 @@ class LecturerAcademicServiceImpl(
         }
     }
 
-    override suspend fun updateLecturerAcademicSetup(
+
+    /**
+     * Deactivate university for lecturer (soft delete)
+     * Cannot deactivate if there are attendance records in the current term
+     */
+    override suspend fun deactivateUniversityForLecturer(
         lecturerId: UUID,
-        request: UpdateAcademicSetupRequest
-    ): AcademicSetupResponse {
-
+        universityId: UUID
+    ): GenericResponseDto = withContext(Dispatchers.IO) {
         try {
+            // Verify lecturer belongs to university
+            lecturerAcademicRepository.assertLecturerBelongsToUniversity(lecturerId, universityId)
 
-            request.validateRequest()
-
-            val universityId = UUID.fromString(request.universityId)
-
-            return exposedTransaction {
-
-                // 1. Validate lecturer ↔ university relationship
-                lecturerAcademicRepository.assertLecturerBelongsToUniversity(
-                    lecturerId = lecturerId,
-                    universityId = universityId
-                )
-
-                // 2. Resolve / create academic terms
-                val academicTermMap = lecturerAcademicRepository.resolveAcademicTerms(
-                    universityId = universityId,
-                    terms = request.academicTerms
-                )
-
-                // 3. Resolve / create departments
-                val departmentMap = lecturerAcademicRepository.resolveDepartments(
-                    universityId = universityId,
-                    programmes = request.programmes
-                )
-
-                // 4. Resolve / create programmes
-                val programmeMap = lecturerAcademicRepository.resolveProgrammes(
-                    universityId = universityId,
-                    programmes = request.programmes,
-                    departmentMap = departmentMap
-                )
-
-                // 5. Resolve / create units
-                val unitMap = lecturerAcademicRepository.resolveUnits(
-                    universityId = universityId,
-                    programmes = request.programmes,
-                    departmentMap = departmentMap
-                )
-
-                // 6. Resolve programme ↔ unit links
-                lecturerAcademicRepository.resolveProgrammeUnits(
-                    programmes = request.programmes,
-                    programmeMap = programmeMap,
-                    unitMap = unitMap
-                )
-
-                // 7. Resolve lecturer teaching assignments (TERM-SCOPED)
-                lecturerAcademicRepository.resolveLecturerAssignments(
-                    lecturerId = lecturerId,
-                    universityId = universityId,
-                    programmes = request.programmes,
-                    programmeMap = programmeMap,
-                    unitMap = unitMap,
-                    academicTermMap = academicTermMap
-                )
-
-                // 8. Deactivate removed assignments safely
-                lecturerAcademicRepository.deactivateMissingAssignments(
-                    lecturerId = lecturerId,
-                    universityId = universityId,
-                    request = request
-                )
-
-                // 9. Return UPDATED snapshot (single university)
-                lecturerAcademicRepository.getAcademicSetupForUniversity(
-                    lecturerId = lecturerId,
-                    universityId = universityId
+            // Check for attendance records in current term
+            val hasAttendance = lecturerAcademicRepository.hasAttendanceRecordsInCurrentTerm(universityId)
+            if (hasAttendance) {
+                throw ValidationException(
+                    "Cannot deactivate university - there are attendance records for the current academic term. " +
+                            "You can only deactivate after the term ends."
                 )
             }
 
-        } catch (ex: Exception) {
-            logger.error("Failed to update academic setup: $ex")
-            when (ex) {
-                is AppException -> throw ex
-                else -> throw InternalServerException("Failed to update academic setup.")
+            // Deactivate the university for this lecturer
+            val deactivated = lecturerAcademicRepository.deactivateUniversityForLecturer(lecturerId, universityId)
+
+            if (!deactivated) {
+                throw InternalServerException("Failed to deactivate university")
+            }
+
+            GenericResponseDto(
+                statusCode = 200,
+                message = "University deactivated successfully. You can reactivate it in the next term."
+            )
+        } catch (e: Exception) {
+            logger.error("Failed to deactivate university", e)
+            when (e) {
+                is AppException -> throw e
+                else -> throw InternalServerException("Failed to deactivate university")
+            }
+        }
+    }
+
+    /**
+     * Reactivate university for lecturer
+     */
+    override suspend fun reactivateUniversityForLecturer(
+        lecturerId: UUID,
+        universityId: UUID
+    ): GenericResponseDto = withContext(Dispatchers.IO) {
+        try {
+            // Verify university exists and lecturer is associated
+            val university = lecturerAcademicRepository.findUniversityById(universityId)
+                ?: throw ResourceNotFoundException("University not found")
+
+            // Check if there's an active term for this university
+            val activeTerm = lecturerAcademicRepository.findActiveAcademicTerm(universityId)
+            if (activeTerm == null) {
+                throw ValidationException(
+                    "Cannot reactivate university - no active academic term found. " +
+                            "Please set an active term first."
+                )
+            }
+
+            // Reactivate the university for this lecturer
+            val reactivated = lecturerAcademicRepository.reactivateUniversityForLecturer(lecturerId, universityId)
+
+            if (!reactivated) {
+                throw InternalServerException("Failed to reactivate university")
+            }
+
+            GenericResponseDto(
+                statusCode = 200,
+                message = "University reactivated successfully"
+            )
+        } catch (e: Exception) {
+            logger.error("Failed to reactivate university", e)
+            when (e) {
+                is AppException -> throw e
+                else -> throw InternalServerException("Failed to reactivate university")
+            }
+        }
+    }
+
+    override suspend fun addAcademicTerm(
+        lecturerId: UUID,
+        universityId: UUID,
+        request: AddAcademicTermRequest
+    ): GenericResponseDto = withContext(Dispatchers.IO) {
+        try {
+            lecturerAcademicRepository.assertLecturerBelongsToUniversity(lecturerId, universityId)
+
+            val existingTerm = lecturerAcademicRepository.findAcademicTerm(
+                universityId = universityId,
+                academicYear = request.academicYear,
+                semester = request.semester
+            )
+
+            if (existingTerm != null) {
+                throw ConflictException("Academic term already exists")
+            }
+
+            lecturerAcademicRepository.createAcademicTerm(
+                universityId = universityId,
+                academicYear = request.academicYear,
+                semester = request.semester,
+                weekCount = request.weekCount
+            )
+
+            GenericResponseDto(
+                statusCode = 200,
+                message = "Academic term added successfully"
+            )
+        } catch (e: Exception) {
+            logger.error("Failed to add academic term", e)
+            when (e) {
+                is AppException -> throw e
+                else -> throw InternalServerException("Failed to add academic term")
+            }
+        }
+    }
+
+    override suspend fun updateAcademicTerm(
+        lecturerId: UUID,
+        termId: UUID,
+        request: UpdateAcademicTermRequest
+    ): GenericResponseDto = withContext(Dispatchers.IO) {
+        try {
+            val term = lecturerAcademicRepository.findAcademicTermById(termId)
+                ?: throw ResourceNotFoundException("Academic term not found")
+
+            lecturerAcademicRepository.assertLecturerBelongsToUniversity(lecturerId, term.universityId)
+
+            lecturerAcademicRepository.updateAcademicTerm(
+                termId = termId,
+                academicYear = request.academicYear,
+                semester = request.semester,
+                weekCount = request.weekCount
+            )
+
+            GenericResponseDto(
+                statusCode = 200,
+                message = "Academic term updated successfully"
+            )
+        } catch (e: Exception) {
+            logger.error("Failed to update academic term", e)
+            when (e) {
+                is AppException -> throw e
+                else -> throw InternalServerException("Failed to update academic term")
+            }
+        }
+    }
+
+    override suspend fun activateTerm(
+        lecturerId: UUID,
+        termId: UUID
+    ): GenericResponseDto = withContext(Dispatchers.IO) {
+        try {
+            val term = lecturerAcademicRepository.findAcademicTermById(termId)
+                ?: throw ResourceNotFoundException("Academic term not found")
+
+            lecturerAcademicRepository.assertLecturerBelongsToUniversity(lecturerId, term.universityId)
+
+            // Deactivate all other terms for this university
+            lecturerAcademicRepository.deactivateAllTerms(term.universityId)
+
+            // Activate this term
+            lecturerAcademicRepository.activateTerm(termId)
+
+            GenericResponseDto(
+                statusCode = 200,
+                message = "Term activated successfully"
+            )
+        } catch (e: Exception) {
+            logger.error("Failed to activate term", e)
+            when (e) {
+                is AppException -> throw e
+                else -> throw InternalServerException("Failed to activate term")
+            }
+        }
+    }
+
+    override suspend fun addProgramme(
+        lecturerId: UUID,
+        universityId: UUID,
+        request: AddProgrammeRequest
+    ): GenericResponseDto = withContext(Dispatchers.IO) {
+        try {
+            lecturerAcademicRepository.assertLecturerBelongsToUniversity(lecturerId, universityId)
+
+            val department = lecturerAcademicRepository.findDepartmentById(UUID.fromString(request.departmentId))
+                ?: throw ResourceNotFoundException("Department not found")
+
+            if (department.universityId != universityId) {
+                throw ValidationException("Department does not belong to this university")
+            }
+
+            lecturerAcademicRepository.createProgramme(
+                universityId = universityId,
+                departmentId = UUID.fromString(request.departmentId),
+                name = request.name,
+                yearOfStudy = request.yearOfStudy,
+                expectedStudentCount = request.expectedStudentCount
+            )
+
+            GenericResponseDto(
+                statusCode = 200,
+                message = "Programme added successfully"
+            )
+        } catch (e: Exception) {
+            logger.error("Failed to add programme", e)
+            when (e) {
+                is AppException -> throw e
+                else -> throw InternalServerException("Failed to add programme")
+            }
+        }
+    }
+
+    override suspend fun updateProgramme(
+        lecturerId: UUID,
+        programmeId: UUID,
+        request: UpdateProgrammeRequest
+    ): GenericResponseDto = withContext(Dispatchers.IO) {
+        try {
+            val programme = lecturerAcademicRepository.findProgrammeById(programmeId)
+                ?: throw ResourceNotFoundException("Programme not found")
+
+            lecturerAcademicRepository.assertLecturerBelongsToUniversity(lecturerId, programme.universityId)
+
+            lecturerAcademicRepository.updateProgramme(
+                programmeId = programmeId,
+                name = request.name,
+                departmentId = request.departmentId?.let(UUID::fromString),
+                yearOfStudy = request.yearOfStudy,
+                expectedStudentCount = request.expectedStudentCount,
+                isActive = request.isActive
+            )
+
+            GenericResponseDto(
+                statusCode = 200,
+                message = "Programme updated successfully"
+            )
+        } catch (e: Exception) {
+            logger.error("Failed to update programme", e)
+            when (e) {
+                is AppException -> throw e
+                else -> throw InternalServerException("Failed to update programme")
+            }
+        }
+    }
+
+    override suspend fun deactivateProgramme(
+        lecturerId: UUID,
+        programmeId: UUID
+    ): GenericResponseDto = withContext(Dispatchers.IO) {
+        try {
+            val programme = lecturerAcademicRepository.findProgrammeById(programmeId)
+                ?: throw ResourceNotFoundException("Programme not found")
+
+            lecturerAcademicRepository.assertLecturerBelongsToUniversity(lecturerId, programme.universityId)
+
+            // Check for attendance records
+            val hasAttendance = lecturerAcademicRepository.hasAttendanceForProgrammeInCurrentTerm(programmeId, programme.universityId)
+            if (hasAttendance) {
+                throw ValidationException("Cannot deactivate programme with existing attendance records")
+            }
+
+            lecturerAcademicRepository.deactivateProgramme(programmeId)
+
+            GenericResponseDto(
+                statusCode = 200,
+                message = "Programme deactivated successfully"
+            )
+        } catch (e: Exception) {
+            logger.error("Failed to deactivate programme", e)
+            when (e) {
+                is AppException -> throw e
+                else -> throw InternalServerException("Failed to deactivate programme")
+            }
+        }
+    }
+
+    override suspend fun addUnitToProgramme(
+        lecturerId: UUID,
+        programmeId: UUID,
+        request: AddUnitToProgrammeRequest
+    ): GenericResponseDto = withContext(Dispatchers.IO) {
+        try {
+            val programme = lecturerAcademicRepository.findProgrammeById(programmeId)
+                ?: throw ResourceNotFoundException("Programme not found")
+
+            lecturerAcademicRepository.assertLecturerBelongsToUniversity(lecturerId, programme.universityId)
+
+            val department = lecturerAcademicRepository.findDepartmentById(UUID.fromString(request.departmentId))
+                ?: throw ResourceNotFoundException("Department not found")
+
+            if (department.universityId != programme.universityId) {
+                throw ValidationException("Department does not belong to this university")
+            }
+
+            val unit = lecturerAcademicRepository.findOrCreateUnit(
+                universityId = programme.universityId,
+                departmentId = UUID.fromString(request.departmentId),
+                code = request.code,
+                name = request.name
+            )
+
+            lecturerAcademicRepository.linkUnitToProgramme(
+                programmeId = programmeId,
+                unitId = unit.id,
+                yearOfStudy = request.yearOfStudy,
+                semester = request.semester
+            )
+
+            GenericResponseDto(
+                statusCode = 200,
+                message = "Unit added successfully"
+            )
+        } catch (e: Exception) {
+            logger.error("Failed to add unit to programme", e)
+            when (e) {
+                is AppException -> throw e
+                else -> throw InternalServerException("Failed to add unit to programme")
+            }
+        }
+    }
+
+    override suspend fun updateUnit(
+        lecturerId: UUID,
+        unitId: UUID,
+        request: UpdateUnitRequest
+    ): GenericResponseDto = withContext(Dispatchers.IO) {
+        try {
+            val unit = lecturerAcademicRepository.findUnitById(unitId)
+                ?: throw ResourceNotFoundException("Unit not found")
+
+            lecturerAcademicRepository.assertLecturerBelongsToUniversity(lecturerId, unit.universityId)
+
+            lecturerAcademicRepository.updateUnit(
+                unitId = unitId,
+                code = request.code,
+                name = request.name,
+                departmentId = request.departmentId?.let(UUID::fromString),
+                isActive = request.isActive
+            )
+
+            if (request.semester != null) {
+                lecturerAcademicRepository.updateUnitSemester(unitId, request.semester)
+            }
+
+            GenericResponseDto(
+                statusCode = 200,
+                message = "Unit updated successfully"
+            )
+        } catch (e: Exception) {
+            logger.error("Failed to update unit", e)
+            when (e) {
+                is AppException -> throw e
+                else -> throw InternalServerException("Failed to update unit")
+            }
+        }
+    }
+
+    override suspend fun deactivateUnit(
+        lecturerId: UUID,
+        unitId: UUID
+    ): GenericResponseDto = withContext(Dispatchers.IO) {
+        try {
+            val unit = lecturerAcademicRepository.findUnitById(unitId)
+                ?: throw ResourceNotFoundException("Unit not found")
+
+            lecturerAcademicRepository.assertLecturerBelongsToUniversity(lecturerId, unit.universityId)
+
+            // Check for attendance records
+            val hasAttendance = lecturerAcademicRepository.hasAttendanceForUnitInCurrentTerm(unitId, unit.universityId)
+            if (hasAttendance) {
+                throw ValidationException("Cannot deactivate unit with existing attendance records")
+            }
+
+            lecturerAcademicRepository.deactivateUnit(unitId)
+
+            GenericResponseDto(
+                statusCode = 200,
+                message = "Unit deactivated successfully"
+            )
+        } catch (e: Exception) {
+            logger.error("Failed to deactivate unit", e)
+            when (e) {
+                is AppException -> throw e
+                else -> throw InternalServerException("Failed to deactivate unit")
+            }
+        }
+    }
+
+    override suspend fun addTeachingAssignment(
+        lecturerId: UUID,
+        request: AddTeachingAssignmentRequest
+    ): GenericResponseDto = withContext(Dispatchers.IO) {
+        try {
+            val universityId = UUID.fromString(request.universityId)
+            val programmeId = UUID.fromString(request.programmeId)
+            val unitId = UUID.fromString(request.unitId)
+            val academicTermId = UUID.fromString(request.academicTermId)
+
+            lecturerAcademicRepository.assertLecturerBelongsToUniversity(lecturerId, universityId)
+
+            val programme = lecturerAcademicRepository.findProgrammeById(programmeId)
+                ?: throw ResourceNotFoundException("Programme not found")
+
+            if (programme.universityId != universityId) {
+                throw ValidationException("Programme does not belong to this university")
+            }
+
+            val unit = lecturerAcademicRepository.findUnitById(unitId)
+                ?: throw ResourceNotFoundException("Unit not found")
+
+            if (unit.universityId != universityId) {
+                throw ValidationException("Unit does not belong to this university")
+            }
+
+            val isLinked = lecturerAcademicRepository.isUnitLinkedToProgramme(unitId, programmeId)
+            if (!isLinked) {
+                throw ValidationException("Unit is not linked to this programme")
+            }
+
+            val term = lecturerAcademicRepository.findAcademicTermById(academicTermId)
+                ?: throw ResourceNotFoundException("Academic term not found")
+
+            if (term.universityId != universityId) {
+                throw ValidationException("Academic term does not belong to this university")
+            }
+
+            lecturerAcademicRepository.createTeachingAssignment(
+                lecturerId = lecturerId,
+                universityId = universityId,
+                programmeId = programmeId,
+                unitId = unitId,
+                academicTermId = academicTermId,
+                yearOfStudy = request.yearOfStudy,
+                expectedStudents = request.expectedStudents,
+                lectureDay = request.lectureDay,
+                lectureTime = request.lectureTime,
+                lectureVenue = request.lectureVenue
+            )
+
+            GenericResponseDto(
+                statusCode = 200,
+                message = "Teaching assignment added successfully"
+            )
+        } catch (e: Exception) {
+            logger.error("Failed to add teaching assignment", e)
+            when (e) {
+                is AppException -> throw e
+                else -> throw InternalServerException("Failed to add teaching assignment")
+            }
+        }
+    }
+
+    override suspend fun updateTeachingAssignment(
+        lecturerId: UUID,
+        assignmentId: UUID,
+        request: UpdateTeachingAssignmentRequest
+    ): GenericResponseDto = withContext(Dispatchers.IO) {
+        try {
+            val assignment = lecturerAcademicRepository.findTeachingAssignmentById(assignmentId)
+                ?: throw ResourceNotFoundException("Teaching assignment not found")
+
+            lecturerAcademicRepository.assertLecturerBelongsToUniversity(lecturerId, assignment.universityId)
+
+            if (request.isActive == false) {
+                val hasAttendance = lecturerAcademicRepository.hasAttendanceRecordsForTeachingAssignment(assignmentId)
+                if (hasAttendance) {
+                    throw ValidationException(
+                        "Cannot deactivate teaching assignment - there are attendance records associated with this assignment."
+                    )
+                }
+            }
+
+            lecturerAcademicRepository.updateTeachingAssignment(
+                assignmentId = assignmentId,
+                expectedStudents = request.expectedStudents,
+                lectureDay = request.lectureDay,
+                lectureTime = request.lectureTime,
+                lectureVenue = request.lectureVenue,
+                isActive = request.isActive
+            )
+
+            GenericResponseDto(
+                statusCode = 200,
+                message = "Teaching assignment updated successfully"
+            )
+        } catch (e: Exception) {
+            logger.error("Failed to update teaching assignment", e)
+            when (e) {
+                is AppException -> throw e
+                else -> throw InternalServerException("Failed to update teaching assignment")
+            }
+        }
+    }
+
+    override suspend fun deleteTeachingAssignment(
+        lecturerId: UUID,
+        assignmentId: UUID
+    ): GenericResponseDto = withContext(Dispatchers.IO) {
+        try {
+            val assignment = lecturerAcademicRepository.findTeachingAssignmentById(assignmentId)
+                ?: throw ResourceNotFoundException("Teaching assignment not found")
+
+            lecturerAcademicRepository.assertLecturerBelongsToUniversity(lecturerId, assignment.universityId)
+
+            val hasAttendance = lecturerAcademicRepository.hasAttendanceRecordsForTeachingAssignment(assignmentId)
+
+            if (hasAttendance) {
+                throw ValidationException(
+                    "Cannot delete teaching assignment - there are attendance records associated with this assignment."
+                )
+            }
+
+            lecturerAcademicRepository.deleteTeachingAssignment(assignmentId)
+
+            GenericResponseDto(
+                statusCode = 200,
+                message = "Teaching assignment deleted successfully"
+            )
+        } catch (e: Exception) {
+            logger.error("Failed to delete teaching assignment", e)
+            when (e) {
+                is AppException -> throw e
+                else -> throw InternalServerException("Failed to delete teaching assignment")
             }
         }
     }
@@ -437,33 +877,5 @@ class LecturerAcademicServiceImpl(
         }
     }
 
-    private fun UpdateAcademicSetupRequest.validateRequest() {
-
-            academicTerms.forEach {
-                require((it.academicTermId != null) xor (it.draft != null)) {
-                   throw ValidationException("Academic term must have either id or have a new draft")
-                }
-            }
-
-            programmes.forEach { programme ->
-                require((programme.programmeId != null) xor (programme.draft != null)) {
-                    throw ValidationException("Programme must have either id or have a new draft")
-                }
-
-                require(programme.yearOfStudy in 1..8) {
-                    throw ValidationException("Year of study must be between 1 and 8")
-                }
-
-                programme.units.forEach { unit ->
-                    require((unit.unitId != null) xor (unit.draft != null)) {
-                        throw ValidationException("Unit must have either id or have a new draft")
-                    }
-
-                    require(unit.yearOfStudy == programme.yearOfStudy) {
-                        throw ValidationException("Year of study for unit and programme must match")
-                    }
-                }
-            }
-    }
 
 }
