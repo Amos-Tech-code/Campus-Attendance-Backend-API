@@ -1,7 +1,7 @@
 package com.amos_tech_code.domain.services.impl
 
 import com.amos_tech_code.api.dtos.admin.*
-import com.amos_tech_code.data.repository.LecturerAcademicRepository
+import data.repository.LecturerAcademicRepository
 import com.amos_tech_code.data.repository.UniversityStructureRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

@@ -7,6 +7,7 @@ import com.amos_tech_code.services.*
 import com.amos_tech_code.utils.BackgroundTaskScope
 import data.repository.AttendanceSessionRepository
 import data.repository.DeviceChangeRequestRepository
+import data.repository.LecturerAcademicRepository
 import data.repository.StudentEnrollmentRepository
 import data.repository.StudentRepository
 import domain.services.AttendanceManagementService

@@ -1,4 +1,4 @@
-package com.amos_tech_code.data.repository
+package data.repository
 
 import com.amos_tech_code.data.database.utils.exposedTransaction
 import com.amos_tech_code.domain.dtos.requests.UnitSetupRequest
@@ -7,13 +7,12 @@ import com.amos_tech_code.domain.models.*
 import com.amos_tech_code.utils.InternalServerException
 import com.amos_tech_code.utils.ValidationException
 import data.database.entities.*
-import data.database.entities.AttendanceSessionsTable.updatedAt
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import java.time.LocalDateTime
 import java.util.*
 
-class LecturerAcademicRepository() {
+class LecturerAcademicRepository {
 
     /*------------------------
     CREATE ACADEMIC SETUP
@@ -404,7 +403,7 @@ class LecturerAcademicRepository() {
 
     }
 
-    fun getActiveAcademicTerm(universityId: UUID): ResolvedAcademicTerm =
+    suspend fun getActiveAcademicTerm(universityId: UUID): ResolvedAcademicTerm = exposedTransaction {
         AcademicTermsTable
             .selectAll()
             .where {
@@ -425,14 +424,15 @@ class LecturerAcademicRepository() {
                 )
             }
             .single()
+    }
 
     /*------------------------
     UPDATE ACADEMIC SETUP
     -------------------------*/
-    fun assertLecturerBelongsToUniversity(
+    suspend fun assertLecturerBelongsToUniversity(
         lecturerId: UUID,
         universityId: UUID
-    ) {
+    ) = exposedTransaction {
         val exists = LecturerUniversitiesTable
             .select(LecturerUniversitiesTable.id)
             .where {
@@ -444,6 +444,81 @@ class LecturerAcademicRepository() {
         if (!exists) {
             throw ValidationException("Lecturer not associated with this university")
         }
+    }
+
+    data class ProgrammeUnit(
+        val id: UUID,
+        val programmeId: UUID,
+        val unitId: UUID,
+        val yearOfStudy: Int,
+        val semester: Int
+    )
+    
+    /**
+     * Check if unit is linked to programme
+     */
+    suspend fun isUnitLinkedToProgramme(unitId: UUID, programmeId: UUID): Boolean = exposedTransaction {
+        ProgrammeUnitsTable
+            .select(ProgrammeUnitsTable.id)
+            .where {
+                (ProgrammeUnitsTable.unitId eq unitId) and
+                        (ProgrammeUnitsTable.programmeId eq programmeId)
+            }
+            .any()
+    }
+
+    /**
+     * Remove programme-unit link by programmeId and unitId
+     */
+    suspend fun removeProgrammeUnitLink(programmeId: UUID, unitId: UUID) = exposedTransaction {
+        ProgrammeUnitsTable.deleteWhere {
+            (ProgrammeUnitsTable.programmeId eq programmeId) and
+                    (ProgrammeUnitsTable.unitId eq unitId)
+        }
+    }
+
+    // ============ TEACHING ASSIGNMENT METHODS ============
+
+    suspend fun deactivateTeachingAssignmentsForUniversity(
+        lecturerId: UUID,
+        universityId: UUID,
+        academicTermId: UUID
+    ) = exposedTransaction {
+        LecturerTeachingAssignmentsTable.update({
+            (LecturerTeachingAssignmentsTable.lecturerId eq lecturerId) and
+                    (LecturerTeachingAssignmentsTable.universityId eq universityId) and
+                    (LecturerTeachingAssignmentsTable.academicTermId eq academicTermId)
+        }) {
+            it[isActive] = false
+        }
+    }
+
+    suspend fun deactivateTeachingAssignmentForUnit(
+        lecturerId: UUID,
+        programmeId: UUID,
+        unitId: UUID,
+        academicTermId: UUID
+    ) = exposedTransaction {
+        LecturerTeachingAssignmentsTable.update({
+            (LecturerTeachingAssignmentsTable.lecturerId eq lecturerId) and
+                    (LecturerTeachingAssignmentsTable.programmeId eq programmeId) and
+                    (LecturerTeachingAssignmentsTable.unitId eq unitId) and
+                    (LecturerTeachingAssignmentsTable.academicTermId eq academicTermId)
+        }) {
+            it[isActive] = false
+        }
+    }
+
+    suspend fun deactivateUniversityForLecturer(
+        lecturerId: UUID,
+        universityId: UUID
+    ): Boolean = exposedTransaction {
+        LecturerUniversitiesTable.update({
+            (LecturerUniversitiesTable.lecturerId eq lecturerId) and
+                    (LecturerUniversitiesTable.universityId eq universityId)
+        }) {
+            it[isActive] = false
+        } > 0
     }
 
     /**
@@ -467,89 +542,6 @@ class LecturerAcademicRepository() {
             .any()
     }
 
-    /**
-     * Deactivate a university for a specific lecturer (doesn't delete the master entity)
-     */
-    suspend fun deactivateUniversityForLecturer(
-        lecturerId: UUID,
-        universityId: UUID
-    ): Boolean = exposedTransaction {
-        LecturerUniversitiesTable.update({
-            (LecturerUniversitiesTable.lecturerId eq lecturerId) and
-                    (LecturerUniversitiesTable.universityId eq universityId)
-        }) {
-            it[isActive] = false
-            it[updatedAt] = LocalDateTime.now()
-        } > 0
-    }
-
-    /**
-     * Check if a programme has attendance records in the current academic term
-     */
-    suspend fun hasAttendanceRecordsForProgrammeInCurrentTerm(
-        programmeId: UUID,
-        universityId: UUID
-    ): Boolean = exposedTransaction {
-        val activeTerm = getActiveAcademicTerm(universityId)
-
-        AttendanceRecordsTable
-            .innerJoin(AttendanceSessionsTable) {
-                AttendanceRecordsTable.sessionId eq AttendanceSessionsTable.id
-            }
-            .innerJoin(SessionProgrammesTable) {
-                AttendanceSessionsTable.id eq SessionProgrammesTable.sessionId
-            }
-            .select(AttendanceRecordsTable.id)
-            .where {
-                (SessionProgrammesTable.programmeId eq programmeId) and
-                        (AttendanceSessionsTable.academicTermId eq activeTerm.id)
-            }
-            .limit(1)
-            .any()
-    }
-
-    /**
-     * Check if a unit has attendance records in the current academic term
-     */
-    suspend fun hasAttendanceRecordsForUnitInCurrentTerm(
-        unitId: UUID,
-        universityId: UUID
-    ): Boolean = exposedTransaction {
-        val activeTerm = getActiveAcademicTerm(universityId)
-
-        AttendanceRecordsTable
-            .innerJoin(AttendanceSessionsTable) {
-                AttendanceRecordsTable.sessionId eq AttendanceSessionsTable.id
-            }
-            .select(AttendanceRecordsTable.id)
-            .where {
-                (AttendanceSessionsTable.unitId eq unitId) and
-                        (AttendanceSessionsTable.academicTermId eq activeTerm.id)
-            }
-            .limit(1)
-            .any()
-    }
-
-    /**
-     * Check if a teaching assignment has attendance records
-     */
-    suspend fun hasAttendanceRecordsForTeachingAssignment(assignmentId: UUID): Boolean = exposedTransaction {
-        val assignment = LecturerTeachingAssignmentsTable
-            .select(LecturerTeachingAssignmentsTable.unitId)
-            .where { LecturerTeachingAssignmentsTable.id eq assignmentId }
-            .singleOrNull() ?: return@exposedTransaction false
-
-        val unitId = assignment[LecturerTeachingAssignmentsTable.unitId]
-
-        AttendanceRecordsTable
-            .innerJoin(AttendanceSessionsTable) {
-                AttendanceRecordsTable.sessionId eq AttendanceSessionsTable.id
-            }
-            .select(AttendanceRecordsTable.id)
-            .where { AttendanceSessionsTable.unitId eq unitId }
-            .limit(1)
-            .any()
-    }
 
     /**
      * Check if attendance exists for a programme in the current academic term
@@ -599,64 +591,6 @@ class LecturerAcademicRepository() {
     }
 
     /**
-     * Find university by ID
-     */
-    suspend fun findUniversityById(universityId: UUID): ResolvedUniversity? = exposedTransaction {
-        UniversitiesTable
-            .selectAll()
-            .where { UniversitiesTable.id eq universityId }
-            .map { row ->
-                ResolvedUniversity(
-                    id = row[UniversitiesTable.id],
-                    name = row[UniversitiesTable.name]
-                )
-            }
-            .singleOrNull()
-    }
-
-    /**
-     * Find active academic term for university
-     */
-    suspend fun findActiveAcademicTerm(universityId: UUID): ResolvedAcademicTerm? = exposedTransaction {
-        AcademicTermsTable
-            .selectAll()
-            .where {
-                (AcademicTermsTable.universityId eq universityId) and
-                        (AcademicTermsTable.isActive eq true)
-            }
-            .map { row ->
-                ResolvedAcademicTerm(
-                    id = row[AcademicTermsTable.id],
-                    academicYear = row[AcademicTermsTable.academicYear],
-                    semester = row[AcademicTermsTable.semester],
-                    isActive = row[AcademicTermsTable.isActive]
-                )
-            }
-            .singleOrNull()
-    }
-
-    /**
-     * Find academic term by ID
-     */
-    suspend fun findAcademicTermById(termId: UUID): AcademicTerm? = exposedTransaction {
-        AcademicTermsTable
-            .selectAll()
-            .where { AcademicTermsTable.id eq termId }
-            .map { row ->
-                AcademicTerm(
-                    id = row[AcademicTermsTable.id],
-                    universityId = row[AcademicTermsTable.universityId],
-                    academicYear = row[AcademicTermsTable.academicYear],
-                    semester = row[AcademicTermsTable.semester],
-                    weekCount = row[AcademicTermsTable.weekCount],
-                    isActive = row[AcademicTermsTable.isActive],
-                    createdAt = row[AcademicTermsTable.createdAt]
-                )
-            }
-            .singleOrNull()
-    }
-
-    /**
      * Find academic term by university, year, and semester
      */
     suspend fun findAcademicTerm(
@@ -680,6 +614,63 @@ class LecturerAcademicRepository() {
                 )
             }
             .singleOrNull()
+    }
+
+    /**
+     * Find teaching assignment by lecturer, programme, and term
+     */
+    suspend fun findTeachingAssignment(
+        lecturerId: UUID,
+        programmeId: UUID,
+        academicTermId: UUID
+    ): TeachingAssignment? = exposedTransaction {
+        LecturerTeachingAssignmentsTable
+            .selectAll()
+            .where {
+                (LecturerTeachingAssignmentsTable.lecturerId eq lecturerId) and
+                        (LecturerTeachingAssignmentsTable.programmeId eq programmeId) and
+                        (LecturerTeachingAssignmentsTable.academicTermId eq academicTermId) and
+                        (LecturerTeachingAssignmentsTable.isActive eq true)
+            }
+            .limit(1)
+            .map { row ->
+                TeachingAssignment(
+                    id = row[LecturerTeachingAssignmentsTable.id],
+                    lecturerId = row[LecturerTeachingAssignmentsTable.lecturerId],
+                    universityId = row[LecturerTeachingAssignmentsTable.universityId],
+                    programmeId = row[LecturerTeachingAssignmentsTable.programmeId],
+                    unitId = row[LecturerTeachingAssignmentsTable.unitId],
+                    academicTermId = row[LecturerTeachingAssignmentsTable.academicTermId],
+                    yearOfStudy = row[LecturerTeachingAssignmentsTable.yearOfStudy],
+                    expectedStudents = row[LecturerTeachingAssignmentsTable.expectedStudents],
+                    lectureDay = row[LecturerTeachingAssignmentsTable.lectureDay],
+                    lectureTime = row[LecturerTeachingAssignmentsTable.lectureTime],
+                    lectureVenue = row[LecturerTeachingAssignmentsTable.lectureVenue],
+                    isActive = row[LecturerTeachingAssignmentsTable.isActive],
+                    createdAt = row[LecturerTeachingAssignmentsTable.createdAt]
+                )
+            }
+            .singleOrNull()
+    }
+
+    /**
+     * Update teaching assignments for a programme (when yearOfStudy or expectedStudents changes)
+     */
+    suspend fun updateTeachingAssignmentsForProgramme(
+        lecturerId: UUID,
+        programmeId: UUID,
+        academicTermId: UUID,
+        yearOfStudy: Int?,
+        expectedStudents: Int?
+    ) = exposedTransaction {
+        LecturerTeachingAssignmentsTable.update({
+            (LecturerTeachingAssignmentsTable.lecturerId eq lecturerId) and
+                    (LecturerTeachingAssignmentsTable.programmeId eq programmeId) and
+                    (LecturerTeachingAssignmentsTable.academicTermId eq academicTermId)
+        }) {
+            yearOfStudy?.let { year -> it[this.yearOfStudy] = year }
+            expectedStudents?.let { students -> it[this.expectedStudents] = students }
+        }
     }
 
     /**
@@ -709,60 +700,6 @@ class LecturerAcademicRepository() {
         )
     }
 
-    /**
-     * Update academic term
-     */
-    suspend fun updateAcademicTerm(
-        termId: UUID,
-        academicYear: String?,
-        semester: Int?,
-        weekCount: Int?
-    ): AcademicTerm = exposedTransaction {
-        AcademicTermsTable.update({ AcademicTermsTable.id eq termId }) {
-            academicYear?.let { year -> it[this.academicYear] = year }
-            semester?.let { sem -> it[this.semester] = sem }
-            weekCount?.let { weekCount -> it[this.weekCount] = weekCount }
-            it[updatedAt] = LocalDateTime.now()
-        }
-
-        findAcademicTermById(termId) ?: throw InternalServerException("Failed to update academic term")
-    }
-
-    /**
-     * Deactivate all terms for a university
-     */
-    suspend fun deactivateAllTerms(universityId: UUID) = exposedTransaction {
-        AcademicTermsTable.update({ AcademicTermsTable.universityId eq universityId }) {
-            it[isActive] = false
-            it[updatedAt] = LocalDateTime.now()
-        }
-    }
-
-    /**
-     * Activate a specific term
-     */
-    suspend fun activateTerm(termId: UUID) = exposedTransaction {
-        AcademicTermsTable.update({ AcademicTermsTable.id eq termId }) {
-            it[isActive] = true
-            it[updatedAt] = LocalDateTime.now()
-        }
-    }
-
-    /**
-     * Reactivate university for lecturer
-     */
-    suspend fun reactivateUniversityForLecturer(
-        lecturerId: UUID,
-        universityId: UUID
-    ): Boolean = exposedTransaction {
-        LecturerUniversitiesTable.update({
-            (LecturerUniversitiesTable.lecturerId eq lecturerId) and
-                    (LecturerUniversitiesTable.universityId eq universityId)
-        }) {
-            it[isActive] = true
-            it[updatedAt] = LocalDateTime.now()
-        } > 0
-    }
 
     /**
      * Find department by ID
@@ -854,6 +791,26 @@ class LecturerAcademicRepository() {
         findProgrammeById(programmeId) ?: throw InternalServerException("Failed to update programme")
     }
 
+    // Add to LecturerAcademicRepository.kt
+
+    /**
+     * Deactivate all teaching assignments for a specific programme
+     * This removes the lecturer's teaching responsibilities for this programme
+     * The programme entity itself remains active in the master table
+     */
+    suspend fun deactivateTeachingAssignmentsForProgramme(
+        lecturerId: UUID,
+        programmeId: UUID,
+        academicTermId: UUID
+    ) = exposedTransaction {
+        LecturerTeachingAssignmentsTable.update({
+            (LecturerTeachingAssignmentsTable.lecturerId eq lecturerId) and
+                    (LecturerTeachingAssignmentsTable.programmeId eq programmeId) and
+                    (LecturerTeachingAssignmentsTable.academicTermId eq academicTermId)
+        }) {
+            it[isActive] = false
+        }
+    }
     /**
      * Deactivate programme
      */
@@ -862,28 +819,6 @@ class LecturerAcademicRepository() {
             it[isActive] = false
             it[updatedAt] = LocalDateTime.now()
         }
-    }
-
-    /**
-     * Find unit by ID
-     */
-    suspend fun findUnitById(unitId: UUID): DomainUnit? = exposedTransaction {
-        UnitsTable
-            .selectAll()
-            .where { UnitsTable.id eq unitId }
-            .map { row ->
-                DomainUnit(
-                    id = row[UnitsTable.id],
-                    universityId = row[UnitsTable.universityId],
-                    departmentId = row[UnitsTable.departmentId],
-                    code = row[UnitsTable.code],
-                    name = row[UnitsTable.name],
-                    isActive = row[UnitsTable.isActive],
-                    createdAt = row[UnitsTable.createdAt],
-                    updatedAt = row[UnitsTable.updatedAt]
-                )
-            }
-            .singleOrNull()
     }
 
     /**
@@ -942,46 +877,6 @@ class LecturerAcademicRepository() {
     }
 
     /**
-     * Update unit
-     */
-    suspend fun updateUnit(
-        unitId: UUID,
-        code: String?,
-        name: String?,
-        departmentId: UUID?,
-        isActive: Boolean?
-    ): DomainUnit = exposedTransaction {
-        UnitsTable.update({ UnitsTable.id eq unitId }) { stmt ->
-            code?.let { value ->
-                stmt[this.code] = normalizeCode(value)
-            }
-            name?.let { value ->
-                stmt[this.name] = normalizeName(value)
-            }
-            departmentId?.let { value ->
-                stmt[this.departmentId] = value
-            }
-            isActive?.let { value ->
-                stmt[this.isActive] = value
-            }
-
-            stmt[updatedAt] = LocalDateTime.now()
-        }
-
-        findUnitById(unitId) ?: throw InternalServerException("Failed to update unit")
-    }
-
-    /**
-     * Deactivate unit
-     */
-    suspend fun deactivateUnit(unitId: UUID) = exposedTransaction {
-        UnitsTable.update({ UnitsTable.id eq unitId }) {
-            it[isActive] = false
-            it[updatedAt] = LocalDateTime.now()
-        }
-    }
-
-    /**
      * Link unit to programme
      */
     suspend fun linkUnitToProgramme(
@@ -1004,38 +899,6 @@ class LecturerAcademicRepository() {
         }
     }
 
-    /**
-     * Update unit semester
-     */
-    suspend fun updateUnitSemester(unitId: UUID, semester: Int) = exposedTransaction {
-        ProgrammeUnitsTable.update({ ProgrammeUnitsTable.unitId eq unitId }) {
-            it[this.semester] = semester
-        }
-    }
-
-    /**
-     * Get unit semester
-     */
-    suspend fun getUnitSemester(unitId: UUID): Int = exposedTransaction {
-        ProgrammeUnitsTable
-            .select(ProgrammeUnitsTable.semester)
-            .where { ProgrammeUnitsTable.unitId eq unitId }
-            .map { it[ProgrammeUnitsTable.semester] }
-            .firstOrNull() ?: 1
-    }
-
-    /**
-     * Check if unit is linked to programme
-     */
-    suspend fun isUnitLinkedToProgramme(unitId: UUID, programmeId: UUID): Boolean = exposedTransaction {
-        ProgrammeUnitsTable
-            .select(ProgrammeUnitsTable.id)
-            .where {
-                (ProgrammeUnitsTable.unitId eq unitId) and
-                        (ProgrammeUnitsTable.programmeId eq programmeId)
-            }
-            .any()
-    }
 
     /**
      * Find teaching assignment by ID
@@ -1078,7 +941,7 @@ class LecturerAcademicRepository() {
         lectureDay: String?,
         lectureTime: String?,
         lectureVenue: String?
-    ): TeachingAssignment = exposedTransaction {
+    ) = exposedTransaction {
         val id = UUID.randomUUID()
         LecturerTeachingAssignmentsTable.insert {
             it[this.id] = id
@@ -1095,37 +958,7 @@ class LecturerAcademicRepository() {
             it[this.isActive] = true
         }
 
-        findTeachingAssignmentById(id) ?: throw InternalServerException("Failed to create teaching assignment")
-    }
-
-    /**
-     * Update teaching assignment
-     */
-    suspend fun updateTeachingAssignment(
-        assignmentId: UUID,
-        expectedStudents: Int?,
-        lectureDay: String?,
-        lectureTime: String?,
-        lectureVenue: String?,
-        isActive: Boolean?
-    ): TeachingAssignment = exposedTransaction {
-        LecturerTeachingAssignmentsTable.update({ LecturerTeachingAssignmentsTable.id eq assignmentId }) {
-            expectedStudents?.let { studs -> it[this.expectedStudents] = studs }
-            lectureDay?.let { day -> it[this.lectureDay] = day }
-            lectureTime?.let { time -> it[this.lectureTime] = time }
-            lectureVenue?.let { venue -> it[this.lectureVenue] = venue }
-            isActive?.let { isActive -> it[this.isActive] = isActive }
-            it[updatedAt] = LocalDateTime.now()
-        }
-
-        findTeachingAssignmentById(assignmentId) ?: throw InternalServerException("Failed to update teaching assignment")
-    }
-
-    /**
-     * Delete teaching assignment
-     */
-    suspend fun deleteTeachingAssignment(assignmentId: UUID) = exposedTransaction {
-        LecturerTeachingAssignmentsTable.deleteWhere { LecturerTeachingAssignmentsTable.id eq assignmentId }
+        //findTeachingAssignmentById(id) ?: throw InternalServerException("Failed to create teaching assignment")
     }
 
     /*------------------------
