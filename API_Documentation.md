@@ -5,13 +5,13 @@ This document outlines the API endpoints available in the Campus Attendance Syst
 ---
 
 ## 📊 API Summary
-The system provides a total of **116** API endpoints:
+The system provides a total of **122** API endpoints:
 
 - **General & System:** 4
 - **Admin API (Management & Security):** 65
 - **User Authentication (Lecturers/Students):** 4
 - **Account & Profile Management:** 4
-- **Lecturer Academic Setup:** 7
+- **Lecturer Academic Setup:** 13
 - **Attendance Sessions (Lifecycle):** 6
 - **Attendance Marking (Real-time):** 3
 - **Attendance Records & Exports:** 6
@@ -248,9 +248,19 @@ Base path: `api/v1/lecturer/academic-setup`. Requires `jwt-auth` and `LECTURER` 
 ### 1. Setup Configuration
 - `POST /api/v1/lecturer/academic-setup` - Initialize academic setup (Universities, Departments, Units).
 - `GET /api/v1/lecturer/academic-setup` - Retrieve current academic setup. Supports optional `universityId` query param.
-- `PUT /api/v1/lecturer/academic-setup` - Update existing academic setup.
+- `DELETE /api/v1/lecturer/academic-setup/universities/{universityId}/deactivate` - Lecturer deactivates themselves from a university.
 
-### 2. Setup Suggestions
+### 2. Academic Term & Programme Management
+- `POST /api/v1/lecturer/academic-setup/universities/{universityId}/terms` - Add a new academic term to a university.
+- `POST /api/v1/lecturer/academic-setup/universities/{universityId}/programmes` - Add a new programme with units.
+- `PATCH /api/v1/lecturer/academic-setup/programmes/{programmeId}` - Update programme details (name, year, etc.).
+- `DELETE /api/v1/lecturer/academic-setup/programmes/{programmeId}` - Deactivate a programme (soft delete).
+
+### 3. Unit Management
+- `POST /api/v1/lecturer/academic-setup/programmes/{programmeId}/units` - Add a new unit to a programme.
+- `DELETE /api/v1/lecturer/academic-setup/programmes/{programmeId}/units/{unitId}` - Remove a unit from a programme.
+
+### 4. Setup Suggestions
 Helpers for finding entities during configuration.
 - `GET /api/v1/lecturer/academic-setup/suggestions/universities` - Search for universities.
 - `GET /api/v1/lecturer/academic-setup/suggestions/departments` - Search departments (requires `universityId`).
